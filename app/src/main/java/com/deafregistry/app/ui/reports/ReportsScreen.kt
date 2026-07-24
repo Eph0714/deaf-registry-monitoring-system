@@ -49,6 +49,10 @@ import android.widget.Toast
 private data class CategoryRow(val label: String, val total: Int, val value: String, val extra: String = "")
 private data class ReportCategory(val key: String, val label: String, val rows: (ReportsUiState) -> List<CategoryRow>)
 
+// Matches the exact casing stored in monitoring_status (see DeafEditorScreen's STATUS_OPTIONS) -
+// the local Room query behind the drill-down does a case-sensitive exact match.
+private val MONITORING_STATUS_CHOICES = listOf("BS", "RV", "Transferred", "Unlocated")
+
 private val CATEGORIES = listOf(
     ReportCategory("municipality", "By Municipality") { s ->
         s.byMunicipality.map { CategoryRow(it.municipality, it.total, it.municipality) }
@@ -81,6 +85,8 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
     val scope = rememberCoroutineScope()
     var selectedCategory by remember { mutableStateOf(CATEGORIES.first()) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
+    var statusChoiceMenuExpanded by remember { mutableStateOf(false) }
+    var selectedStatusChoice by remember { mutableStateOf<String?>(null) }
     var pendingExportFormat by remember { mutableStateOf<String?>(null) }
     var reportHeading by remember { mutableStateOf("Deaf Registry Municipality Report") }
 
@@ -111,8 +117,39 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
                             CATEGORIES.forEach { category ->
                                 DropdownMenuItem(
                                     text = { Text(category.label) },
-                                    onClick = { selectedCategory = category; categoryMenuExpanded = false }
+                                    onClick = {
+                                        selectedCategory = category
+                                        categoryMenuExpanded = false
+                                        selectedStatusChoice = null
+                                    }
                                 )
+                            }
+                        }
+                    }
+                }
+
+                if (selectedCategory.key == "status") {
+                    item {
+                        ExposedDropdownMenuBox(expanded = statusChoiceMenuExpanded, onExpandedChange = { statusChoiceMenuExpanded = it }) {
+                            OutlinedTextField(
+                                value = selectedStatusChoice ?: "All statuses",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Monitoring Status") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusChoiceMenuExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor().padding(top = 8.dp)
+                            )
+                            ExposedDropdownMenu(expanded = statusChoiceMenuExpanded, onDismissRequest = { statusChoiceMenuExpanded = false }) {
+                                MONITORING_STATUS_CHOICES.forEach { choice ->
+                                    DropdownMenuItem(
+                                        text = { Text(choice) },
+                                        onClick = {
+                                            statusChoiceMenuExpanded = false
+                                            selectedStatusChoice = choice
+                                            onOpenCategoryDetail("status", choice, "")
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

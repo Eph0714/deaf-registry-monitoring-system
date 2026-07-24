@@ -27,6 +27,7 @@ data class DashboardUiState(
     val userName: String = "",
     val isAdmin: Boolean = false,
     val totalUsers: Int = 0,
+    val pendingApprovalCount: Int = 0,
     val recentVisits: List<RecentVisitDto> = emptyList(),
     val pendingFollowUps: List<NotVisitedDto> = emptyList(),
     val byStatus: List<ByStatusDto> = emptyList(),
@@ -72,6 +73,13 @@ class DashboardViewModel(
                 _uiState.value = _uiState.value.copy(totalUsers = users.count { it.isActive != false })
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(totalUsers = 0)
+            }
+        }
+
+        if (sessionManager.isAdmin()) {
+            viewModelScope.launch {
+                runCatching { userRepository.pendingSignups() }
+                    .onSuccess { pending -> _uiState.value = _uiState.value.copy(pendingApprovalCount = pending.size) }
             }
         }
 

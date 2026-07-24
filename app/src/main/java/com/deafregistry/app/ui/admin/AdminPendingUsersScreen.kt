@@ -88,7 +88,7 @@ fun AdminPendingUsersScreen(onBack: () -> Unit) {
                                     runCatching { repo.rejectSignup(signup.id) }.onFailure { error = it.message }
                                     reload()
                                 }
-                            }) { Icon(Icons.Default.Close, contentDescription = "Reject") }
+                            }) { Icon(Icons.Default.Close, contentDescription = "Decline", tint = MaterialTheme.colorScheme.error) }
                         }
                     }
                 }

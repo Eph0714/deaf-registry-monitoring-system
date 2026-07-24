@@ -113,15 +113,20 @@ const approveSignup = asyncHandler(async (req, res) => {
   res.json({ id: Number(id), approval_status: 'approved' });
 });
 
+// Declining an unverified signup request deletes it outright rather than leaving a
+// permanently-'rejected' row behind - that dead row would otherwise block the same email
+// from ever signing up again, with no way for the person to retry.
 const rejectSignup = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const result = await pool.query(
-    `UPDATE users SET approval_status = 'rejected' WHERE id = $1 AND approval_status = 'pending'`,
+  const { rows } = await pool.query(
+    `SELECT name, email FROM users WHERE id = $1 AND approval_status = 'pending'`,
     [id]
   );
-  if (!result.rowCount) return res.status(404).json({ message: 'Not found' });
-  await logAudit(req.user.id, 'SIGNUP_REJECTED', 'user', id, null);
-  res.json({ id: Number(id), approval_status: 'rejected' });
+  if (!rows.length) return res.status(404).json({ message: 'Not found' });
+  const { name, email } = rows[0];
+  await pool.query('DELETE FROM users WHERE id = $1', [id]);
+  await logAudit(req.user.id, 'SIGNUP_DECLINED', 'user', id, { name, email });
+  res.json({ id: Number(id), deleted: true });
 });
 
 module.exports = {

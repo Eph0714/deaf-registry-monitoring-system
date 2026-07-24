@@ -35,6 +35,8 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -187,7 +189,17 @@ fun DashboardScreen(
                 actions = {
                     IconButton(onClick = onOpenSearch) { Icon(Icons.Default.Search, contentDescription = "Search") }
                     if (state.isAdmin) {
-                        IconButton(onClick = onOpenAdmin) { Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin") }
+                        IconButton(onClick = onOpenAdmin) {
+                            if (state.pendingApprovalCount > 0) {
+                                BadgedBox(badge = {
+                                    Badge { Text(state.pendingApprovalCount.toString()) }
+                                }) {
+                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin (${state.pendingApprovalCount} pending approvals)")
+                                }
+                            } else {
+                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin")
+                            }
+                        }
                     }
                     UserAvatar(state.userName, photoUrl) { showPhotoSourceDialog = true }
                 }
