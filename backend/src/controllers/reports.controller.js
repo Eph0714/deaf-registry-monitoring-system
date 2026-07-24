@@ -18,6 +18,19 @@ const byMunicipality = asyncHandler(async (req, res) => {
   res.json(rows);
 });
 
+const byMunicipalityStatus = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT m.name AS municipality,
+           COUNT(*) FILTER (WHERE d.monitoring_status = 'BS')::int AS bs,
+           COUNT(*) FILTER (WHERE d.monitoring_status = 'RV')::int AS rv,
+           COUNT(*) FILTER (WHERE d.monitoring_status = 'Transferred')::int AS transferred,
+           COUNT(*) FILTER (WHERE d.monitoring_status = 'Unlocated')::int AS unlocated
+    FROM municipalities m
+    LEFT JOIN deaf_individuals d ON d.municipality_id = m.id AND d.is_deleted = false
+    GROUP BY m.id, m.name ORDER BY m.name ASC`);
+  res.json(rows);
+});
+
 const byBarangay = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`
     SELECT m.name AS municipality, b.name AS barangay, COUNT(d.id)::int AS total
@@ -79,4 +92,4 @@ const notVisited = asyncHandler(async (req, res) => {
   res.json(rows);
 });
 
-module.exports = { summary, byMunicipality, byBarangay, byGender, bySkill, byStatus, byConductor, recentVisits, notVisited };
+module.exports = { summary, byMunicipality, byMunicipalityStatus, byBarangay, byGender, bySkill, byStatus, byConductor, recentVisits, notVisited };

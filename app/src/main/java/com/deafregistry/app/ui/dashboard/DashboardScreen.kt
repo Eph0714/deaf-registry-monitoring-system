@@ -253,6 +253,7 @@ fun DashboardScreen(
                             isOnline = state.isOnline,
                             isSyncing = state.isSyncing,
                             syncError = state.syncError,
+                            pendingSyncCount = state.pendingSyncCount,
                             onSync = { viewModel.sync() }
                         )
                     }
@@ -406,6 +407,7 @@ private fun SyncStatusRow(
     isOnline: Boolean,
     isSyncing: Boolean,
     syncError: String?,
+    pendingSyncCount: Int,
     onSync: () -> Unit
 ) {
     Card(
@@ -433,11 +435,18 @@ private fun SyncStatusRow(
                     Text(
                         when {
                             isSyncing -> "Syncing…"
-                            !isOnline -> "Offline — changes will sync automatically when reconnected"
+                            !isOnline -> "Offline — changes are saved on this device"
                             else -> "Online"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = if (!isOnline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (!isSyncing && pendingSyncCount > 0) {
+                    Text(
+                        "$pendingSyncCount change${if (pendingSyncCount == 1) "" else "s"} waiting to sync — tap Sync to send to the server",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
                 syncError?.let {

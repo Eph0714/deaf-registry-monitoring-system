@@ -56,12 +56,11 @@ class DashboardViewModel(
             .onEach { list -> _uiState.value = _uiState.value.copy(municipalities = list) }
             .launchIn(viewModelScope)
 
+        // Only tracks connectivity for the status row / enabling the Sync button - it does NOT
+        // auto-trigger a sync. Pushing local changes to the server happens exclusively when the
+        // user taps Sync (see sync() below), even once the device comes back online.
         networkMonitor.observe()
-            .onEach { online ->
-                val wasOffline = !_uiState.value.isOnline
-                _uiState.value = _uiState.value.copy(isOnline = online)
-                if (online && wasOffline) sync()
-            }
+            .onEach { online -> _uiState.value = _uiState.value.copy(isOnline = online) }
             .launchIn(viewModelScope)
 
         viewModelScope.launch {
@@ -96,7 +95,11 @@ class DashboardViewModel(
         }
 
         refreshPendingSyncCount()
-        sync()
+        // Pull-only refresh on screen load - downloads fresh data but never pushes local edits.
+        // Local edits only leave the device when the user taps Sync (see sync() below).
+        viewModelScope.launch {
+            runCatching { syncManager.pull() }
+        }
     }
 
     fun sync() {

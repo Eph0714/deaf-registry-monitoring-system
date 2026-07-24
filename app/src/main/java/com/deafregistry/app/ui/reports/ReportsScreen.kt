@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,8 +21,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.deafregistry.app.data.remote.dto.ByMunicipalityStatusDto
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
@@ -52,6 +55,10 @@ fun ReportsScreen(onBack: () -> Unit) {
                 item { ReportSectionHeader("Total Registered", "${state.total}") }
 
                 item { ReportSection("By Municipality", state.byMunicipality.map { it.municipality to it.total }) }
+                item {
+                    Text("By Municipality — Status", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
+                }
+                items(state.byMunicipalityStatus) { row -> MunicipalityStatusCard(row) }
                 item { ReportSection("By Barangay", state.byBarangay.map { "${it.municipality} / ${it.barangay}" to it.total }) }
                 item { ReportSection("By Gender", state.byGender.map { it.gender to it.total }) }
                 item { ReportSection("By Skill Level", state.bySkill.map { it.skillLevel to it.total }) }
@@ -107,6 +114,36 @@ private fun ReportSectionHeader(label: String, value: String) {
             Text(label, style = MaterialTheme.typography.titleMedium)
             Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         }
+    }
+}
+
+@Composable
+private fun MunicipalityStatusCard(row: ByMunicipalityStatusDto) {
+    Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text(row.municipality, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.padding(top = 4.dp))
+            StatusCountRow("BS", row.bs, highlight = true)
+            StatusCountRow("RV", row.rv)
+            StatusCountRow("Transferred", row.transferred)
+            StatusCountRow("Unlocated", row.unlocated)
+        }
+    }
+}
+
+@Composable
+private fun StatusCountRow(label: String, count: Int, highlight: Boolean = false) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(
+            label,
+            fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal,
+            color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            "$count",
+            fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal,
+            color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

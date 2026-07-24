@@ -151,6 +151,9 @@ interface ApiService {
     @GET("reports/by-municipality")
     suspend fun reportByMunicipality(): List<ByMunicipalityDto>
 
+    @GET("reports/by-municipality-status")
+    suspend fun reportByMunicipalityStatus(): List<ByMunicipalityStatusDto>
+
     @GET("reports/by-barangay")
     suspend fun reportByBarangay(): List<ByBarangayDto>
 

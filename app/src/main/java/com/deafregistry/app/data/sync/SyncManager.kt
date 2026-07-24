@@ -18,6 +18,11 @@ class SyncManager(
     /**
      * Push order matters: a deaf individual must obtain a serverId before its visits can be
      * pushed, and a visit must obtain a serverId before its remarks can be pushed.
+     *
+     * This is the only method that pushes locally-queued (dirty) records to the server - it
+     * must only ever be called from the user tapping the Sync button, never automatically.
+     * While offline, edits keep saving locally via Room regardless; they just queue as dirty
+     * until the user explicitly syncs.
      */
     suspend fun sync() {
         referenceDataRepository.refreshAll()
@@ -26,6 +31,18 @@ class SyncManager(
         deafIndividualRepository.pushDirty()
         visitRepository.pushDirty()
         remarkRepository.pushDirty()
+        deafIndividualRepository.refreshFromServer()
+    }
+
+    /**
+     * Downloads the latest reference data and deaf-individual records without pushing any
+     * local edits. Safe to call automatically (e.g. on screen load) since it can never send
+     * locally-queued changes to the server - only sync() does that.
+     */
+    suspend fun pull() {
+        referenceDataRepository.refreshAll()
+        runCatching { settingsRepository.refreshOverdueDays() }
+        runCatching { authRepository.refreshProfile() }
         deafIndividualRepository.refreshFromServer()
     }
 

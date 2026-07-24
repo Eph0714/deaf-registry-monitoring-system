@@ -4,6 +4,13 @@ import com.google.gson.annotations.SerializedName
 
 data class SummaryDto(val total: Int)
 data class ByMunicipalityDto(val municipality: String, val total: Int)
+data class ByMunicipalityStatusDto(
+    val municipality: String,
+    val bs: Int,
+    val rv: Int,
+    val transferred: Int,
+    val unlocated: Int
+)
 data class ByBarangayDto(val municipality: String, val barangay: String, val total: Int)
 data class ByGenderDto(val gender: String, val total: Int)
 data class BySkillDto(@SerializedName("skill_level") val skillLevel: String, val total: Int)

@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get('/summary', requireAuth, ctrl.summary);
 router.get('/by-municipality', requireAuth, ctrl.byMunicipality);
+router.get('/by-municipality-status', requireAuth, ctrl.byMunicipalityStatus);
 router.get('/by-barangay', requireAuth, ctrl.byBarangay);
 router.get('/by-gender', requireAuth, ctrl.byGender);
 router.get('/by-skill', requireAuth, ctrl.bySkill);

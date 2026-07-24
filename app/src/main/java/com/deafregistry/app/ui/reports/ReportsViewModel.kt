@@ -6,6 +6,7 @@ import com.deafregistry.app.data.remote.dto.ByBarangayDto
 import com.deafregistry.app.data.remote.dto.ByConductorDto
 import com.deafregistry.app.data.remote.dto.ByGenderDto
 import com.deafregistry.app.data.remote.dto.ByMunicipalityDto
+import com.deafregistry.app.data.remote.dto.ByMunicipalityStatusDto
 import com.deafregistry.app.data.remote.dto.ByStatusDto
 import com.deafregistry.app.data.remote.dto.BySkillDto
 import com.deafregistry.app.data.remote.dto.NotVisitedDto
@@ -20,6 +21,7 @@ data class ReportsUiState(
     val error: String? = null,
     val total: Int = 0,
     val byMunicipality: List<ByMunicipalityDto> = emptyList(),
+    val byMunicipalityStatus: List<ByMunicipalityStatusDto> = emptyList(),
     val byBarangay: List<ByBarangayDto> = emptyList(),
     val byGender: List<ByGenderDto> = emptyList(),
     val bySkill: List<BySkillDto> = emptyList(),
@@ -44,6 +46,7 @@ class ReportsViewModel(private val reportRepository: ReportRepository) : ViewMod
             try {
                 val total = reportRepository.summary().total
                 val byMunicipality = reportRepository.byMunicipality()
+                val byMunicipalityStatus = reportRepository.byMunicipalityStatus()
                 val byBarangay = reportRepository.byBarangay()
                 val byGender = reportRepository.byGender()
                 val bySkill = reportRepository.bySkill()
@@ -52,7 +55,8 @@ class ReportsViewModel(private val reportRepository: ReportRepository) : ViewMod
                 val recentVisits = reportRepository.recentVisits()
                 val notVisited = reportRepository.notVisited()
                 _uiState.value = ReportsUiState(
-                    isLoading = false, total = total, byMunicipality = byMunicipality, byBarangay = byBarangay,
+                    isLoading = false, total = total, byMunicipality = byMunicipality,
+                    byMunicipalityStatus = byMunicipalityStatus, byBarangay = byBarangay,
                     byGender = byGender, bySkill = bySkill, byStatus = byStatus, byConductor = byConductor,
                     recentVisits = recentVisits, notVisited = notVisited
                 )
