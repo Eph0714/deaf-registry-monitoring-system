@@ -12,7 +12,7 @@ class UserRepository(private val api: ApiService) {
         api.createUser(CreateUserRequest(name, email, password, role, teacherId))
 
     suspend fun update(id: Int, name: String, role: String, teacherId: Int?, isActive: Boolean) =
-        api.updateUser(id, UpdateUserRequest(name, role, teacherId, if (isActive) 1 else 0))
+        api.updateUser(id, UpdateUserRequest(name, role, teacherId, isActive))
 
     suspend fun resetPassword(id: Int, newPassword: String) =
         api.resetUserPassword(id, ResetPasswordRequest(newPassword))

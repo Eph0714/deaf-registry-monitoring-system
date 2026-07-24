@@ -19,7 +19,7 @@ data class UserDto(
     val email: String,
     val role: String,
     @SerializedName("teacher_id") val teacherId: Int?,
-    @SerializedName("is_active") val isActive: Int? = 1,
+    @SerializedName("is_active") val isActive: Boolean? = true,
     @SerializedName("teacher_name") val teacherName: String? = null,
     @SerializedName("photo_url") val photoUrl: String? = null
 )
@@ -41,7 +41,7 @@ data class UpdateUserRequest(
     val name: String,
     val role: String,
     val teacher_id: Int?,
-    val is_active: Int
+    val is_active: Boolean
 )
 
 data class ResetPasswordRequest(val newPassword: String)

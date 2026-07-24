@@ -95,9 +95,9 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                             Text(user.name, style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "${user.email} • ${user.role}" + (user.teacherName?.let { " • $it" } ?: "") +
-                                    if (user.isActive == 0) " • Inactive" else "",
+                                    if (user.isActive == false) " • Inactive" else "",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (user.isActive == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (user.isActive == false) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         IconButton(onClick = {
@@ -105,7 +105,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                             editName = user.name
                             editRole = user.role
                             editTeacherId = user.teacherId
-                            editActive = user.isActive != 0
+                            editActive = user.isActive != false
                             editNewPassword = ""
                         }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
                         IconButton(onClick = {
