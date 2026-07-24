@@ -66,7 +66,10 @@ class DashboardViewModel(
         viewModelScope.launch {
             try {
                 val users = userRepository.list()
-                _uiState.value = _uiState.value.copy(totalUsers = users.size)
+                // Matches Manage Users' default view (deactivated accounts hidden behind "Show
+                // deleted accounts") - counting is_active=false rows here made this tile disagree
+                // with what an admin sees when they tap into it.
+                _uiState.value = _uiState.value.copy(totalUsers = users.count { it.isActive != false })
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(totalUsers = 0)
             }
