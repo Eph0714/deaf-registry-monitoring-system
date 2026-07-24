@@ -2,6 +2,7 @@ package com.deafregistry.app.ui.navigation
 
 object Routes {
     const val LOGIN = "login"
+    const val SIGNUP = "signup"
     const val DASHBOARD = "dashboard"
     const val MUNICIPALITY_OVERVIEW = "municipality_overview"
     const val ALL_INDIVIDUALS = "all_individuals/{title}?sort={sort}"
@@ -20,6 +21,7 @@ object Routes {
     const val ADMIN_BACKUP = "admin_backup"
     const val ADMIN_NOTIFICATIONS = "admin_notifications"
     const val ADMIN_DEVICES = "admin_devices"
+    const val ADMIN_PENDING_USERS = "admin_pending_users"
 
     fun barangayList(id: Int, name: String) = "barangay_list/$id/${java.net.URLEncoder.encode(name, "UTF-8")}"
 

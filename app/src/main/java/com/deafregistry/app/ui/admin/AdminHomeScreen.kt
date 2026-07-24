@@ -29,7 +29,8 @@ fun AdminHomeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
         AdminMenuItem("User Accounts", "Manage app user accounts and roles", "admin_users"),
         AdminMenuItem("Backup & Restore", "Local device backup and server database backup", "admin_backup"),
         AdminMenuItem("Notification Settings", "Configure overdue-visit alert threshold", "admin_notifications"),
-        AdminMenuItem("Device Approvals", "Approve or reject new device logins", "admin_devices")
+        AdminMenuItem("Device Approvals", "Approve or reject new device logins", "admin_devices"),
+        AdminMenuItem("Pending User Approvals", "Approve or reject new self-service signups", "admin_pending_users")
     )
 
     Scaffold(

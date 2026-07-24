@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,7 +40,7 @@ import com.deafregistry.app.ui.common.GenericViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(onLoggedIn: () -> Unit) {
+fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
     val viewModel: LoginViewModel = viewModel(
         factory = GenericViewModelFactory { LoginViewModel(ServiceLocator.authRepository, ServiceLocator.sessionManager) }
     )
@@ -116,6 +117,8 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     Text("Log In")
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onSignUp) { Text("Don't have an account? Sign Up") }
         }
 
         Column(

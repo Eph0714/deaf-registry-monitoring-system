@@ -12,6 +12,9 @@ interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
+    @POST("auth/signup")
+    suspend fun signup(@Body request: SignupRequest): MessageResponse
+
     @GET("auth/me")
     suspend fun me(): UserDto
 
@@ -86,6 +89,16 @@ interface ApiService {
 
     @POST("devices/{id}/reject")
     suspend fun rejectDevice(@Path("id") id: Int): ResponseBody
+
+    // Signup approvals (admin)
+    @GET("users/pending-signups")
+    suspend fun getPendingSignups(): List<PendingSignupDto>
+
+    @POST("users/{id}/approve-signup")
+    suspend fun approveSignup(@Path("id") id: Int): ResponseBody
+
+    @POST("users/{id}/reject-signup")
+    suspend fun rejectSignup(@Path("id") id: Int): ResponseBody
 
     // Deaf individuals
     @GET("deaf-individuals")

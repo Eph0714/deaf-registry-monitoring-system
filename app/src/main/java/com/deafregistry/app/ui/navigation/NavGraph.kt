@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.deafregistry.app.data.session.SessionManager
 import com.deafregistry.app.ui.admin.AdminHomeScreen
+import com.deafregistry.app.ui.admin.AdminPendingUsersScreen
 import com.deafregistry.app.ui.admin.BackupRestoreScreen
 import com.deafregistry.app.ui.admin.ManageBarangaysScreen
 import com.deafregistry.app.ui.admin.ManageDevicesScreen
@@ -19,6 +20,7 @@ import com.deafregistry.app.ui.admin.NotificationSettingsScreen
 import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
 import com.deafregistry.app.ui.login.LoginScreen
+import com.deafregistry.app.ui.login.SignUpScreen
 import com.deafregistry.app.ui.municipality.BarangayListScreen
 import com.deafregistry.app.ui.municipality.MunicipalityListScreen
 import com.deafregistry.app.ui.municipality.MunicipalityOverviewScreen
@@ -37,11 +39,18 @@ fun AppNavGraph(sessionManager: SessionManager) {
     NavHost(navController = navController, startDestination = startDestination) {
 
         composable(Routes.LOGIN) {
-            LoginScreen(onLoggedIn = {
-                navController.navigate(Routes.DASHBOARD) {
-                    popUpTo(Routes.LOGIN) { inclusive = true }
-                }
-            })
+            LoginScreen(
+                onLoggedIn = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                },
+                onSignUp = { navController.navigate(Routes.SIGNUP) }
+            )
+        }
+
+        composable(Routes.SIGNUP) {
+            SignUpScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.DASHBOARD) {
@@ -215,6 +224,9 @@ fun AppNavGraph(sessionManager: SessionManager) {
         }
         composable(Routes.ADMIN_DEVICES) {
             ManageDevicesScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.ADMIN_PENDING_USERS) {
+            AdminPendingUsersScreen(onBack = { navController.popBackStack() })
         }
     }
 }

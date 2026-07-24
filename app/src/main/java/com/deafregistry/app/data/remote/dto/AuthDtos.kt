@@ -13,6 +13,18 @@ data class LoginErrorBody(val code: String? = null, val message: String? = null)
 
 data class LoginResponse(val token: String, val user: UserDto)
 
+data class SignupRequest(val name: String, val email: String, val password: String)
+
+data class MessageResponse(val message: String)
+
+data class PendingSignupDto(
+    val id: Int,
+    val name: String,
+    val email: String,
+    @SerializedName("email_verified") val emailVerified: Boolean,
+    @SerializedName("created_at") val createdAt: String
+)
+
 data class UserDto(
     val id: Int,
     val name: String,
