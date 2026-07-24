@@ -18,9 +18,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Backend base URL. Use 10.0.2.2 for the Android emulator, or the host machine's LAN IP
-        // (e.g. 192.168.100.95) for a physical device on the same Wi-Fi network.
-        buildConfigField("String", "API_BASE_URL", "\"http://192.168.100.95:3000/api/\"")
+        // Backend base URL - the Render-hosted API, reachable from anywhere (not just LAN).
+        buildConfigField("String", "API_BASE_URL", "\"https://deaf-registry-monitoring-system.onrender.com/api/\"")
     }
 
     buildTypes {
@@ -29,7 +28,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.100.95:3000/api/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://deaf-registry-monitoring-system.onrender.com/api/\"")
         }
     }
 
