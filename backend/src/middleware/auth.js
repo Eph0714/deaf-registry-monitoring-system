@@ -15,11 +15,19 @@ function requireAuth(req, res, next) {
   }
 }
 
+// super_admin has every admin capability plus its own exclusive ones (see requireSuperAdmin).
 function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
+  if (req.user?.role !== 'admin' && req.user?.role !== 'super_admin') {
     return res.status(403).json({ message: 'Administrator access required' });
   }
   next();
 }
 
-module.exports = { requireAuth, requireAdmin };
+function requireSuperAdmin(req, res, next) {
+  if (req.user?.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Super Administrator access required' });
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireAdmin, requireSuperAdmin };

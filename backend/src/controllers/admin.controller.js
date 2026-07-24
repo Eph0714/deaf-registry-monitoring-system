@@ -49,4 +49,30 @@ const deleteAllAuditLogs = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
-module.exports = { backup, listBackups, downloadBackup, auditLogs, deleteAllAuditLogs };
+// Super Admin only. Wipes all registry/activity data while preserving reference data
+// (municipalities, barangays, teachers, settings) and the requesting Super Admin's own account.
+const resetAllData = asyncHandler(async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM remarks');
+    await client.query('DELETE FROM visits');
+    await client.query('DELETE FROM teacher_assignment_history');
+    await client.query('DELETE FROM deaf_individuals');
+    await client.query('DELETE FROM user_devices');
+    await client.query('DELETE FROM audit_logs');
+    await client.query('DELETE FROM users WHERE id != $1', [req.user.id]);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+  await logAudit(req.user.id, 'FULL_DATA_RESET', 'database', null, {
+    keptTables: ['municipalities', 'barangays', 'teachers', 'settings']
+  });
+  res.status(204).send();
+});
+
+module.exports = { backup, listBackups, downloadBackup, auditLogs, deleteAllAuditLogs, resetAllData };

@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(150) NOT NULL,
   email VARCHAR(190) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  role VARCHAR(20) NOT NULL DEFAULT 'conductor' CHECK (role IN ('admin','conductor')),
+  role VARCHAR(20) NOT NULL DEFAULT 'conductor' CHECK (role IN ('admin','conductor','super_admin')),
   teacher_id INT NULL REFERENCES teachers(id) ON DELETE SET NULL,
   photo_url VARCHAR(255) NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,

@@ -103,7 +103,9 @@ class SessionManager(context: Context) {
 
     fun isLoggedIn(): Boolean = _session.value != null
 
-    fun isAdmin(): Boolean = _session.value?.role == "admin"
+    fun isAdmin(): Boolean = _session.value?.role == "admin" || _session.value?.role == "super_admin"
+
+    fun isSuperAdmin(): Boolean = _session.value?.role == "super_admin"
 
     fun saveRememberedCredentials(email: String, password: String) {
         prefs.edit()

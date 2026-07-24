@@ -3,6 +3,12 @@ const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
 
+// Guards against a plain admin editing/deactivating/deleting a Super Admin's account.
+async function isTargetSuperAdmin(id) {
+  const { rows } = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
+  return rows.length > 0 && rows[0].role === 'super_admin';
+}
+
 const list = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT u.id, u.name, u.email, u.role, u.teacher_id, u.is_active, u.updated_at, t.name AS teacher_name
@@ -17,6 +23,9 @@ const create = asyncHandler(async (req, res) => {
   if (!name || !email || !password) {
     return res.status(400).json({ message: 'name, email and password are required' });
   }
+  if (role === 'super_admin' && req.user.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Only a Super Administrator can create a Super Admin account' });
+  }
   const passwordHash = await bcrypt.hash(password, 10);
   const { rows } = await pool.query(
     'INSERT INTO users (name, email, password_hash, role, teacher_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
@@ -30,6 +39,12 @@ const create = asyncHandler(async (req, res) => {
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, role, teacher_id, is_active } = req.body;
+  if (role === 'super_admin' && req.user.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Only a Super Administrator can grant Super Admin access' });
+  }
+  if (req.user.role !== 'super_admin' && Number(id) !== req.user.id && (await isTargetSuperAdmin(id))) {
+    return res.status(403).json({ message: 'Only a Super Administrator can modify a Super Admin account' });
+  }
   await pool.query(
     'UPDATE users SET name = $1, role = $2, teacher_id = $3, is_active = $4 WHERE id = $5',
     [name, role, teacher_id || null, is_active === undefined ? true : !!is_active, id]
@@ -42,6 +57,9 @@ const resetPassword = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { newPassword } = req.body;
   if (!newPassword) return res.status(400).json({ message: 'newPassword is required' });
+  if (req.user.role !== 'super_admin' && Number(id) !== req.user.id && (await isTargetSuperAdmin(id))) {
+    return res.status(403).json({ message: 'Only a Super Administrator can reset a Super Admin account\'s password' });
+  }
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
   await logAudit(req.user.id, 'RESET_PASSWORD', 'user', id, null);
@@ -50,6 +68,9 @@ const resetPassword = asyncHandler(async (req, res) => {
 
 const remove = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  if (req.user.role !== 'super_admin' && (await isTargetSuperAdmin(id))) {
+    return res.status(403).json({ message: 'Only a Super Administrator can deactivate a Super Admin account' });
+  }
   await pool.query('UPDATE users SET is_active = false WHERE id = $1', [id]);
   await logAudit(req.user.id, 'DEACTIVATE', 'user', id, null);
   res.status(204).send();
@@ -60,9 +81,12 @@ const remove = asyncHandler(async (req, res) => {
 // users.id are ON DELETE SET NULL (or CASCADE for user_devices), so this is safe to run.
 const permanentlyDelete = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { rows } = await pool.query('SELECT name, email FROM users WHERE id = $1 AND is_active = false', [id]);
+  const { rows } = await pool.query('SELECT name, email, role FROM users WHERE id = $1 AND is_active = false', [id]);
   if (!rows.length) {
     return res.status(404).json({ message: 'No deactivated account with this id was found' });
+  }
+  if (rows[0].role === 'super_admin' && req.user.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Only a Super Administrator can delete a Super Admin account' });
   }
   const { name, email } = rows[0];
   await pool.query('DELETE FROM users WHERE id = $1', [id]);

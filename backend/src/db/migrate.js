@@ -18,6 +18,7 @@ async function main() {
   await client.query(schemaSql);
 
   await ensureColumns(client);
+  await ensureRoleAllowsSuperAdmin(client);
 
   console.log('Migration complete: schema applied to', process.env.DB_NAME);
   await client.end();
@@ -64,6 +65,17 @@ async function ensureColumns(client) {
       console.log(`Added column ${table}.${column}`);
     }
   }
+}
+
+/**
+ * CREATE TABLE IF NOT EXISTS can't retrofit a changed CHECK constraint on an
+ * already-existing table, so this drops and recreates it - safe to re-run.
+ */
+async function ensureRoleAllowsSuperAdmin(client) {
+  await client.query('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
+  await client.query(
+    "ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','conductor','super_admin'))"
+  );
 }
 
 main().catch((err) => {

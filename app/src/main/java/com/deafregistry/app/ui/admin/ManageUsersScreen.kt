@@ -43,12 +43,15 @@ import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import kotlinx.coroutines.launch
 
-private val ROLES = listOf("conductor", "admin")
+private val BASE_ROLES = listOf("conductor", "admin")
+private val ALL_ROLES = listOf("conductor", "admin", "super_admin")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageUsersScreen(onBack: () -> Unit) {
     val repo = ServiceLocator.userRepository
+    val isSuperAdmin = ServiceLocator.sessionManager.isSuperAdmin()
+    val roles = if (isSuperAdmin) ALL_ROLES else BASE_ROLES
     val teachers by ServiceLocator.referenceDataRepository.observeTeachers().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var users by remember { mutableStateOf(listOf<UserDto>()) }
@@ -112,33 +115,36 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                                 color = if (user.isActive == false) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        if (user.isActive == false) {
-                            TextButton(onClick = {
-                                editingUser = user
-                                editName = user.name
-                                editRole = user.role
-                                editTeacherId = user.teacherId
-                                editActive = true
-                                editNewPassword = ""
-                            }) { Text("Restore") }
-                            TextButton(onClick = { permanentDeleteTarget = user }) {
-                                Text("Delete Permanently", color = MaterialTheme.colorScheme.error)
-                            }
-                        } else {
-                            IconButton(onClick = {
-                                editingUser = user
-                                editName = user.name
-                                editRole = user.role
-                                editTeacherId = user.teacherId
-                                editActive = user.isActive != false
-                                editNewPassword = ""
-                            }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
-                            IconButton(onClick = {
-                                scope.launch {
-                                    runCatching { repo.deactivate(user.id) }.onFailure { error = it.message }
-                                    reload()
+                        val canManage = isSuperAdmin || user.role != "super_admin"
+                        if (canManage) {
+                            if (user.isActive == false) {
+                                TextButton(onClick = {
+                                    editingUser = user
+                                    editName = user.name
+                                    editRole = user.role
+                                    editTeacherId = user.teacherId
+                                    editActive = true
+                                    editNewPassword = ""
+                                }) { Text("Restore") }
+                                TextButton(onClick = { permanentDeleteTarget = user }) {
+                                    Text("Delete Permanently", color = MaterialTheme.colorScheme.error)
                                 }
-                            }) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
+                            } else {
+                                IconButton(onClick = {
+                                    editingUser = user
+                                    editName = user.name
+                                    editRole = user.role
+                                    editTeacherId = user.teacherId
+                                    editActive = user.isActive != false
+                                    editNewPassword = ""
+                                }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        runCatching { repo.deactivate(user.id) }.onFailure { error = it.message }
+                                        reload()
+                                    }
+                                }) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
+                            }
                         }
                     }
                 }
@@ -165,7 +171,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                             modifier = Modifier.menuAnchor()
                         )
                         ExposedDropdownMenu(expanded = roleMenuExpanded, onDismissRequest = { roleMenuExpanded = false }) {
-                            ROLES.forEach { role ->
+                            roles.forEach { role ->
                                 DropdownMenuItem(text = { Text(role) }, onClick = { newRole = role; roleMenuExpanded = false })
                             }
                         }
@@ -205,7 +211,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                             modifier = Modifier.menuAnchor()
                         )
                         ExposedDropdownMenu(expanded = editRoleMenuExpanded, onDismissRequest = { editRoleMenuExpanded = false }) {
-                            ROLES.forEach { role ->
+                            roles.forEach { role ->
                                 DropdownMenuItem(text = { Text(role) }, onClick = { editRole = role; editRoleMenuExpanded = false })
                             }
                         }

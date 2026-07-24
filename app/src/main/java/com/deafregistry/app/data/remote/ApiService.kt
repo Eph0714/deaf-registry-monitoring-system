@@ -193,4 +193,8 @@ interface ApiService {
 
     @DELETE("admin/audit-logs")
     suspend fun deleteAllAuditLogs(): Response<Unit>
+
+    // Super Admin only
+    @POST("admin/reset-all")
+    suspend fun resetAllData(): Response<Unit>
 }

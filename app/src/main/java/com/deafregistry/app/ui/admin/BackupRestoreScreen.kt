@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 fun BackupRestoreScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val isSuperAdmin = ServiceLocator.sessionManager.isSuperAdmin()
 
     val createDocLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         if (uri != null) {
@@ -65,7 +66,17 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = { createDocLauncher.launch("deaf_registry_backup.db") }) { Text("Back Up Now") }
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { openDocLauncher.launch(arrayOf("*/*")) }) { Text("Restore From File") }
+                    Button(
+                        onClick = { openDocLauncher.launch(arrayOf("*/*")) },
+                        enabled = isSuperAdmin
+                    ) { Text("Restore From File") }
+                    if (!isSuperAdmin) {
+                        Text(
+                            "Only the Super Admin can restore from a backup file.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
