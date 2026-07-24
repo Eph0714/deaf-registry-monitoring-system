@@ -89,7 +89,7 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
     var statusChoiceMenuExpanded by remember { mutableStateOf(false) }
     var selectedStatusChoice by remember { mutableStateOf<String?>(null) }
     var pendingExportFormat by remember { mutableStateOf<String?>(null) }
-    var reportHeading by remember { mutableStateOf("Deaf Registry Municipality Report") }
+    var reportHeading by remember { mutableStateOf("Deaf and Mute Registry Municipality Report") }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -234,7 +234,7 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
             confirmButton = {
                 TextButton(onClick = {
                     pendingExportFormat = null
-                    val heading = reportHeading.ifBlank { "Deaf Registry Municipality Report" }
+                    val heading = reportHeading.ifBlank { "Deaf and Mute Registry Municipality Report" }
                     scope.launch {
                         val rows = ServiceLocator.deafIndividualRepository.getMunicipalityVisitReport()
                         val header = listOf("Municipality", "Name", "Status", "Last Visit Date", "Visited By")
