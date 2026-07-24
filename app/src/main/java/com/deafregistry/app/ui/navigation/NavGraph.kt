@@ -49,7 +49,7 @@ fun AppNavGraph(sessionManager: SessionManager) {
             DashboardScreen(
                 onOpenDeafRecords = { navController.navigate(Routes.MUNICIPALITY_OVERVIEW) },
                 onOpenAllBarangays = { navController.navigate(Routes.ALL_BARANGAYS) },
-                onOpenAllIndividuals = { title -> navController.navigate(Routes.allIndividuals(title)) },
+                onOpenAllIndividuals = { title, sort -> navController.navigate(Routes.allIndividuals(title, sort)) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
                 onOpenAdmin = { navController.navigate(Routes.ADMIN_HOME) },
@@ -79,11 +79,16 @@ fun AppNavGraph(sessionManager: SessionManager) {
 
         composable(
             Routes.ALL_INDIVIDUALS,
-            arguments = listOf(navArgument("title") { type = NavType.StringType })
+            arguments = listOf(
+                navArgument("title") { type = NavType.StringType },
+                navArgument("sort") { type = NavType.StringType; defaultValue = "name" }
+            )
         ) { backStackEntry ->
             val title = URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "All Records", "UTF-8")
+            val sort = backStackEntry.arguments?.getString("sort") ?: "name"
             AllIndividualsScreen(
                 title = title,
+                sort = sort,
                 onBack = { navController.popBackStack() },
                 onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
                 onAddNew = { navController.navigate(Routes.deafEditorNew(-1)) }

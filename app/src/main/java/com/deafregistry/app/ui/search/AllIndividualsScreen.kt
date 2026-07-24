@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.deafregistry.app.data.local.entity.DeafIndividualEntity
@@ -29,8 +30,22 @@ import com.deafregistry.app.ui.common.EmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AllIndividualsScreen(title: String, onBack: () -> Unit, onOpenProfile: (String) -> Unit, onAddNew: () -> Unit) {
-    val individuals by ServiceLocator.deafIndividualRepository.observeAllActive().collectAsState(initial = emptyList())
+fun AllIndividualsScreen(
+    title: String,
+    onBack: () -> Unit,
+    onOpenProfile: (String) -> Unit,
+    onAddNew: () -> Unit,
+    sort: String = "name"
+) {
+    val flow = remember(sort) {
+        when (sort) {
+            "conductor" -> ServiceLocator.deafIndividualRepository.observeAllActiveByConductor()
+            "age" -> ServiceLocator.deafIndividualRepository.observeAllActiveByAge()
+            "lastVisit" -> ServiceLocator.deafIndividualRepository.observeAllActiveByLastVisit()
+            else -> ServiceLocator.deafIndividualRepository.observeAllActive()
+        }
+    }
+    val individuals by flow.collectAsState(initial = emptyList())
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

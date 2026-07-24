@@ -40,6 +40,12 @@ class DeafIndividualRepository(
 
     fun observeAllActive(): Flow<List<DeafIndividualEntity>> = dao.observeAllActive()
 
+    fun observeAllActiveByConductor(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByConductor()
+
+    fun observeAllActiveByAge(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByAge()
+
+    fun observeAllActiveByLastVisit(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByLastVisit()
+
     fun observeByCategory(
         municipalityName: String? = null,
         barangayName: String? = null,

@@ -88,7 +88,7 @@ import java.io.File
 fun DashboardScreen(
     onOpenDeafRecords: () -> Unit,
     onOpenAllBarangays: () -> Unit,
-    onOpenAllIndividuals: (title: String) -> Unit,
+    onOpenAllIndividuals: (title: String, sort: String) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenAdmin: () -> Unit,
@@ -293,11 +293,23 @@ fun DashboardScreen(
                                     )
                                     DropdownMenuItem(
                                         text = { Text("By Name") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By Name") }
+                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By Name", "name") }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("By BS Conductor") },
+                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By BS Conductor", "conductor") }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("By Age") },
+                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By Age", "age") }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("By Last Visit Date") },
+                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By Last Visit Date", "lastVisit") }
                                     )
                                     DropdownMenuItem(
                                         text = { Text("Show All") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("All Deaf Records") }
+                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("All Deaf Records", "name") }
                                     )
                                 }
                             }

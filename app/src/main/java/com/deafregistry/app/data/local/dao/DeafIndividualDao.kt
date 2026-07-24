@@ -60,6 +60,25 @@ interface DeafIndividualDao {
     @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY fullName ASC")
     fun observeAllActive(): Flow<List<DeafIndividualEntity>>
 
+    @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY assignedTeacherName IS NULL, assignedTeacherName ASC, fullName ASC")
+    fun observeAllActiveByConductor(): Flow<List<DeafIndividualEntity>>
+
+    // Ascending age = youngest first = most recent birth_date first, so this orders birthDate
+    // descending; records with no birth_date recorded sort last rather than first.
+    @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY birthDate IS NULL, birthDate DESC")
+    fun observeAllActiveByAge(): Flow<List<DeafIndividualEntity>>
+
+    @Query(
+        """
+        SELECT d.* FROM deaf_individuals d
+        LEFT JOIN (SELECT deafIndividualUuid, MAX(visitDateTime) AS lastVisit FROM visits GROUP BY deafIndividualUuid) v
+        ON v.deafIndividualUuid = d.uuid
+        WHERE d.isDeleted = 0
+        ORDER BY v.lastVisit IS NULL, v.lastVisit DESC
+        """
+    )
+    fun observeAllActiveByLastVisit(): Flow<List<DeafIndividualEntity>>
+
     /**
      * Backs the Reports drill-down (tap a category value like "BS" or a municipality to see
      * its individual records). Exactly one of these filters is non-null per call, except

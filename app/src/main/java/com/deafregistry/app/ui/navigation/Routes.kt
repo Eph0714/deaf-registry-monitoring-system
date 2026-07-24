@@ -5,7 +5,7 @@ object Routes {
     const val DASHBOARD = "dashboard"
     const val MUNICIPALITY_OVERVIEW = "municipality_overview"
     const val ALL_BARANGAYS = "all_barangays"
-    const val ALL_INDIVIDUALS = "all_individuals/{title}"
+    const val ALL_INDIVIDUALS = "all_individuals/{title}?sort={sort}"
     const val BARANGAY_LIST = "barangay_list/{municipalityId}/{municipalityName}"
     const val MUNICIPALITY_LIST = "municipality/{municipalityId}/{municipalityName}?barangayId={barangayId}&barangayName={barangayName}"
     const val DEAF_PROFILE = "deaf/{uuid}"
@@ -24,7 +24,8 @@ object Routes {
 
     fun barangayList(id: Int, name: String) = "barangay_list/$id/${java.net.URLEncoder.encode(name, "UTF-8")}"
 
-    fun allIndividuals(title: String) = "all_individuals/${java.net.URLEncoder.encode(title, "UTF-8")}"
+    fun allIndividuals(title: String, sort: String = "name") =
+        "all_individuals/${java.net.URLEncoder.encode(title, "UTF-8")}?sort=$sort"
 
     fun municipalityList(id: Int, name: String, barangayId: Int? = null, barangayName: String? = null): String {
         val base = "municipality/$id/${java.net.URLEncoder.encode(name, "UTF-8")}"
