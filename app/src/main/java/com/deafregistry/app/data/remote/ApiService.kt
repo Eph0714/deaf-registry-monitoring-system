@@ -190,4 +190,7 @@ interface ApiService {
 
     @GET("admin/audit-logs")
     suspend fun getAuditLogs(@Query("limit") limit: Int = 100): List<AuditLogDto>
+
+    @DELETE("admin/audit-logs")
+    suspend fun deleteAllAuditLogs(): Response<Unit>
 }

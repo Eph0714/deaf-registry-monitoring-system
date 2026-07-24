@@ -8,5 +8,6 @@ router.post('/backup', requireAuth, requireAdmin, ctrl.backup);
 router.get('/backups', requireAuth, requireAdmin, ctrl.listBackups);
 router.get('/backups/:fileName', requireAuth, requireAdmin, ctrl.downloadBackup);
 router.get('/audit-logs', requireAuth, requireAdmin, ctrl.auditLogs);
+router.delete('/audit-logs', requireAuth, requireAdmin, ctrl.deleteAllAuditLogs);
 
 module.exports = router;

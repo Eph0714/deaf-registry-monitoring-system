@@ -21,6 +21,7 @@ class UserRepository(private val api: ApiService) {
     suspend fun permanentlyDelete(id: Int) = api.permanentlyDeleteUser(id)
 
     suspend fun auditLogs(limit: Int = 100) = api.getAuditLogs(limit)
+    suspend fun deleteAllAuditLogs() = api.deleteAllAuditLogs()
 
     suspend fun pendingSignups() = api.getPendingSignups()
     suspend fun approveSignup(id: Int) = api.approveSignup(id)

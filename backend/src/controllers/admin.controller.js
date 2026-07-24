@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
+const { logAudit } = require('../utils/audit');
 
 const BACKUP_DIR = path.join(__dirname, '..', '..', 'backups');
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -41,4 +42,11 @@ const auditLogs = asyncHandler(async (req, res) => {
   res.json(rows);
 });
 
-module.exports = { backup, listBackups, downloadBackup, auditLogs };
+const deleteAllAuditLogs = asyncHandler(async (req, res) => {
+  await pool.query('DELETE FROM audit_logs');
+  // Logged after clearing, so the log isn't left completely empty with no record of who cleared it.
+  await logAudit(req.user.id, 'AUDIT_LOG_CLEARED', 'audit_logs', null, null);
+  res.status(204).send();
+});
+
+module.exports = { backup, listBackups, downloadBackup, auditLogs, deleteAllAuditLogs };
