@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -265,6 +266,7 @@ private fun AddVisitDialog(
     var publisher by remember { mutableStateOf(initialPublisher) }
     var remarks by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(java.time.LocalDate.now()) }
+    var selectedTime by remember { mutableStateOf(java.time.LocalTime.now().withSecond(0).withNano(0)) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -291,6 +293,25 @@ private fun AddVisitDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
+                    value = selectedTime.format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a")),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Time") },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, hour, minute -> selectedTime = java.time.LocalTime.of(hour, minute) },
+                                selectedTime.hour, selectedTime.minute, false
+                            ).show()
+                        }) {
+                            Icon(Icons.Default.Schedule, contentDescription = "Pick time")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
                     value = publisher,
                     onValueChange = { publisher = it },
                     label = { Text("Who visited (Publisher)") },
@@ -309,7 +330,8 @@ private fun AddVisitDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                val dateIso = selectedDate.atStartOfDay().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                val dateIso = java.time.LocalDateTime.of(selectedDate, selectedTime)
+                    .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                 onConfirm(dateIso, publisher.trim(), remarks.trim())
             }) { Text("Save") }
         },
