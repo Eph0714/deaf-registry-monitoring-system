@@ -40,8 +40,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -87,7 +85,6 @@ import java.io.File
 @Composable
 fun DashboardScreen(
     onOpenDeafRecords: () -> Unit,
-    onOpenAllBarangays: () -> Unit,
     onOpenAllIndividuals: (title: String, sort: String) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
@@ -269,50 +266,17 @@ fun DashboardScreen(
                     }
 
                     item {
-                        var showDeafRecordsMenu by remember { mutableStateOf(false) }
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Box(Modifier.weight(1f)) {
-                                DashboardMetricCard(
-                                    title = "Deaf Records",
-                                    value = totalDeafRecords.toString(),
-                                    subtitle = "Registry overview",
-                                    onClick = { showDeafRecordsMenu = true },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                DropdownMenu(expanded = showDeafRecordsMenu, onDismissRequest = { showDeafRecordsMenu = false }) {
-                                    DropdownMenuItem(
-                                        text = { Text("By Municipality") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenDeafRecords() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("By Barangay") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenAllBarangays() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("By Name") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By Name", "name") }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("By BS Conductor") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By BS Conductor", "conductor") }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("By Age") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By Age", "age") }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("By Last Visit Date") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("By Last Visit Date", "lastVisit") }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Show All") },
-                                        onClick = { showDeafRecordsMenu = false; onOpenAllIndividuals("All Deaf Records", "name") }
-                                    )
-                                }
-                            }
+                            DashboardMetricCard(
+                                title = "Deaf Records",
+                                value = totalDeafRecords.toString(),
+                                subtitle = "Registry overview",
+                                onClick = { onOpenAllIndividuals("All Deaf Records", "all") },
+                                modifier = Modifier.weight(1f)
+                            )
                             DashboardMetricCard(
                                 title = "Municipalities",
                                 value = state.municipalities.size.toString(),

@@ -1,6 +1,7 @@
 package com.deafregistry.app.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -13,6 +14,11 @@ data class MunicipalityVisitReportRow(
     val status: String,
     val lastVisitDate: String?,
     val lastVisitedBy: String?
+)
+
+data class DeafIndividualWithLastVisit(
+    @Embedded val individual: DeafIndividualEntity,
+    val lastVisitDate: String?
 )
 
 @Dao
@@ -71,21 +77,35 @@ interface DeafIndividualDao {
     @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY assignedTeacherName IS NULL, assignedTeacherName ASC, fullName ASC")
     fun observeAllActiveByConductor(): Flow<List<DeafIndividualEntity>>
 
-    // Ascending age = youngest first = most recent birth_date first, so this orders birthDate
-    // descending; records with no birth_date recorded sort last rather than first.
-    @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY birthDate IS NULL, birthDate DESC")
-    fun observeAllActiveByAge(): Flow<List<DeafIndividualEntity>>
+    @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY municipalityName ASC, fullName ASC")
+    fun observeAllActiveByMunicipality(): Flow<List<DeafIndividualEntity>>
 
+    @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY municipalityName ASC, barangayName ASC, fullName ASC")
+    fun observeAllActiveByBarangay(): Flow<List<DeafIndividualEntity>>
+
+    /**
+     * Carries each individual's most recent visit date alongside them, for grouping by day.
+     * Ordered by the *date portion* of the last visit (descending) then name (ascending) -
+     * not by the exact timestamp - so two people visited on the same day but at different
+     * times still land in one group, sorted by name within it.
+     */
     @Query(
         """
-        SELECT d.* FROM deaf_individuals d
-        LEFT JOIN (SELECT deafIndividualUuid, MAX(visitDateTime) AS lastVisit FROM visits GROUP BY deafIndividualUuid) v
-        ON v.deafIndividualUuid = d.uuid
+        SELECT d.*, lv.lastVisit AS lastVisitDate
+        FROM deaf_individuals d
+        LEFT JOIN (
+            SELECT v.deafIndividualUuid, v.visitDateTime AS lastVisit
+            FROM visits v
+            WHERE v.visitDateTime = (
+                SELECT MAX(v2.visitDateTime) FROM visits v2 WHERE v2.deafIndividualUuid = v.deafIndividualUuid
+            )
+        ) lv ON lv.deafIndividualUuid = d.uuid
         WHERE d.isDeleted = 0
-        ORDER BY v.lastVisit IS NULL, v.lastVisit DESC
+        GROUP BY d.uuid
+        ORDER BY lv.lastVisit IS NULL, SUBSTR(lv.lastVisit, 1, 10) DESC, d.fullName ASC
         """
     )
-    fun observeAllActiveByLastVisit(): Flow<List<DeafIndividualEntity>>
+    fun observeAllActiveWithLastVisit(): Flow<List<DeafIndividualWithLastVisit>>
 
     /**
      * Backs the Reports drill-down (tap a category value like "BS" or a municipality to see

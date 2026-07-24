@@ -3,6 +3,7 @@ package com.deafregistry.app.data.repository
 import android.content.Context
 import com.deafregistry.app.data.local.dao.BarangayDao
 import com.deafregistry.app.data.local.dao.DeafIndividualDao
+import com.deafregistry.app.data.local.dao.DeafIndividualWithLastVisit
 import com.deafregistry.app.data.local.dao.MunicipalityDao
 import com.deafregistry.app.data.local.dao.TeacherDao
 import com.deafregistry.app.data.local.entity.DeafIndividualEntity
@@ -42,9 +43,11 @@ class DeafIndividualRepository(
 
     fun observeAllActiveByConductor(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByConductor()
 
-    fun observeAllActiveByAge(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByAge()
+    fun observeAllActiveByMunicipality(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByMunicipality()
 
-    fun observeAllActiveByLastVisit(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByLastVisit()
+    fun observeAllActiveByBarangay(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByBarangay()
+
+    fun observeAllActiveWithLastVisit(): Flow<List<DeafIndividualWithLastVisit>> = dao.observeAllActiveWithLastVisit()
 
     fun observeByCategory(
         municipalityName: String? = null,

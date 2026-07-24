@@ -19,7 +19,6 @@ import com.deafregistry.app.ui.admin.NotificationSettingsScreen
 import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
 import com.deafregistry.app.ui.login.LoginScreen
-import com.deafregistry.app.ui.municipality.AllBarangaysScreen
 import com.deafregistry.app.ui.municipality.BarangayListScreen
 import com.deafregistry.app.ui.municipality.MunicipalityListScreen
 import com.deafregistry.app.ui.municipality.MunicipalityOverviewScreen
@@ -48,7 +47,6 @@ fun AppNavGraph(sessionManager: SessionManager) {
         composable(Routes.DASHBOARD) {
             DashboardScreen(
                 onOpenDeafRecords = { navController.navigate(Routes.MUNICIPALITY_OVERVIEW) },
-                onOpenAllBarangays = { navController.navigate(Routes.ALL_BARANGAYS) },
                 onOpenAllIndividuals = { title, sort -> navController.navigate(Routes.allIndividuals(title, sort)) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
@@ -68,27 +66,18 @@ fun AppNavGraph(sessionManager: SessionManager) {
             )
         }
 
-        composable(Routes.ALL_BARANGAYS) {
-            AllBarangaysScreen(
-                onBack = { navController.popBackStack() },
-                onOpenBarangay = { municipalityId, municipalityName, barangayId, barangayName ->
-                    navController.navigate(Routes.municipalityList(municipalityId, municipalityName, barangayId, barangayName))
-                }
-            )
-        }
-
         composable(
             Routes.ALL_INDIVIDUALS,
             arguments = listOf(
                 navArgument("title") { type = NavType.StringType },
-                navArgument("sort") { type = NavType.StringType; defaultValue = "name" }
+                navArgument("sort") { type = NavType.StringType; defaultValue = "all" }
             )
         ) { backStackEntry ->
             val title = URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "All Records", "UTF-8")
-            val sort = backStackEntry.arguments?.getString("sort") ?: "name"
+            val category = backStackEntry.arguments?.getString("sort") ?: "all"
             AllIndividualsScreen(
                 title = title,
-                sort = sort,
+                initialCategory = category,
                 onBack = { navController.popBackStack() },
                 onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
                 onAddNew = { navController.navigate(Routes.deafEditorNew(-1)) }
