@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -60,6 +61,8 @@ import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.GenericViewModelFactory
+import com.deafregistry.app.ui.common.PhotoViewerDialog
+import com.deafregistry.app.ui.common.resolvePhotoUrl
 import com.deafregistry.app.util.LocationHelper
 import com.deafregistry.app.util.MapsUtil
 import kotlinx.coroutines.launch
@@ -91,6 +94,7 @@ fun DeafProfileScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showAddVisitDialog by remember { mutableStateOf(false) }
     var pendingVisit by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var showPhotoViewer by remember { mutableStateOf(false) }
     val isAdmin = ServiceLocator.sessionManager.isAdmin()
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -139,7 +143,13 @@ fun DeafProfileScreen(
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
                 item {
-                    ProfileHeader(individual.fullName, calculateAge(individual.birthDate), individual.gender, individual.photoUrl ?: individual.localPhotoPath)
+                    ProfileHeader(
+                        individual.fullName,
+                        calculateAge(individual.birthDate),
+                        individual.gender,
+                        individual.photoUrl ?: individual.localPhotoPath,
+                        onPhotoClick = if (individual.photoUrl != null) { { showPhotoViewer = true } } else null
+                    )
                     Spacer(Modifier.height(16.dp))
 
                     SectionCard("Address") {
@@ -257,6 +267,17 @@ fun DeafProfileScreen(
             }
         )
     }
+
+    if (showPhotoViewer) {
+        val resolvedPhoto = individual?.photoUrl?.let { resolvePhotoUrl(it, BuildConfig.API_BASE_URL) }
+        if (resolvedPhoto != null) {
+            PhotoViewerDialog(
+                photoUrl = resolvedPhoto,
+                fileName = "${individual.fullName.replace(Regex("[^A-Za-z0-9-_ ]"), "").ifBlank { "deaf_record" }}.jpg",
+                onDismiss = { showPhotoViewer = false }
+            )
+        }
+    }
 }
 
 @Composable
@@ -350,17 +371,18 @@ private fun calculateAge(birthDate: String?): Int? {
 }
 
 @Composable
-private fun ProfileHeader(name: String, age: Int?, gender: String, photo: String?) {
+private fun ProfileHeader(name: String, age: Int?, gender: String, photo: String?, onPhotoClick: (() -> Unit)? = null) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
     ) {
-        val photoUrl = photo?.let { if (it.startsWith("/uploads")) BuildConfig.API_BASE_URL.removeSuffix("/api/") + it else it }
+        val photoUrl = resolvePhotoUrl(photo, BuildConfig.API_BASE_URL)
         AsyncImage(
             model = photoUrl,
             contentDescription = "Profile photo",
             contentScale = ContentScale.Crop,
             modifier = Modifier.size(160.dp).clip(CircleShape)
+                .let { if (onPhotoClick != null) it.clickable(onClick = onPhotoClick) else it }
         )
         Spacer(Modifier.height(12.dp))
         Text(name, style = MaterialTheme.typography.headlineSmall)

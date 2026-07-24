@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -52,6 +53,9 @@ fun ManageTeachersScreen(onBack: () -> Unit) {
     var newContact by remember { mutableStateOf("") }
     var showBulkReassignDialog by remember { mutableStateOf(false) }
     var bulkMessage by remember { mutableStateOf<String?>(null) }
+    var editingTeacher by remember { mutableStateOf<com.deafregistry.app.data.local.entity.TeacherEntity?>(null) }
+    var editName by remember { mutableStateOf("") }
+    var editContact by remember { mutableStateOf("") }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -88,6 +92,11 @@ fun ManageTeachersScreen(onBack: () -> Unit) {
                             )
                         }
                         IconButton(onClick = {
+                            editingTeacher = t
+                            editName = t.name
+                            editContact = t.contactNumber ?: ""
+                        }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
+                        IconButton(onClick = {
                             scope.launch {
                                 runCatching { repo.deleteTeacher(t.id) }
                                 runCatching { repo.refreshAll() }
@@ -119,6 +128,29 @@ fun ManageTeachersScreen(onBack: () -> Unit) {
                 }) { Text("Add") }
             },
             dismissButton = { TextButton(onClick = { showAddDialog = false }) { Text("Cancel") } }
+        )
+    }
+
+    editingTeacher?.let { target ->
+        AlertDialog(
+            onDismissRequest = { editingTeacher = null },
+            title = { Text("Edit BS Conductor") },
+            text = {
+                Column {
+                    OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Name") })
+                    OutlinedTextField(value = editContact, onValueChange = { editContact = it }, label = { Text("Contact Number (optional)") })
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    editingTeacher = null
+                    scope.launch {
+                        runCatching { repo.updateTeacher(target.id, editName.trim(), editContact.ifBlank { null }) }
+                        runCatching { repo.refreshAll() }
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { editingTeacher = null }) { Text("Cancel") } }
         )
     }
 

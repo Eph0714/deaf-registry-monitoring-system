@@ -219,7 +219,7 @@ private fun GroupedIndividualsList(categoryKey: String, onOpenProfile: (String) 
             }
         } else {
             individuals.groupBy(groupKeyOf).forEach { (header, members) ->
-                item(key = "header_$header") { GroupHeader(header) }
+                item(key = "header_$header") { GroupHeader(header, members.size) }
                 items(members, key = { it.uuid }) { individual ->
                     IndividualRow(individual) { onOpenProfile(individual.uuid) }
                 }
@@ -240,7 +240,7 @@ private fun LastVisitList(onOpenProfile: (String) -> Unit) {
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         rows.groupBy { it.lastVisitDate?.take(10) ?: "Never Visited" }.forEach { (header, members) ->
-            item(key = "header_$header") { GroupHeader(header) }
+            item(key = "header_$header") { GroupHeader(header, members.size) }
             items(members, key = { it.individual.uuid }) { row ->
                 IndividualRow(row.individual) { onOpenProfile(row.individual.uuid) }
             }
@@ -249,9 +249,9 @@ private fun LastVisitList(onOpenProfile: (String) -> Unit) {
 }
 
 @Composable
-private fun GroupHeader(text: String) {
+private fun GroupHeader(text: String, count: Int) {
     Text(
-        text,
+        "$text ($count)",
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,

@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
@@ -48,6 +50,10 @@ fun ManageBarangaysScreen(onBack: () -> Unit) {
     var showAddDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
     var municipalityMenuExpanded by remember { mutableStateOf(false) }
+    var editingBarangay by remember { mutableStateOf<com.deafregistry.app.data.local.entity.BarangayEntity?>(null) }
+    var editName by remember { mutableStateOf("") }
+    var editMunicipalityId by remember { mutableStateOf<Int?>(null) }
+    var editMunicipalityMenuExpanded by remember { mutableStateOf(false) }
 
     suspend fun reload(municipalityId: Int) {
         barangays = repo.getBarangaysForMunicipality(municipalityId)
@@ -91,6 +97,11 @@ fun ManageBarangaysScreen(onBack: () -> Unit) {
                         Row(Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(b.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                             IconButton(onClick = {
+                                editingBarangay = b
+                                editName = b.name
+                                editMunicipalityId = b.municipalityId
+                            }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
+                            IconButton(onClick = {
                                 scope.launch {
                                     runCatching { repo.deleteBarangay(b.id) }
                                     runCatching { repo.refreshAll() }
@@ -121,6 +132,46 @@ fun ManageBarangaysScreen(onBack: () -> Unit) {
                 }) { Text("Add") }
             },
             dismissButton = { TextButton(onClick = { showAddDialog = false }) { Text("Cancel") } }
+        )
+    }
+
+    editingBarangay?.let { target ->
+        AlertDialog(
+            onDismissRequest = { editingBarangay = null },
+            title = { Text("Edit Barangay") },
+            text = {
+                androidx.compose.foundation.layout.Column {
+                    OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Name") })
+                    androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
+                    ExposedDropdownMenuBox(expanded = editMunicipalityMenuExpanded, onExpandedChange = { editMunicipalityMenuExpanded = it }) {
+                        OutlinedTextField(
+                            value = municipalities.firstOrNull { it.id == editMunicipalityId }?.name ?: "Select municipality",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Municipality") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = editMunicipalityMenuExpanded) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(expanded = editMunicipalityMenuExpanded, onDismissRequest = { editMunicipalityMenuExpanded = false }) {
+                            municipalities.forEach { m ->
+                                DropdownMenuItem(text = { Text(m.name) }, onClick = { editMunicipalityId = m.id; editMunicipalityMenuExpanded = false })
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val municipalityId = editMunicipalityId ?: target.municipalityId
+                    editingBarangay = null
+                    scope.launch {
+                        runCatching { repo.updateBarangay(target.id, editName.trim(), municipalityId) }
+                        runCatching { repo.refreshAll() }
+                        selectedMunicipalityId?.let { reload(it) }
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { editingBarangay = null }) { Text("Cancel") } }
         )
     }
 }

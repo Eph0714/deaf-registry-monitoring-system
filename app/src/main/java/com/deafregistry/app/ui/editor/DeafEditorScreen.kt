@@ -1,4 +1,4 @@
-package com.deafregistry.app.ui.editor
+﻿package com.deafregistry.app.ui.editor
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -295,11 +295,35 @@ fun DeafEditorScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (form.latitude != null) "GPS: ${form.latitude}, ${form.longitude}" else "GPS: not set",
+            Text("GPS Location", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            Row {
+                var latText by remember(form.latitude) { mutableStateOf(form.latitude?.toString() ?: "") }
+                var lonText by remember(form.longitude) { mutableStateOf(form.longitude?.toString() ?: "") }
+                OutlinedTextField(
+                    value = latText,
+                    onValueChange = { v ->
+                        latText = v
+                        viewModel.update { it.copy(latitude = v.toDoubleOrNull()) }
+                    },
+                    label = { Text("Latitude") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                     modifier = Modifier.weight(1f)
                 )
+                Spacer(Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = lonText,
+                    onValueChange = { v ->
+                        lonText = v
+                        viewModel.update { it.copy(longitude = v.toDoubleOrNull()) }
+                    },
+                    label = { Text("Longitude") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedButton(onClick = {
                     val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                     if (hasPermission) {

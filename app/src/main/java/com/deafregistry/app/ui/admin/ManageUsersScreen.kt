@@ -1,17 +1,23 @@
 package com.deafregistry.app.ui.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
@@ -37,10 +43,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.deafregistry.app.BuildConfig
 import com.deafregistry.app.data.remote.dto.UserDto
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
+import com.deafregistry.app.ui.common.PhotoViewerDialog
+import com.deafregistry.app.ui.common.resolvePhotoUrl
 import kotlinx.coroutines.launch
 
 private val BASE_ROLES = listOf("conductor", "admin")
@@ -73,6 +85,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
     var editTeacherMenuExpanded by remember { mutableStateOf(false) }
     var showInactive by remember { mutableStateOf(false) }
     var permanentDeleteTarget by remember { mutableStateOf<UserDto?>(null) }
+    var viewingPhotoUser by remember { mutableStateOf<UserDto?>(null) }
 
     suspend fun reload() {
         runCatching { users = repo.list() }.onFailure { error = it.message }
@@ -106,6 +119,25 @@ fun ManageUsersScreen(onBack: () -> Unit) {
             items(visibleUsers, key = { it.id }) { user ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        val resolvedPhoto = resolvePhotoUrl(user.photoUrl, BuildConfig.API_BASE_URL)
+                        if (resolvedPhoto != null) {
+                            AsyncImage(
+                                model = resolvedPhoto,
+                                contentDescription = "${user.name}'s photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(48.dp).clip(CircleShape)
+                                    .clickable { viewingPhotoUser = user }
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp).clip(CircleShape)
+                                    .padding(4.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(user.name, style = MaterialTheme.typography.titleMedium)
                             Text(
@@ -290,5 +322,16 @@ fun ManageUsersScreen(onBack: () -> Unit) {
             },
             dismissButton = { TextButton(onClick = { permanentDeleteTarget = null }) { Text("Cancel") } }
         )
+    }
+
+    viewingPhotoUser?.let { target ->
+        val resolvedPhoto = resolvePhotoUrl(target.photoUrl, BuildConfig.API_BASE_URL)
+        if (resolvedPhoto != null) {
+            PhotoViewerDialog(
+                photoUrl = resolvedPhoto,
+                fileName = "${target.name.replace(Regex("[^A-Za-z0-9-_ ]"), "").ifBlank { "user" }}.jpg",
+                onDismiss = { viewingPhotoUser = null }
+            )
+        }
     }
 }

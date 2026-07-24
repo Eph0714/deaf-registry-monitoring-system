@@ -12,11 +12,32 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 object ExportUtils {
+
+    /** Downloads a photo from [url] into the device's Downloads folder. Returns the saved display path. */
+    suspend fun downloadImage(context: Context, url: String, fileName: String): String = withContext(Dispatchers.IO) {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = 15000
+        connection.readTimeout = 15000
+        try {
+            connection.connect()
+            val mimeType = connection.contentType?.takeIf { it.startsWith("image/") } ?: "image/jpeg"
+            val result = writeToDownloads(context, fileName, mimeType) { out ->
+                connection.inputStream.use { input -> input.copyTo(out) }
+            }
+            result.displayPath
+        } finally {
+            connection.disconnect()
+        }
+    }
 
     /** Writes rows of a report to a CSV file in the device's Downloads folder and opens it. */
     fun exportCsv(context: Context, fileName: String, header: List<String>, rows: List<List<String>>, title: String? = null): String {
