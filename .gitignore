@@ -1,0 +1,26 @@
+# Android / Gradle
+*.iml
+.gradle/
+/local.properties
+.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.jks
+*.keystore
+app/build/
+
+# Local notes containing credentials - never commit these
+Deaf Registry Account.txt
+
+# Backend
+backend/node_modules/
+backend/.env
+backend/uploads/photos/*
+!backend/uploads/photos/.gitkeep
+backend/backups/
+*.log
