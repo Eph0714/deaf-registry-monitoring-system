@@ -265,7 +265,20 @@ class DeafIndividualRepository(
                     )
 
                     val serverId = if (current.serverId == null) {
-                        api.createDeafIndividual(request).id
+                        try {
+                            api.createDeafIndividual(request).id
+                        } catch (e: retrofit2.HttpException) {
+                            // A 409 here means a record with this uuid already exists server-side -
+                            // most likely from an earlier sync attempt that created it successfully
+                            // but never got to persist that locally (e.g. the photo step failed
+                            // right after, before this bug fix). Recover by finding it and updating
+                            // it instead of leaving this record stuck forever.
+                            if (e.code() == 409) {
+                                val existing = api.getDeafIndividuals().find { it.uuid == current.uuid } ?: throw e
+                                api.updateDeafIndividual(existing.id, request)
+                                existing.id
+                            } else throw e
+                        }
                     } else {
                         api.updateDeafIndividual(current.serverId, request)
                         current.serverId
