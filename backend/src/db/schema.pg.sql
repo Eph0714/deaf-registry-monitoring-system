@@ -60,11 +60,15 @@ CREATE TABLE IF NOT EXISTS users (
   photo_url VARCHAR(255) NULL,
   is_active BOOLEAN NOT NULL DEFAULT true,
   -- Self-service signup gating: admin-created accounts (via Manage Users) are created
-  -- already verified+approved; only the public /auth/signup path starts these false/pending.
+  -- already approved; only the public /auth/signup path starts as 'pending'. Email
+  -- verification was dropped (would need a paid/verified sending domain) - approval alone
+  -- gates login now.
   email_verified BOOLEAN NOT NULL DEFAULT true,
   email_verification_token VARCHAR(64) NULL,
   email_verification_expires TIMESTAMP NULL,
   approval_status VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending','approved','rejected')),
+  contact_number VARCHAR(30) NULL,
+  location VARCHAR(255) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

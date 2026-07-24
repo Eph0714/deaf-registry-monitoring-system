@@ -57,7 +57,7 @@ const remove = asyncHandler(async (req, res) => {
 
 const listPendingSignups = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, name, email, email_verified, created_at
+    `SELECT id, name, email, contact_number, location, created_at
      FROM users WHERE approval_status = 'pending' ORDER BY created_at ASC`
   );
   res.json(rows);

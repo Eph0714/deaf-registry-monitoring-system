@@ -88,8 +88,21 @@ class SessionManager(context: Context) {
         _session.value = loadFromPrefs()
     }
 
+    /**
+     * Clears the active session only - deliberately NOT a full prefs.clear(), since that would
+     * also wipe the remembered email/password (KEY_REMEMBERED_*), which must survive logout for
+     * "Remember password" to actually remember anything across a logout/login cycle.
+     */
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit()
+            .remove(KEY_TOKEN)
+            .remove(KEY_USER_ID)
+            .remove(KEY_NAME)
+            .remove(KEY_EMAIL)
+            .remove(KEY_ROLE)
+            .remove(KEY_TEACHER_ID)
+            .remove(KEY_PHOTO_URL)
+            .apply()
         _session.value = null
     }
 

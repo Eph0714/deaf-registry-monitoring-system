@@ -48,7 +48,9 @@ async function ensureColumns(client) {
       table: 'users',
       column: 'approval_status',
       definition: "VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending','approved','rejected'))"
-    }
+    },
+    { table: 'users', column: 'contact_number', definition: 'VARCHAR(30) NULL' },
+    { table: 'users', column: 'location', definition: 'VARCHAR(255) NULL' }
   ];
 
   for (const { table, column, definition } of columnsToAdd) {
