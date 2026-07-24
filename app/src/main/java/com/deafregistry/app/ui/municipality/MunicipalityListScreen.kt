@@ -70,7 +70,6 @@ fun MunicipalityListScreen(
     val barangays by viewModel.barangays.collectAsState()
     val individuals by viewModel.individuals.collectAsState()
     var showFilterDialog by remember { mutableStateOf(false) }
-    val isAdmin = ServiceLocator.sessionManager.isAdmin()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -86,9 +85,8 @@ fun MunicipalityListScreen(
             )
         },
         floatingActionButton = {
-            if (isAdmin) {
-                FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
-            }
+            // Conductors can add and edit deaf profiles too, just not delete them (see DeafProfileScreen).
+            FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
         }
     ) { padding: PaddingValues ->
         Column(Modifier.fillMaxSize().padding(padding)) {

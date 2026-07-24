@@ -77,7 +77,6 @@ fun AllIndividualsScreen(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var pendingExportFormat by remember { mutableStateOf<String?>(null) }
     var exportHeading by remember { mutableStateOf(title) }
-    val isAdmin = ServiceLocator.sessionManager.isAdmin()
     val context = LocalContext.current
 
     val exportRows = currentExportRows(category.key)
@@ -86,9 +85,8 @@ fun AllIndividualsScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = { AppTopBar(title = title, onBack = onBack) },
         floatingActionButton = {
-            if (isAdmin) {
-                FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
-            }
+            // Conductors can add and edit deaf profiles too, just not delete them (see DeafProfileScreen).
+            FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
         }
     ) { padding: PaddingValues ->
         Column(Modifier.fillMaxSize().padding(padding)) {

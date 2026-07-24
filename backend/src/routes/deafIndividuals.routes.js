@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.get('/', requireAuth, ctrl.list);
 router.get('/:id', requireAuth, ctrl.getById);
-router.post('/', requireAuth, requireAdmin, ctrl.create);
+router.post('/', requireAuth, ctrl.create);
 router.put('/:id', requireAuth, ctrl.update);
 router.delete('/:id', requireAuth, requireAdmin, ctrl.remove);
 router.post('/:id/photo', requireAuth, upload.single('photo'), ctrl.uploadPhoto);
