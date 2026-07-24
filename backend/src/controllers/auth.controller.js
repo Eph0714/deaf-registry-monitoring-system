@@ -1,9 +1,11 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('node:crypto');
 const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
 const { uploadPhoto: uploadPhotoToStorage } = require('../utils/photoStorage');
+const { sendVerificationEmail } = require('../utils/email');
 
 function signToken(user) {
   return jwt.sign(
@@ -26,6 +28,25 @@ const login = asyncHandler(async (req, res) => {
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
     return res.status(401).json({ message: 'Invalid credentials' });
+  }
+
+  if (!user.email_verified) {
+    return res.status(403).json({
+      code: 'EMAIL_NOT_VERIFIED',
+      message: 'Please verify your email address first - check your inbox for the verification link.'
+    });
+  }
+  if (user.approval_status === 'pending') {
+    return res.status(403).json({
+      code: 'ACCOUNT_PENDING',
+      message: 'Your account is awaiting administrator approval.'
+    });
+  }
+  if (user.approval_status === 'rejected') {
+    return res.status(403).json({
+      code: 'ACCOUNT_REJECTED',
+      message: 'Your registration was not approved. Contact your administrator.'
+    });
   }
 
   if (user.role !== 'admin' && device_id) {
@@ -70,6 +91,65 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
+const signup = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'name, email and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  const { rows } = await pool.query(
+    `INSERT INTO users (name, email, password_hash, role, email_verified, approval_status, email_verification_token, email_verification_expires)
+     VALUES ($1, $2, $3, 'conductor', false, 'pending', $4, NOW() + INTERVAL '24 hours')
+     RETURNING id`,
+    [name, email, passwordHash, verificationToken]
+  );
+  const userId = rows[0].id;
+
+  const verifyUrl = `${req.protocol}://${req.get('host')}/api/auth/verify-email?token=${verificationToken}`;
+  try {
+    await sendVerificationEmail(email, name, verifyUrl);
+  } catch (err) {
+    console.error('Failed to send verification email:', err);
+  }
+
+  await logAudit(userId, 'SIGNUP', 'user', userId, { email });
+  res.status(201).json({ message: 'Account created. Check your email to verify your address before an admin can approve it.' });
+});
+
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { token } = req.query;
+  const notFoundHtml = '<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h1>Invalid or already-used verification link</h1></body></html>';
+  if (!token) return res.status(400).send(notFoundHtml);
+
+  const { rows } = await pool.query(
+    `SELECT id, email_verification_expires < NOW() AS expired FROM users WHERE email_verification_token = $1`,
+    [token]
+  );
+  const user = rows[0];
+  if (!user) return res.status(400).send(notFoundHtml);
+  if (user.expired) {
+    return res.status(400).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h1>This verification link has expired</h1><p>Please sign up again from the app.</p></body></html>');
+  }
+
+  await pool.query(
+    `UPDATE users SET email_verified = true, email_verification_token = NULL, email_verification_expires = NULL WHERE id = $1`,
+    [user.id]
+  );
+  await logAudit(user.id, 'EMAIL_VERIFIED', 'user', user.id, null);
+
+  res.send(`
+    <html><body style="font-family:sans-serif;text-align:center;padding:40px">
+      <h1>Email verified</h1>
+      <p>Your email address has been confirmed. An administrator still needs to approve your account before you can log in to the app.</p>
+    </body></html>
+  `);
+});
+
 const me = asyncHandler(async (req, res) => {
   const { rows } = await pool.query('SELECT id, name, email, role, teacher_id, photo_url FROM users WHERE id = $1', [req.user.id]);
   if (!rows.length) return res.status(404).json({ message: 'User not found' });
@@ -98,4 +178,4 @@ const changePassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password updated' });
 });
 
-module.exports = { login, me, changePassword, uploadPhoto };
+module.exports = { login, signup, verifyEmail, me, changePassword, uploadPhoto };

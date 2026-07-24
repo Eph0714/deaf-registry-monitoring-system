@@ -55,4 +55,34 @@ const remove = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
-module.exports = { list, create, update, resetPassword, remove };
+const listPendingSignups = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, name, email, email_verified, created_at
+     FROM users WHERE approval_status = 'pending' ORDER BY created_at ASC`
+  );
+  res.json(rows);
+});
+
+const approveSignup = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await pool.query(
+    `UPDATE users SET approval_status = 'approved' WHERE id = $1 AND approval_status = 'pending'`,
+    [id]
+  );
+  if (!result.rowCount) return res.status(404).json({ message: 'Not found' });
+  await logAudit(req.user.id, 'SIGNUP_APPROVED', 'user', id, null);
+  res.json({ id: Number(id), approval_status: 'approved' });
+});
+
+const rejectSignup = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await pool.query(
+    `UPDATE users SET approval_status = 'rejected' WHERE id = $1 AND approval_status = 'pending'`,
+    [id]
+  );
+  if (!result.rowCount) return res.status(404).json({ message: 'Not found' });
+  await logAudit(req.user.id, 'SIGNUP_REJECTED', 'user', id, null);
+  res.json({ id: Number(id), approval_status: 'rejected' });
+});
+
+module.exports = { list, create, update, resetPassword, remove, listPendingSignups, approveSignup, rejectSignup };

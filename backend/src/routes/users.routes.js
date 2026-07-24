@@ -6,6 +6,9 @@ const router = express.Router();
 
 router.get('/', requireAuth, requireAdmin, ctrl.list);
 router.post('/', requireAuth, requireAdmin, ctrl.create);
+router.get('/pending-signups', requireAuth, requireAdmin, ctrl.listPendingSignups);
+router.post('/:id/approve-signup', requireAuth, requireAdmin, ctrl.approveSignup);
+router.post('/:id/reject-signup', requireAuth, requireAdmin, ctrl.rejectSignup);
 router.put('/:id', requireAuth, requireAdmin, ctrl.update);
 router.post('/:id/reset-password', requireAuth, requireAdmin, ctrl.resetPassword);
 router.delete('/:id', requireAuth, requireAdmin, ctrl.remove);

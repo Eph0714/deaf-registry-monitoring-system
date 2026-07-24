@@ -16,6 +16,10 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
+// Needed so req.protocol reports "https" (not "http") for links we build in emails,
+// since Render terminates TLS at a proxy in front of this process.
+app.set('trust proxy', true);
+
 app.use(cors());
 app.use(express.json());
 

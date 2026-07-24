@@ -40,7 +40,15 @@ async function ensureColumns(client) {
       definition: "VARCHAR(20) NULL CHECK (marital_status IS NULL OR marital_status IN ('Single','Married','Widowed','Separated','Divorced'))"
     },
     { table: 'deaf_individuals', column: 'emergency_contact_name', definition: 'VARCHAR(150) NULL' },
-    { table: 'deaf_individuals', column: 'emergency_contact_number', definition: 'VARCHAR(30) NULL' }
+    { table: 'deaf_individuals', column: 'emergency_contact_number', definition: 'VARCHAR(30) NULL' },
+    { table: 'users', column: 'email_verified', definition: 'BOOLEAN NOT NULL DEFAULT true' },
+    { table: 'users', column: 'email_verification_token', definition: 'VARCHAR(64) NULL' },
+    { table: 'users', column: 'email_verification_expires', definition: 'TIMESTAMP NULL' },
+    {
+      table: 'users',
+      column: 'approval_status',
+      definition: "VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending','approved','rejected'))"
+    }
   ];
 
   for (const { table, column, definition } of columnsToAdd) {
