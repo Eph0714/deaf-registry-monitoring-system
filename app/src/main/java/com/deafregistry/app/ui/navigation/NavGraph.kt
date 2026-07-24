@@ -13,7 +13,6 @@ import com.deafregistry.app.ui.admin.AdminPendingUsersScreen
 import com.deafregistry.app.ui.admin.AuditLogScreen
 import com.deafregistry.app.ui.admin.BackupRestoreScreen
 import com.deafregistry.app.ui.admin.ManageBarangaysScreen
-import com.deafregistry.app.ui.admin.ManageDevicesScreen
 import com.deafregistry.app.ui.admin.ManageMunicipalitiesScreen
 import com.deafregistry.app.ui.admin.ManageTeachersScreen
 import com.deafregistry.app.ui.admin.ManageUsersScreen
@@ -222,9 +221,6 @@ fun AppNavGraph(sessionManager: SessionManager) {
         }
         composable(Routes.ADMIN_NOTIFICATIONS) {
             NotificationSettingsScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Routes.ADMIN_DEVICES) {
-            ManageDevicesScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.ADMIN_PENDING_USERS) {
             AdminPendingUsersScreen(onBack = { navController.popBackStack() })

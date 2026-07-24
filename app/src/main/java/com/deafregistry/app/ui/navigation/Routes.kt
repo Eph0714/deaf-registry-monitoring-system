@@ -20,7 +20,6 @@ object Routes {
     const val ADMIN_USERS = "admin_users"
     const val ADMIN_BACKUP = "admin_backup"
     const val ADMIN_NOTIFICATIONS = "admin_notifications"
-    const val ADMIN_DEVICES = "admin_devices"
     const val ADMIN_PENDING_USERS = "admin_pending_users"
     const val ADMIN_AUDIT_LOG = "admin_audit_log"
 

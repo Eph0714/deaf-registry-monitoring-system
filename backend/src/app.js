@@ -11,13 +11,11 @@ const visitsRoutes = require('./routes/visits.routes');
 const reportsRoutes = require('./routes/reports.routes');
 const adminRoutes = require('./routes/admin.routes');
 const settingsRoutes = require('./routes/settings.routes');
-const devicesRoutes = require('./routes/devices.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-// Needed so req.protocol reports "https" (not "http") for links we build in emails,
-// since Render terminates TLS at a proxy in front of this process.
+// Render terminates TLS at a proxy in front of this process.
 app.set('trust proxy', true);
 
 app.use(cors());
@@ -35,7 +33,6 @@ app.use('/api/visits', visitsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/devices', devicesRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 app.use(errorHandler);

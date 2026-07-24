@@ -345,19 +345,6 @@ fun DashboardScreen(
                             )
                         }
 
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    "View Reports",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.clickable { onOpenReports() }
-                                )
-                            }
-                        }
                     }
                 }
             }

@@ -4,9 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 data class LoginRequest(
     val email: String,
-    val password: String,
-    val device_id: String,
-    val device_label: String? = null
+    val password: String
 )
 
 data class LoginErrorBody(val code: String? = null, val message: String? = null)
@@ -74,14 +72,4 @@ data class AuditLogDto(
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("user_name") val userName: String?,
     @SerializedName("user_email") val userEmail: String?
-)
-
-data class PendingDeviceDto(
-    val id: Int,
-    @SerializedName("device_id") val deviceId: String,
-    @SerializedName("device_label") val deviceLabel: String?,
-    @SerializedName("created_at") val createdAt: String,
-    @SerializedName("user_id") val userId: Int,
-    @SerializedName("user_name") val userName: String,
-    @SerializedName("user_email") val userEmail: String
 )

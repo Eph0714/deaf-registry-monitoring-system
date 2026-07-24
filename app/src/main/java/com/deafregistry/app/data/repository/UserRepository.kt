@@ -22,10 +22,6 @@ class UserRepository(private val api: ApiService) {
 
     suspend fun auditLogs(limit: Int = 100) = api.getAuditLogs(limit)
 
-    suspend fun pendingDevices() = api.getPendingDevices()
-    suspend fun approveDevice(id: Int) = api.approveDevice(id)
-    suspend fun rejectDevice(id: Int) = api.rejectDevice(id)
-
     suspend fun pendingSignups() = api.getPendingSignups()
     suspend fun approveSignup(id: Int) = api.approveSignup(id)
     suspend fun rejectSignup(id: Int) = api.rejectSignup(id)

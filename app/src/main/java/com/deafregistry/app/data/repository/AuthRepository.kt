@@ -1,6 +1,5 @@
 package com.deafregistry.app.data.repository
 
-import android.os.Build
 import com.deafregistry.app.data.remote.ApiService
 import com.deafregistry.app.data.remote.dto.ChangePasswordRequest
 import com.deafregistry.app.data.remote.dto.LoginErrorBody
@@ -16,8 +15,6 @@ import retrofit2.HttpException
 import java.io.File
 
 sealed class LoginException(message: String) : Exception(message) {
-    class DevicePending(message: String) : LoginException(message)
-    class DeviceRejected(message: String) : LoginException(message)
     class AccountPending(message: String) : LoginException(message)
     class AccountRejected(message: String) : LoginException(message)
 }
@@ -27,7 +24,7 @@ class AuthRepository(
     private val sessionManager: SessionManager
 ) {
     suspend fun login(email: String, password: String) {
-        val request = LoginRequest(email, password, sessionManager.deviceId(), Build.MODEL)
+        val request = LoginRequest(email, password)
         try {
             val response = api.login(request)
             sessionManager.save(response.token, response.user)
@@ -37,12 +34,6 @@ class AuthRepository(
                     Gson().fromJson(e.response()?.errorBody()?.string(), LoginErrorBody::class.java)
                 }.getOrNull()
                 when (body?.code) {
-                    "DEVICE_PENDING" -> throw LoginException.DevicePending(
-                        body.message ?: "This device is awaiting administrator approval."
-                    )
-                    "DEVICE_REJECTED" -> throw LoginException.DeviceRejected(
-                        body.message ?: "This device has been denied access. Contact your administrator."
-                    )
                     "ACCOUNT_PENDING" -> throw LoginException.AccountPending(
                         body.message ?: "Your account is awaiting administrator approval."
                     )

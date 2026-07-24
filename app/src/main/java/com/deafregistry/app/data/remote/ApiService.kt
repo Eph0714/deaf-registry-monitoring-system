@@ -83,16 +83,6 @@ interface ApiService {
     @DELETE("users/{id}/permanent")
     suspend fun permanentlyDeleteUser(@Path("id") id: Int): Response<Unit>
 
-    // Device approvals (admin)
-    @GET("devices/pending")
-    suspend fun getPendingDevices(): List<PendingDeviceDto>
-
-    @POST("devices/{id}/approve")
-    suspend fun approveDevice(@Path("id") id: Int): ResponseBody
-
-    @POST("devices/{id}/reject")
-    suspend fun rejectDevice(@Path("id") id: Int): ResponseBody
-
     // Signup approvals (admin)
     @GET("users/pending-signups")
     suspend fun getPendingSignups(): List<PendingSignupDto>

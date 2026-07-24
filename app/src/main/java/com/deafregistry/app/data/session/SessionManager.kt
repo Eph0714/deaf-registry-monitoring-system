@@ -33,13 +33,6 @@ class SessionManager(context: Context) {
         )
     }
 
-    // Separate, non-encrypted store for the device identity, deliberately NOT touched by
-    // clear() (logout) — a device_id must survive logout/login so a returning user on the
-    // same phone isn't treated as a "new device" needing re-approval every time.
-    private val devicePrefs: SharedPreferences by lazy {
-        context.getSharedPreferences("deaf_registry_device", Context.MODE_PRIVATE)
-    }
-
     private val _session = MutableStateFlow<Session?>(null)
     val session = _session.asStateFlow()
 
@@ -136,14 +129,6 @@ class SessionManager(context: Context) {
         return email to password
     }
 
-    /** A persistent per-installation identifier used for device-approval login security. */
-    fun deviceId(): String {
-        devicePrefs.getString(KEY_DEVICE_ID, null)?.let { return it }
-        val newId = java.util.UUID.randomUUID().toString()
-        devicePrefs.edit().putString(KEY_DEVICE_ID, newId).apply()
-        return newId
-    }
-
     companion object {
         private const val KEY_TOKEN = "token"
         private const val KEY_USER_ID = "user_id"
@@ -155,6 +140,5 @@ class SessionManager(context: Context) {
         private const val KEY_REMEMBER_ME = "remember_me"
         private const val KEY_REMEMBERED_EMAIL = "remembered_email"
         private const val KEY_REMEMBERED_PASSWORD = "remembered_password"
-        private const val KEY_DEVICE_ID = "device_id"
     }
 }
