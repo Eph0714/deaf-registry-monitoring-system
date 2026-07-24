@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
+const { uploadPhoto: uploadPhotoToStorage } = require('../utils/photoStorage');
 
 const BASE_SELECT = `
   SELECT d.*, m.name AS municipality_name, b.name AS barangay_name, t.name AS teacher_name, t.contact_number AS teacher_contact
@@ -155,7 +156,7 @@ const remove = asyncHandler(async (req, res) => {
 const uploadPhoto = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!req.file) return res.status(400).json({ message: 'photo file is required' });
-  const photoUrl = `/uploads/photos/${req.file.filename}`;
+  const photoUrl = await uploadPhotoToStorage(req.file);
   await pool.query('UPDATE deaf_individuals SET photo_url = $1 WHERE id = $2', [photoUrl, id]);
   await logAudit(req.user.id, 'UPDATE_PHOTO', 'deaf_individual', id, { photoUrl });
   res.json({ photo_url: photoUrl });

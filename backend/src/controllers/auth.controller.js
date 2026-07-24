@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
+const { uploadPhoto: uploadPhotoToStorage } = require('../utils/photoStorage');
 
 function signToken(user) {
   return jwt.sign(
@@ -77,7 +78,7 @@ const me = asyncHandler(async (req, res) => {
 
 const uploadPhoto = asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'photo file is required' });
-  const photoUrl = `/uploads/photos/${req.file.filename}`;
+  const photoUrl = await uploadPhotoToStorage(req.file);
   await pool.query('UPDATE users SET photo_url = $1 WHERE id = $2', [photoUrl, req.user.id]);
   await logAudit(req.user.id, 'UPDATE_PHOTO', 'user', req.user.id, { photoUrl });
   res.json({ photo_url: photoUrl });
