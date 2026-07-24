@@ -1,5 +1,6 @@
 package com.deafregistry.app.ui.reports
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,14 +12,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -33,14 +41,40 @@ import com.deafregistry.app.ui.common.GenericViewModelFactory
 import com.deafregistry.app.util.ExportUtils
 import android.widget.Toast
 
+private data class CategoryRow(val label: String, val total: Int, val value: String, val extra: String = "")
+private data class ReportCategory(val key: String, val label: String, val rows: (ReportsUiState) -> List<CategoryRow>)
+
+private val CATEGORIES = listOf(
+    ReportCategory("municipality", "By Municipality") { s ->
+        s.byMunicipality.map { CategoryRow(it.municipality, it.total, it.municipality) }
+    },
+    ReportCategory("barangay", "By Barangay") { s ->
+        s.byBarangay.map { CategoryRow("${it.municipality} / ${it.barangay}", it.total, it.barangay, it.municipality) }
+    },
+    ReportCategory("gender", "By Gender") { s ->
+        s.byGender.map { CategoryRow(it.gender, it.total, it.gender) }
+    },
+    ReportCategory("skill", "By Skill Level") { s ->
+        s.bySkill.map { CategoryRow(it.skillLevel, it.total, it.skillLevel) }
+    },
+    ReportCategory("status", "By Monitoring Status") { s ->
+        s.byStatus.map { CategoryRow(it.monitoringStatus, it.total, it.monitoringStatus) }
+    },
+    ReportCategory("conductor", "By BS Conductor") { s ->
+        s.byConductor.map { CategoryRow(it.conductor, it.total, it.conductor) }
+    }
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportsScreen(onBack: () -> Unit) {
+fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, value: String, extra: String) -> Unit) {
     val viewModel: ReportsViewModel = viewModel(
         factory = GenericViewModelFactory { ReportsViewModel(ServiceLocator.reportRepository) }
     )
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    var selectedCategory by remember { mutableStateOf(CATEGORIES.first()) }
+    var categoryMenuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -54,16 +88,50 @@ fun ReportsScreen(onBack: () -> Unit) {
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
                 item { ReportSectionHeader("Total Registered", "${state.total}") }
 
-                item { ReportSection("By Municipality", state.byMunicipality.map { it.municipality to it.total }) }
                 item {
-                    Text("By Municipality — Status", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
+                    Text("Search by category", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+                    ExposedDropdownMenuBox(expanded = categoryMenuExpanded, onExpandedChange = { categoryMenuExpanded = it }) {
+                        OutlinedTextField(
+                            value = selectedCategory.label,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Category") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = categoryMenuExpanded, onDismissRequest = { categoryMenuExpanded = false }) {
+                            CATEGORIES.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(category.label) },
+                                    onClick = { selectedCategory = category; categoryMenuExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                val categoryRows = selectedCategory.rows(state)
+                if (categoryRows.isEmpty()) {
+                    item {
+                        Text(
+                            "No data for ${selectedCategory.label}.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    items(categoryRows) { row ->
+                        CategoryQtyButton(row) {
+                            onOpenCategoryDetail(selectedCategory.key, row.value, row.extra)
+                        }
+                    }
+                }
+
+                item {
+                    Text("By Municipality — Status", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 20.dp))
                 }
                 items(state.byMunicipalityStatus) { row -> MunicipalityStatusCard(row) }
-                item { ReportSection("By Barangay", state.byBarangay.map { "${it.municipality} / ${it.barangay}" to it.total }) }
-                item { ReportSection("By Gender", state.byGender.map { it.gender to it.total }) }
-                item { ReportSection("By Skill Level", state.bySkill.map { it.skillLevel to it.total }) }
-                item { ReportSection("By Monitoring Status", state.byStatus.map { it.monitoringStatus to it.total }) }
-                item { ReportSection("By BS Conductor", state.byConductor.map { it.conductor to it.total }) }
 
                 item {
                     Text("Recent Visits", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
@@ -118,6 +186,19 @@ private fun ReportSectionHeader(label: String, value: String) {
 }
 
 @Composable
+private fun CategoryQtyButton(row: CategoryRow, onClick: () -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable(onClick = onClick)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(row.label, modifier = Modifier.weight(1f, fill = true))
+            Text("${row.total}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 private fun MunicipalityStatusCard(row: ByMunicipalityStatusDto) {
     Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Column(Modifier.padding(16.dp)) {
@@ -144,18 +225,5 @@ private fun StatusCountRow(label: String, count: Int, highlight: Boolean = false
             fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal,
             color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
-    }
-}
-
-@Composable
-private fun ReportSection(title: String, rows: List<Pair<String, Int>>) {
-    Column(Modifier.padding(vertical = 8.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        rows.forEach { (label, total) ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(label)
-                Text("$total")
-            }
-        }
     }
 }

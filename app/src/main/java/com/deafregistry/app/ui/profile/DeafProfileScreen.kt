@@ -348,19 +348,20 @@ private fun calculateAge(birthDate: String?): Int? {
 
 @Composable
 private fun ProfileHeader(name: String, age: Int?, gender: String, photo: String?) {
-    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+    ) {
         val photoUrl = photo?.let { if (it.startsWith("/uploads")) BuildConfig.API_BASE_URL.removeSuffix("/api/") + it else it }
         AsyncImage(
             model = photoUrl,
             contentDescription = "Profile photo",
             contentScale = ContentScale.Crop,
-            modifier = Modifier.size(72.dp).clip(CircleShape)
+            modifier = Modifier.size(160.dp).clip(CircleShape)
         )
-        Spacer(Modifier.width(16.dp))
-        Column {
-            Text(name, style = MaterialTheme.typography.headlineSmall)
-            Text("${age ?: "—"} years old • $gender", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Spacer(Modifier.height(12.dp))
+        Text(name, style = MaterialTheme.typography.headlineSmall)
+        Text("${age ?: "—"} years old • $gender", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

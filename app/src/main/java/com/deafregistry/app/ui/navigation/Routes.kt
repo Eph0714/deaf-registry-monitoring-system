@@ -12,6 +12,7 @@ object Routes {
     const val DEAF_EDITOR = "deaf_editor?uuid={uuid}&municipalityId={municipalityId}"
     const val SEARCH = "search"
     const val REPORTS = "reports"
+    const val REPORT_CATEGORY_DETAIL = "report_category_detail/{category}/{value}/{extra}"
     const val ADMIN_HOME = "admin_home"
     const val ADMIN_MUNICIPALITIES = "admin_municipalities"
     const val ADMIN_BARANGAYS = "admin_barangays"
@@ -33,6 +34,10 @@ object Routes {
             base
         }
     }
+
+    fun reportCategoryDetail(category: String, value: String, extra: String = "") =
+        "report_category_detail/${java.net.URLEncoder.encode(category, "UTF-8")}/" +
+            "${java.net.URLEncoder.encode(value, "UTF-8")}/${java.net.URLEncoder.encode(extra, "UTF-8")}"
 
     fun deafProfile(uuid: String) = "deaf/$uuid"
     fun deafEditorNew(municipalityId: Int) = "deaf_editor?uuid=&municipalityId=$municipalityId"

@@ -60,6 +60,34 @@ interface DeafIndividualDao {
     @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY fullName ASC")
     fun observeAllActive(): Flow<List<DeafIndividualEntity>>
 
+    /**
+     * Backs the Reports drill-down (tap a category value like "BS" or a municipality to see
+     * its individual records). Exactly one of these filters is non-null per call, except
+     * barangayName which is always paired with municipalityName since barangay names aren't
+     * unique across municipalities.
+     */
+    @Query(
+        """
+        SELECT * FROM deaf_individuals
+        WHERE isDeleted = 0
+          AND (:municipalityName IS NULL OR municipalityName = :municipalityName)
+          AND (:barangayName IS NULL OR barangayName = :barangayName)
+          AND (:gender IS NULL OR gender = :gender)
+          AND (:skillLevel IS NULL OR skillLevel = :skillLevel)
+          AND (:monitoringStatus IS NULL OR monitoringStatus = :monitoringStatus)
+          AND (:teacherName IS NULL OR assignedTeacherName = :teacherName)
+        ORDER BY fullName ASC
+        """
+    )
+    fun observeByCategory(
+        municipalityName: String? = null,
+        barangayName: String? = null,
+        gender: String? = null,
+        skillLevel: String? = null,
+        monitoringStatus: String? = null,
+        teacherName: String? = null
+    ): Flow<List<DeafIndividualEntity>>
+
     @Query("SELECT * FROM deaf_individuals WHERE isDirty = 1 OR photoDirty = 1")
     suspend fun getDirty(): List<DeafIndividualEntity>
 

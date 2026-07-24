@@ -40,6 +40,17 @@ class DeafIndividualRepository(
 
     fun observeAllActive(): Flow<List<DeafIndividualEntity>> = dao.observeAllActive()
 
+    fun observeByCategory(
+        municipalityName: String? = null,
+        barangayName: String? = null,
+        gender: String? = null,
+        skillLevel: String? = null,
+        monitoringStatus: String? = null,
+        teacherName: String? = null
+    ): Flow<List<DeafIndividualEntity>> = dao.observeByCategory(
+        municipalityName, barangayName, gender, skillLevel, monitoringStatus, teacherName
+    )
+
     fun search(query: String): Flow<List<DeafIndividualEntity>> = dao.search(query)
 
     fun observeCountForMunicipality(municipalityId: Int): Flow<Int> = dao.observeCountForMunicipality(municipalityId)

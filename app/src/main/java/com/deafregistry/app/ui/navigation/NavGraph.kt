@@ -24,6 +24,7 @@ import com.deafregistry.app.ui.municipality.BarangayListScreen
 import com.deafregistry.app.ui.municipality.MunicipalityListScreen
 import com.deafregistry.app.ui.municipality.MunicipalityOverviewScreen
 import com.deafregistry.app.ui.profile.DeafProfileScreen
+import com.deafregistry.app.ui.reports.ReportCategoryDetailScreen
 import com.deafregistry.app.ui.reports.ReportsScreen
 import com.deafregistry.app.ui.search.AllIndividualsScreen
 import com.deafregistry.app.ui.search.SearchScreen
@@ -169,7 +170,32 @@ fun AppNavGraph(sessionManager: SessionManager) {
         }
 
         composable(Routes.REPORTS) {
-            ReportsScreen(onBack = { navController.popBackStack() })
+            ReportsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenCategoryDetail = { category, value, extra ->
+                    navController.navigate(Routes.reportCategoryDetail(category, value, extra))
+                }
+            )
+        }
+
+        composable(
+            Routes.REPORT_CATEGORY_DETAIL,
+            arguments = listOf(
+                navArgument("category") { type = NavType.StringType },
+                navArgument("value") { type = NavType.StringType },
+                navArgument("extra") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val category = backStackEntry.arguments?.getString("category") ?: ""
+            val value = URLDecoder.decode(backStackEntry.arguments?.getString("value") ?: "", "UTF-8")
+            val extra = URLDecoder.decode(backStackEntry.arguments?.getString("extra") ?: "", "UTF-8")
+            ReportCategoryDetailScreen(
+                category = category,
+                value = value,
+                extra = extra,
+                onBack = { navController.popBackStack() },
+                onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) }
+            )
         }
 
         composable(Routes.ADMIN_HOME) {
