@@ -64,12 +64,15 @@ fun AllIndividualsScreen(
 ) {
     var category by remember { mutableStateOf(CATEGORIES.firstOrNull { it.key == initialCategory } ?: CATEGORIES.first()) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = { AppTopBar(title = title, onBack = onBack) },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
+            if (isAdmin) {
+                FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
+            }
         }
     ) { padding: PaddingValues ->
         Column(Modifier.fillMaxSize().padding(padding)) {

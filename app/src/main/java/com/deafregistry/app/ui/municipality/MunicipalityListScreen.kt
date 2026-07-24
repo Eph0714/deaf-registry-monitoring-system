@@ -70,6 +70,7 @@ fun MunicipalityListScreen(
     val barangays by viewModel.barangays.collectAsState()
     val individuals by viewModel.individuals.collectAsState()
     var showFilterDialog by remember { mutableStateOf(false) }
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -85,7 +86,9 @@ fun MunicipalityListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
+            if (isAdmin) {
+                FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
+            }
         }
     ) { padding: PaddingValues ->
         Column(Modifier.fillMaxSize().padding(padding)) {

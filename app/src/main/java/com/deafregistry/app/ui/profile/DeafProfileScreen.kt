@@ -91,6 +91,7 @@ fun DeafProfileScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showAddVisitDialog by remember { mutableStateOf(false) }
     var pendingVisit by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         scope.launch {
@@ -126,7 +127,9 @@ fun DeafProfileScreen(
                 onBack = onBack,
                 actions = {
                     IconButton(onClick = { onEdit(uuid) }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
-                    IconButton(onClick = { showDeleteConfirm = true }) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
+                    if (isAdmin) {
+                        IconButton(onClick = { showDeleteConfirm = true }) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
+                    }
                 }
             )
         }

@@ -306,55 +306,57 @@ fun DashboardScreen(
                         }
                     }
 
-                    item {
-                        DashboardActivityCard(
-                            title = "Follow-Up Needed",
-                            icon = Icons.Default.WarningAmber,
-                            items = state.pendingFollowUps.take(3).map { it.fullName to (it.municipality + "/" + it.barangay) },
-                            subtitle = "Over 30 days without a visit"
-                        )
-                    }
-
-                    item {
-                        DashboardInsightCard(
-                            title = "Monitoring Status",
-                            icon = Icons.Default.TrendingUp,
-                            rows = state.byStatus.take(4).map { it.monitoringStatus to it.total },
-                            total = state.municipalities.sumOf { it.deafCount }
-                        )
-                    }
-
-                    item {
-                        DashboardInsightCard(
-                            title = "Skill Levels",
-                            icon = Icons.Default.TrendingUp,
-                            rows = state.bySkill.take(4).map { it.skillLevel to it.total },
-                            total = state.municipalities.sumOf { it.deafCount }
-                        )
-                    }
-
-                    item {
-                        DashboardActivityCard(
-                            title = "Latest Visits",
-                            icon = Icons.Default.History,
-                            items = state.recentVisits.take(5).map {
-                                it.fullName to "${it.conductorName ?: "—"} • ${it.visitDateTime}"
-                            },
-                            subtitle = "Most recently recorded visits"
-                        )
-                    }
-
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                "View Reports",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.clickable { onOpenReports() }
+                    if (state.isAdmin) {
+                        item {
+                            DashboardActivityCard(
+                                title = "Follow-Up Needed",
+                                icon = Icons.Default.WarningAmber,
+                                items = state.pendingFollowUps.take(3).map { it.fullName to (it.municipality + "/" + it.barangay) },
+                                subtitle = "Over 30 days without a visit"
                             )
+                        }
+
+                        item {
+                            DashboardInsightCard(
+                                title = "Monitoring Status",
+                                icon = Icons.Default.TrendingUp,
+                                rows = state.byStatus.take(4).map { it.monitoringStatus to it.total },
+                                total = state.municipalities.sumOf { it.deafCount }
+                            )
+                        }
+
+                        item {
+                            DashboardInsightCard(
+                                title = "Skill Levels",
+                                icon = Icons.Default.TrendingUp,
+                                rows = state.bySkill.take(4).map { it.skillLevel to it.total },
+                                total = state.municipalities.sumOf { it.deafCount }
+                            )
+                        }
+
+                        item {
+                            DashboardActivityCard(
+                                title = "Latest Visits",
+                                icon = Icons.Default.History,
+                                items = state.recentVisits.take(5).map {
+                                    it.fullName to "${it.conductorName ?: "—"} • ${it.visitDateTime}"
+                                },
+                                subtitle = "Most recently recorded visits"
+                            )
+                        }
+
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    "View Reports",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.clickable { onOpenReports() }
+                                )
+                            }
                         }
                     }
                 }
@@ -468,7 +470,11 @@ private fun DashboardQuickActionsRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DashboardQuickActionTile("Search", Icons.Default.Search, onOpenSearch, Modifier.weight(1f))
-                DashboardQuickActionTile("Reports", Icons.Default.BarChart, onOpenReports, Modifier.weight(1f))
+                if (isAdmin) {
+                    DashboardQuickActionTile("Reports", Icons.Default.BarChart, onOpenReports, Modifier.weight(1f))
+                } else {
+                    Box(Modifier.weight(1f)) {}
+                }
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -765,13 +771,15 @@ private fun AppDrawerContent(
                 onClick = onNavigateDeafRecords,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
-            NavigationDrawerItem(
-                label = { Text("Reports") },
-                selected = false,
-                icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
-                onClick = onNavigateReports,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
+            if (isAdmin) {
+                NavigationDrawerItem(
+                    label = { Text("Reports") },
+                    selected = false,
+                    icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
+                    onClick = onNavigateReports,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+            }
             if (isAdmin) {
                 NavigationDrawerItem(
                     label = { Text("Admin") },
