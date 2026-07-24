@@ -65,6 +65,8 @@ class DeafIndividualRepository(
 
     suspend fun dirtyCount(): Int = dao.getDirty().size
 
+    suspend fun getMunicipalityVisitReport() = dao.getMunicipalityVisitReport()
+
     private fun toDto(dto: DeafIndividualDto): DeafIndividualEntity = DeafIndividualEntity(
         uuid = dto.uuid,
         serverId = dto.id,

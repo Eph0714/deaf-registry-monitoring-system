@@ -15,8 +15,12 @@ import java.io.OutputStream
 object ExportUtils {
 
     /** Writes rows of a report to a CSV file in the device's Downloads folder (opens fine in Excel). */
-    fun exportCsv(context: Context, fileName: String, header: List<String>, rows: List<List<String>>): String {
+    fun exportCsv(context: Context, fileName: String, header: List<String>, rows: List<List<String>>, title: String? = null): String {
         val csv = buildString {
+            if (!title.isNullOrBlank()) {
+                appendLine(escape(title))
+                appendLine()
+            }
             appendLine(header.joinToString(",") { escape(it) })
             rows.forEach { row -> appendLine(row.joinToString(",") { escape(it) }) }
         }

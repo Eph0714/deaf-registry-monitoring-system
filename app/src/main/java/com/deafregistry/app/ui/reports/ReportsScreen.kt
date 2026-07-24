@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,17 +22,20 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.deafregistry.app.data.local.dao.MunicipalityVisitReportRow
 import com.deafregistry.app.data.remote.dto.ByMunicipalityStatusDto
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
@@ -39,6 +43,7 @@ import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.FullScreenLoading
 import com.deafregistry.app.ui.common.GenericViewModelFactory
 import com.deafregistry.app.util.ExportUtils
+import kotlinx.coroutines.launch
 import android.widget.Toast
 
 private data class CategoryRow(val label: String, val total: Int, val value: String, val extra: String = "")
@@ -73,8 +78,11 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
     )
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var selectedCategory by remember { mutableStateOf(CATEGORIES.first()) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
+    var pendingExportFormat by remember { mutableStateOf<String?>(null) }
+    var reportHeading by remember { mutableStateOf("Deaf Registry Municipality Report") }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -151,29 +159,62 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
 
                 item {
                     Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = {
-                            val path = ExportUtils.exportCsv(
-                                context, "deaf_registry_report.csv",
-                                listOf("Municipality", "Total"),
-                                state.byMunicipality.map { listOf(it.municipality, it.total.toString()) }
-                            )
-                            Toast.makeText(context, "Saved to $path", Toast.LENGTH_LONG).show()
-                        }) { Text("Export CSV (Excel)") }
-
-                        OutlinedButton(onClick = {
-                            val path = ExportUtils.exportPdf(
-                                context, "deaf_registry_report.pdf", "Deaf Registry Summary Report",
-                                listOf("Municipality", "Total"),
-                                state.byMunicipality.map { listOf(it.municipality, it.total.toString()) }
-                            )
-                            Toast.makeText(context, "Saved to $path", Toast.LENGTH_LONG).show()
-                        }) { Text("Export PDF") }
+                        OutlinedButton(onClick = { pendingExportFormat = "csv" }) { Text("Export CSV (Excel)") }
+                        OutlinedButton(onClick = { pendingExportFormat = "pdf" }) { Text("Export PDF") }
                     }
                 }
             }
         }
     }
+
+    val exportFormat = pendingExportFormat
+    if (exportFormat != null) {
+        AlertDialog(
+            onDismissRequest = { pendingExportFormat = null },
+            title = { Text("Report Heading") },
+            text = {
+                Column {
+                    Text(
+                        "This report is grouped by municipality (A-Z), listing each deaf individual, their " +
+                            "status, last visit date, and who visited them last.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.padding(top = 8.dp))
+                    OutlinedTextField(
+                        value = reportHeading,
+                        onValueChange = { reportHeading = it },
+                        label = { Text("Report title") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingExportFormat = null
+                    val heading = reportHeading.ifBlank { "Deaf Registry Municipality Report" }
+                    scope.launch {
+                        val rows = ServiceLocator.deafIndividualRepository.getMunicipalityVisitReport()
+                        val header = listOf("Municipality", "Name", "Status", "Last Visit Date", "Visited By")
+                        val dataRows = rows.map(::toExportRow)
+                        val path = if (exportFormat == "csv") {
+                            ExportUtils.exportCsv(context, "deaf_registry_report.csv", header, dataRows, title = heading)
+                        } else {
+                            ExportUtils.exportPdf(context, "deaf_registry_report.pdf", heading, header, dataRows)
+                        }
+                        Toast.makeText(context, "Saved to $path", Toast.LENGTH_LONG).show()
+                    }
+                }) { Text("Export") }
+            },
+            dismissButton = { TextButton(onClick = { pendingExportFormat = null }) { Text("Cancel") } }
+        )
+    }
 }
+
+private fun toExportRow(row: MunicipalityVisitReportRow): List<String> = listOf(
+    row.municipality, row.fullName, row.status, row.lastVisitDate ?: "Never", row.lastVisitedBy ?: "—"
+)
 
 @Composable
 private fun ReportSectionHeader(label: String, value: String) {

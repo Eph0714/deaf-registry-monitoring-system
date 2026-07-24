@@ -7,6 +7,14 @@ import androidx.room.Query
 import com.deafregistry.app.data.local.entity.DeafIndividualEntity
 import kotlinx.coroutines.flow.Flow
 
+data class MunicipalityVisitReportRow(
+    val municipality: String,
+    val fullName: String,
+    val status: String,
+    val lastVisitDate: String?,
+    val lastVisitedBy: String?
+)
+
 @Dao
 interface DeafIndividualDao {
 
@@ -106,6 +114,30 @@ interface DeafIndividualDao {
         monitoringStatus: String? = null,
         teacherName: String? = null
     ): Flow<List<DeafIndividualEntity>>
+
+    /**
+     * Backs the Reports export: every active individual grouped/ordered by municipality
+     * ascending then name ascending, each with their most recent visit date and who conducted
+     * it (both null if never visited).
+     */
+    @Query(
+        """
+        SELECT d.municipalityName AS municipality, d.fullName AS fullName, d.monitoringStatus AS status,
+               lv.lastVisit AS lastVisitDate, lv.conductorName AS lastVisitedBy
+        FROM deaf_individuals d
+        LEFT JOIN (
+            SELECT v.deafIndividualUuid, v.visitDateTime AS lastVisit, v.conductorName
+            FROM visits v
+            WHERE v.visitDateTime = (
+                SELECT MAX(v2.visitDateTime) FROM visits v2 WHERE v2.deafIndividualUuid = v.deafIndividualUuid
+            )
+        ) lv ON lv.deafIndividualUuid = d.uuid
+        WHERE d.isDeleted = 0
+        GROUP BY d.uuid
+        ORDER BY d.municipalityName ASC, d.fullName ASC
+        """
+    )
+    suspend fun getMunicipalityVisitReport(): List<MunicipalityVisitReportRow>
 
     @Query("SELECT * FROM deaf_individuals WHERE isDirty = 1 OR photoDirty = 1")
     suspend fun getDirty(): List<DeafIndividualEntity>
