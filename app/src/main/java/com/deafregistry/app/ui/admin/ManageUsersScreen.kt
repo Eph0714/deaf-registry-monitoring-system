@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
@@ -45,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.deafregistry.app.BuildConfig
@@ -64,7 +68,6 @@ fun ManageUsersScreen(onBack: () -> Unit) {
     val repo = ServiceLocator.userRepository
     val isSuperAdmin = ServiceLocator.sessionManager.isSuperAdmin()
     val roles = if (isSuperAdmin) ALL_ROLES else BASE_ROLES
-    val teachers by ServiceLocator.referenceDataRepository.observeTeachers().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var users by remember { mutableStateOf(listOf<UserDto>()) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -73,6 +76,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
     var newPassword by remember { mutableStateOf("") }
     var newRole by remember { mutableStateOf("conductor") }
     var roleMenuExpanded by remember { mutableStateOf(false) }
+    var newPasswordVisible by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     var editingUser by remember { mutableStateOf<UserDto?>(null) }
@@ -81,8 +85,8 @@ fun ManageUsersScreen(onBack: () -> Unit) {
     var editTeacherId by remember { mutableStateOf<Int?>(null) }
     var editActive by remember { mutableStateOf(true) }
     var editNewPassword by remember { mutableStateOf("") }
+    var editPasswordVisible by remember { mutableStateOf(false) }
     var editRoleMenuExpanded by remember { mutableStateOf(false) }
-    var editTeacherMenuExpanded by remember { mutableStateOf(false) }
     var showInactive by remember { mutableStateOf(false) }
     var permanentDeleteTarget by remember { mutableStateOf<UserDto?>(null) }
     var viewingPhotoUser by remember { mutableStateOf<UserDto?>(null) }
@@ -100,7 +104,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                newName = ""; newEmail = ""; newPassword = ""; newRole = "conductor"; showAddDialog = true
+                newName = ""; newEmail = ""; newPassword = ""; newRole = "conductor"; newPasswordVisible = false; showAddDialog = true
             }) { Icon(Icons.Default.Add, contentDescription = "Add") }
         }
     ) { padding: PaddingValues ->
@@ -157,6 +161,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                                     editTeacherId = user.teacherId
                                     editActive = true
                                     editNewPassword = ""
+                                    editPasswordVisible = false
                                 }) { Text("Restore") }
                                 TextButton(onClick = { permanentDeleteTarget = user }) {
                                     Text("Delete Permanently", color = MaterialTheme.colorScheme.error)
@@ -169,6 +174,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                                     editTeacherId = user.teacherId
                                     editActive = user.isActive != false
                                     editNewPassword = ""
+                                    editPasswordVisible = false
                                 }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
                                 IconButton(onClick = {
                                     scope.launch {
@@ -192,7 +198,22 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                 Column {
                     OutlinedTextField(value = newName, onValueChange = { newName = it }, label = { Text("Name") })
                     OutlinedTextField(value = newEmail, onValueChange = { newEmail = it }, label = { Text("Email") })
-                    OutlinedTextField(value = newPassword, onValueChange = { newPassword = it }, label = { Text("Temporary Password") })
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text("Temporary Password") },
+                        visualTransformation = if (isSuperAdmin && newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            if (isSuperAdmin) {
+                                IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                                    Icon(
+                                        if (newPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (newPasswordVisible) "Hide password" else "Show password"
+                                    )
+                                }
+                            }
+                        }
+                    )
                     ExposedDropdownMenuBox(expanded = roleMenuExpanded, onExpandedChange = { roleMenuExpanded = it }) {
                         OutlinedTextField(
                             value = newRole,
@@ -249,26 +270,6 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                         }
                     }
 
-                    ExposedDropdownMenuBox(expanded = editTeacherMenuExpanded, onExpandedChange = { editTeacherMenuExpanded = it }) {
-                        OutlinedTextField(
-                            value = teachers.firstOrNull { it.id == editTeacherId }?.name ?: "None",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Linked BS Conductor") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = editTeacherMenuExpanded) },
-                            modifier = Modifier.menuAnchor()
-                        )
-                        ExposedDropdownMenu(expanded = editTeacherMenuExpanded, onDismissRequest = { editTeacherMenuExpanded = false }) {
-                            DropdownMenuItem(text = { Text("None") }, onClick = { editTeacherId = null; editTeacherMenuExpanded = false })
-                            teachers.forEach { teacher ->
-                                DropdownMenuItem(
-                                    text = { Text(teacher.name) },
-                                    onClick = { editTeacherId = teacher.id; editTeacherMenuExpanded = false }
-                                )
-                            }
-                        }
-                    }
-
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Active", modifier = Modifier.weight(1f))
                         Switch(checked = editActive, onCheckedChange = { editActive = it })
@@ -277,7 +278,18 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                     OutlinedTextField(
                         value = editNewPassword,
                         onValueChange = { editNewPassword = it },
-                        label = { Text("Reset Password (optional)") }
+                        label = { Text("Reset Password (optional)") },
+                        visualTransformation = if (isSuperAdmin && editPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            if (isSuperAdmin) {
+                                IconButton(onClick = { editPasswordVisible = !editPasswordVisible }) {
+                                    Icon(
+                                        if (editPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (editPasswordVisible) "Hide password" else "Show password"
+                                    )
+                                }
+                            }
+                        }
                     )
                 }
             },

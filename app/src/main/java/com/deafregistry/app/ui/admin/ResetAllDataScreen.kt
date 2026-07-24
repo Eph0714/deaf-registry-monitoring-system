@@ -29,7 +29,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val CONFIRM_PHRASE = "RESET ALL DATA"
 
@@ -98,7 +100,15 @@ fun ResetAllDataScreen(onBack: () -> Unit) {
                     onClick = {
                         isWorking = true
                         scope.launch {
-                            runCatching { ServiceLocator.adminRepository.resetAllData() }
+                            runCatching {
+                                ServiceLocator.adminRepository.resetAllData()
+                                // The server-side wipe doesn't update this device's local Room cache by
+                                // itself (this app is offline-first) - without this, the app keeps showing
+                                // the old records from before the reset until something else happens to
+                                // clear/resync them, making the reset look like it did nothing.
+                                withContext(Dispatchers.IO) { ServiceLocator.database.clearAllTables() }
+                                ServiceLocator.syncManager.pull()
+                            }
                                 .onSuccess {
                                     Toast.makeText(context, "All data has been reset", Toast.LENGTH_LONG).show()
                                     showConfirmDialog = false
