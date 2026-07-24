@@ -13,7 +13,13 @@ data class LoginErrorBody(val code: String? = null, val message: String? = null)
 
 data class LoginResponse(val token: String, val user: UserDto)
 
-data class SignupRequest(val name: String, val email: String, val password: String)
+data class SignupRequest(
+    val name: String,
+    val email: String,
+    val password: String,
+    val contact_number: String? = null,
+    val location: String? = null
+)
 
 data class MessageResponse(val message: String)
 
@@ -21,7 +27,8 @@ data class PendingSignupDto(
     val id: Int,
     val name: String,
     val email: String,
-    @SerializedName("email_verified") val emailVerified: Boolean,
+    @SerializedName("contact_number") val contactNumber: String?,
+    val location: String?,
     @SerializedName("created_at") val createdAt: String
 )
 

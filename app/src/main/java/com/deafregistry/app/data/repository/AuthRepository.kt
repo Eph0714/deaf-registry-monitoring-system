@@ -18,7 +18,6 @@ import java.io.File
 sealed class LoginException(message: String) : Exception(message) {
     class DevicePending(message: String) : LoginException(message)
     class DeviceRejected(message: String) : LoginException(message)
-    class EmailNotVerified(message: String) : LoginException(message)
     class AccountPending(message: String) : LoginException(message)
     class AccountRejected(message: String) : LoginException(message)
 }
@@ -44,9 +43,6 @@ class AuthRepository(
                     "DEVICE_REJECTED" -> throw LoginException.DeviceRejected(
                         body.message ?: "This device has been denied access. Contact your administrator."
                     )
-                    "EMAIL_NOT_VERIFIED" -> throw LoginException.EmailNotVerified(
-                        body.message ?: "Please verify your email address first."
-                    )
                     "ACCOUNT_PENDING" -> throw LoginException.AccountPending(
                         body.message ?: "Your account is awaiting administrator approval."
                     )
@@ -59,8 +55,8 @@ class AuthRepository(
         }
     }
 
-    suspend fun signup(name: String, email: String, password: String): String {
-        val response = api.signup(SignupRequest(name, email, password))
+    suspend fun signup(name: String, email: String, password: String, contactNumber: String?, location: String?): String {
+        val response = api.signup(SignupRequest(name, email, password, contactNumber, location))
         return response.message
     }
 

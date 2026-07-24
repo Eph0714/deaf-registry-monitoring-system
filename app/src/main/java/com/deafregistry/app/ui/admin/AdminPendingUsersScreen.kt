@@ -67,10 +67,14 @@ fun AdminPendingUsersScreen(onBack: () -> Unit) {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    if (signup.emailVerified) "Email verified • requested ${signup.createdAt}"
-                                    else "Email not yet verified • requested ${signup.createdAt}",
+                                    "CP: ${signup.contactNumber ?: "—"} • ${signup.location ?: "Location not provided"}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (signup.emailVerified) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "Requested ${signup.createdAt}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             IconButton(onClick = {

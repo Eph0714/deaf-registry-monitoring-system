@@ -46,7 +46,7 @@ fun SignUpScreen(onBack: () -> Unit) {
         ) {
             if (state.successMessage != null) {
                 Spacer(Modifier.height(32.dp))
-                Text("Check your email", style = MaterialTheme.typography.headlineSmall)
+                Text("Request Submitted", style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(12.dp))
                 Text(
                     state.successMessage!!,
@@ -57,7 +57,7 @@ fun SignUpScreen(onBack: () -> Unit) {
                 Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back to Log In") }
             } else {
                 Text(
-                    "Request access to the Deaf Registry app. An administrator must approve your account after you verify your email.",
+                    "Request access to the Deaf Registry app. An administrator will review your request and approve your account.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -74,6 +74,22 @@ fun SignUpScreen(onBack: () -> Unit) {
                     value = state.email,
                     onValueChange = viewModel::onEmailChange,
                     label = { Text("Email") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = state.contactNumber,
+                    onValueChange = viewModel::onContactNumberChange,
+                    label = { Text("Contact Number") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = state.location,
+                    onValueChange = viewModel::onLocationChange,
+                    label = { Text("Location (Municipality/Barangay)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
