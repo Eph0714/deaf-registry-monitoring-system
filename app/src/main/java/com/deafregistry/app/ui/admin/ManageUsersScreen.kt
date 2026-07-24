@@ -68,6 +68,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
     var editNewPassword by remember { mutableStateOf("") }
     var editRoleMenuExpanded by remember { mutableStateOf(false) }
     var editTeacherMenuExpanded by remember { mutableStateOf(false) }
+    var showInactive by remember { mutableStateOf(false) }
 
     suspend fun reload() {
         runCatching { users = repo.list() }.onFailure { error = it.message }
@@ -86,34 +87,55 @@ fun ManageUsersScreen(onBack: () -> Unit) {
             }) { Icon(Icons.Default.Add, contentDescription = "Add") }
         }
     ) { padding: PaddingValues ->
+        val inactiveCount = users.count { it.isActive == false }
+        val visibleUsers = if (showInactive) users else users.filter { it.isActive != false }
+
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-            items(users, key = { it.id }) { user ->
+            if (inactiveCount > 0) {
+                item {
+                    TextButton(onClick = { showInactive = !showInactive }) {
+                        Text(if (showInactive) "Hide deleted accounts" else "Show deleted accounts ($inactiveCount)")
+                    }
+                }
+            }
+            items(visibleUsers, key = { it.id }) { user ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(user.name, style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "${user.email} • ${user.role}" + (user.teacherName?.let { " • $it" } ?: "") +
-                                    if (user.isActive == false) " • Inactive" else "",
+                                    if (user.isActive == false) " • Deleted" else "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (user.isActive == false) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = {
-                            editingUser = user
-                            editName = user.name
-                            editRole = user.role
-                            editTeacherId = user.teacherId
-                            editActive = user.isActive != false
-                            editNewPassword = ""
-                        }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
-                        IconButton(onClick = {
-                            scope.launch {
-                                runCatching { repo.deactivate(user.id) }
-                                reload()
-                            }
-                        }) { Icon(Icons.Default.Delete, contentDescription = "Deactivate") }
+                        if (user.isActive == false) {
+                            TextButton(onClick = {
+                                editingUser = user
+                                editName = user.name
+                                editRole = user.role
+                                editTeacherId = user.teacherId
+                                editActive = true
+                                editNewPassword = ""
+                            }) { Text("Restore") }
+                        } else {
+                            IconButton(onClick = {
+                                editingUser = user
+                                editName = user.name
+                                editRole = user.role
+                                editTeacherId = user.teacherId
+                                editActive = user.isActive != false
+                                editNewPassword = ""
+                            }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
+                            IconButton(onClick = {
+                                scope.launch {
+                                    runCatching { repo.deactivate(user.id) }.onFailure { error = it.message }
+                                    reload()
+                                }
+                            }) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
+                        }
                     }
                 }
             }
