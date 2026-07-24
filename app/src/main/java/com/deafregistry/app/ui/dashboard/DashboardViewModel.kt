@@ -64,24 +64,7 @@ class DashboardViewModel(
             .onEach { online -> _uiState.value = _uiState.value.copy(isOnline = online) }
             .launchIn(viewModelScope)
 
-        viewModelScope.launch {
-            try {
-                val users = userRepository.list()
-                // Matches Manage Users' default view (deactivated accounts hidden behind "Show
-                // deleted accounts") - counting is_active=false rows here made this tile disagree
-                // with what an admin sees when they tap into it.
-                _uiState.value = _uiState.value.copy(totalUsers = users.count { it.isActive != false })
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(totalUsers = 0)
-            }
-        }
-
-        if (sessionManager.isAdmin()) {
-            viewModelScope.launch {
-                runCatching { userRepository.pendingSignups() }
-                    .onSuccess { pending -> _uiState.value = _uiState.value.copy(pendingApprovalCount = pending.size) }
-            }
-        }
+        refreshUserCounts()
 
         // Reports are admin-only (server-enforced too) - conductors never see this data, so
         // skip the calls entirely rather than hitting an expected 403.
@@ -127,6 +110,35 @@ class DashboardViewModel(
                 _uiState.value = _uiState.value.copy(isSyncing = false, syncError = "Sync failed: ${e.message}")
             }
             refreshPendingSyncCount()
+        }
+        refreshUserCounts()
+    }
+
+    /**
+     * This ViewModel instance survives navigating away to Admin screens and back (it's scoped to
+     * Dashboard's nav back-stack entry, not recreated on each visit), so a count fetched only in
+     * init() would go stale the moment a user is added/removed or a signup is approved/declined
+     * elsewhere - the Dashboard would keep showing the pre-change number until the app restarts.
+     * Called from init, from sync(), and again by the screen itself every time it's revisited.
+     */
+    fun refreshUserCounts() {
+        viewModelScope.launch {
+            try {
+                val users = userRepository.list()
+                // Matches Manage Users' default view (deactivated accounts hidden behind "Show
+                // deleted accounts") - counting is_active=false rows here made this tile disagree
+                // with what an admin sees when they tap into it.
+                _uiState.value = _uiState.value.copy(totalUsers = users.count { it.isActive != false })
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(totalUsers = 0)
+            }
+        }
+
+        if (sessionManager.isAdmin()) {
+            viewModelScope.launch {
+                runCatching { userRepository.pendingSignups() }
+                    .onSuccess { pending -> _uiState.value = _uiState.value.copy(pendingApprovalCount = pending.size) }
+            }
         }
     }
 

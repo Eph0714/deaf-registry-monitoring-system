@@ -56,6 +56,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -106,6 +107,10 @@ fun DashboardScreen(
         }
     )
     val state by viewModel.uiState.collectAsState()
+    // The ViewModel survives navigating to Admin screens and back (same nav back-stack entry),
+    // so re-fetch the user/pending-approval counts on every visit - otherwise adding/removing a
+    // user or approving/declining a signup while off this screen leaves it showing a stale number.
+    LaunchedEffect(Unit) { viewModel.refreshUserCounts() }
     val totalDeafRecords = state.municipalities.sumOf { it.deafCount }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
