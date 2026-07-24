@@ -60,7 +60,7 @@ interface DeafIndividualDao {
     @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY fullName ASC")
     fun observeAllActive(): Flow<List<DeafIndividualEntity>>
 
-    @Query("SELECT * FROM deaf_individuals WHERE isDirty = 1")
+    @Query("SELECT * FROM deaf_individuals WHERE isDirty = 1 OR photoDirty = 1")
     suspend fun getDirty(): List<DeafIndividualEntity>
 
     @Query("SELECT COUNT(*) FROM deaf_individuals WHERE isDeleted = 0 AND municipalityId = :municipalityId")

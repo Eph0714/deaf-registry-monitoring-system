@@ -217,7 +217,19 @@ class DeafIndividualRepository(
         }
     }
 
-    /** Pushes all locally-dirty records to the server. Best-effort; failures are skipped and retried next sync. */
+    /**
+     * Pushes all locally-dirty records to the server. Best-effort; failures are skipped and
+     * retried next sync.
+     *
+     * The base record and its photo are persisted as two separate steps (not one atomic
+     * commit), because create()/update() and the photo upload can fail independently - e.g.
+     * a slow/failed photo upload used to leave the whole record's serverId unsaved locally,
+     * so the *next* sync attempt would call create() again with the same uuid and get a 409
+     * Duplicate entry from the server (unique constraint on uuid), which this loop's blanket
+     * catch swallowed silently - the record then stayed "dirty" forever with no visible error.
+     * Persisting isDirty=false right after the base create/update succeeds means a retry only
+     * ever repeats the (idempotent) photo upload, never re-creates the record.
+     */
     suspend fun pushDirty() {
         for (item in dao.getDirty()) {
             try {
@@ -227,50 +239,56 @@ class DeafIndividualRepository(
                     continue
                 }
 
-                val request = DeafIndividualRequest(
-                    uuid = item.uuid,
-                    full_name = item.fullName,
-                    birth_date = item.birthDate,
-                    gender = item.gender,
-                    barangay_id = item.barangayId,
-                    purok = item.purok,
-                    municipality_id = item.municipalityId,
-                    latitude = item.latitude,
-                    longitude = item.longitude,
-                    skill_level = item.skillLevel,
-                    monitoring_status = item.monitoringStatus,
-                    assigned_teacher_id = item.assignedTeacherId,
-                    assigned_date = item.assignedDate,
-                    contact_number = item.contactNumber,
-                    email = item.email,
-                    marital_status = item.maritalStatus,
-                    emergency_contact_name = item.emergencyContactName,
-                    emergency_contact_number = item.emergencyContactNumber,
-                    notes = item.notes
-                )
+                var current = item
 
-                val serverId = if (item.serverId == null) {
-                    api.createDeafIndividual(request).id
-                } else {
-                    api.updateDeafIndividual(item.serverId, request)
-                    item.serverId
+                if (current.isDirty) {
+                    val request = DeafIndividualRequest(
+                        uuid = current.uuid,
+                        full_name = current.fullName,
+                        birth_date = current.birthDate,
+                        gender = current.gender,
+                        barangay_id = current.barangayId,
+                        purok = current.purok,
+                        municipality_id = current.municipalityId,
+                        latitude = current.latitude,
+                        longitude = current.longitude,
+                        skill_level = current.skillLevel,
+                        monitoring_status = current.monitoringStatus,
+                        assigned_teacher_id = current.assignedTeacherId,
+                        assigned_date = current.assignedDate,
+                        contact_number = current.contactNumber,
+                        email = current.email,
+                        marital_status = current.maritalStatus,
+                        emergency_contact_name = current.emergencyContactName,
+                        emergency_contact_number = current.emergencyContactNumber,
+                        notes = current.notes
+                    )
+
+                    val serverId = if (current.serverId == null) {
+                        api.createDeafIndividual(request).id
+                    } else {
+                        api.updateDeafIndividual(current.serverId, request)
+                        current.serverId
+                    }
+
+                    current = current.copy(serverId = serverId, isDirty = false)
+                    dao.upsert(current)
                 }
 
-                var updated = item.copy(serverId = serverId, isDirty = false)
-
-                if (item.photoDirty && item.localPhotoPath != null) {
-                    val file = File(item.localPhotoPath)
+                val serverId = current.serverId
+                if (current.photoDirty && current.localPhotoPath != null && serverId != null) {
+                    val file = File(current.localPhotoPath)
                     if (file.exists()) {
-                        val body = file.asRequestBody("image/*".toMediaTypeOrNull())
+                        val mimeType = java.net.URLConnection.guessContentTypeFromName(file.name)
+                            ?.takeIf { it.startsWith("image/") } ?: "image/jpeg"
+                        val body = file.asRequestBody(mimeType.toMediaTypeOrNull())
                         val part = MultipartBody.Part.createFormData("photo", file.name, body)
                         val response = api.uploadPhoto(serverId, part)
-                        updated = updated.copy(photoUrl = response.photoUrl, photoDirty = false)
+                        dao.upsert(current.copy(photoUrl = response.photoUrl, photoDirty = false))
                     }
                 }
-
-                dao.upsert(updated)
             } catch (e: Exception) {
-                // Leave marked dirty; will retry on next sync pass.
+                android.util.Log.w("DeafIndividualRepository", "pushDirty failed for ${item.uuid}, will retry next sync", e)
             }
         }
     }

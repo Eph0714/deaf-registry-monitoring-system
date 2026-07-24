@@ -52,7 +52,9 @@ class AuthRepository(
 
     suspend fun uploadProfilePhoto(filePath: String) {
         val file = File(filePath)
-        val body = file.asRequestBody("image/*".toMediaTypeOrNull())
+        val mimeType = java.net.URLConnection.guessContentTypeFromName(file.name)
+            ?.takeIf { it.startsWith("image/") } ?: "image/jpeg"
+        val body = file.asRequestBody(mimeType.toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("photo", file.name, body)
         api.uploadUserPhoto(part)
         refreshProfile()
