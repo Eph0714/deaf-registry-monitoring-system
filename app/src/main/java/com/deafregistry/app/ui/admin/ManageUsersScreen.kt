@@ -69,6 +69,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
     var editRoleMenuExpanded by remember { mutableStateOf(false) }
     var editTeacherMenuExpanded by remember { mutableStateOf(false) }
     var showInactive by remember { mutableStateOf(false) }
+    var permanentDeleteTarget by remember { mutableStateOf<UserDto?>(null) }
 
     suspend fun reload() {
         runCatching { users = repo.list() }.onFailure { error = it.message }
@@ -120,6 +121,9 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                                 editActive = true
                                 editNewPassword = ""
                             }) { Text("Restore") }
+                            TextButton(onClick = { permanentDeleteTarget = user }) {
+                                Text("Delete Permanently", color = MaterialTheme.colorScheme.error)
+                            }
                         } else {
                             IconButton(onClick = {
                                 editingUser = user
@@ -255,6 +259,30 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                 }) { Text("Save") }
             },
             dismissButton = { TextButton(onClick = { editingUser = null }) { Text("Cancel") } }
+        )
+    }
+
+    permanentDeleteTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { permanentDeleteTarget = null },
+            title = { Text("Delete permanently?") },
+            text = {
+                Text(
+                    "This will permanently remove ${target.name} (${target.email}) from the system. " +
+                        "This cannot be undone - the account cannot be restored afterward."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = target.id
+                    permanentDeleteTarget = null
+                    scope.launch {
+                        runCatching { repo.permanentlyDelete(id) }.onFailure { error = it.message }
+                        reload()
+                    }
+                }) { Text("Delete Permanently", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { permanentDeleteTarget = null }) { Text("Cancel") } }
         )
     }
 }

@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.deafregistry.app.data.session.SessionManager
 import com.deafregistry.app.ui.admin.AdminHomeScreen
 import com.deafregistry.app.ui.admin.AdminPendingUsersScreen
+import com.deafregistry.app.ui.admin.AuditLogScreen
 import com.deafregistry.app.ui.admin.BackupRestoreScreen
 import com.deafregistry.app.ui.admin.ManageBarangaysScreen
 import com.deafregistry.app.ui.admin.ManageDevicesScreen
@@ -227,6 +228,9 @@ fun AppNavGraph(sessionManager: SessionManager) {
         }
         composable(Routes.ADMIN_PENDING_USERS) {
             AdminPendingUsersScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.ADMIN_AUDIT_LOG) {
+            AuditLogScreen(onBack = { navController.popBackStack() })
         }
     }
 }

@@ -22,6 +22,7 @@ object Routes {
     const val ADMIN_NOTIFICATIONS = "admin_notifications"
     const val ADMIN_DEVICES = "admin_devices"
     const val ADMIN_PENDING_USERS = "admin_pending_users"
+    const val ADMIN_AUDIT_LOG = "admin_audit_log"
 
     fun barangayList(id: Int, name: String) = "barangay_list/$id/${java.net.URLEncoder.encode(name, "UTF-8")}"
 

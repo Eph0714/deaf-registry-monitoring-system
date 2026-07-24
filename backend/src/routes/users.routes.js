@@ -12,5 +12,6 @@ router.post('/:id/reject-signup', requireAuth, requireAdmin, ctrl.rejectSignup);
 router.put('/:id', requireAuth, requireAdmin, ctrl.update);
 router.post('/:id/reset-password', requireAuth, requireAdmin, ctrl.resetPassword);
 router.delete('/:id', requireAuth, requireAdmin, ctrl.remove);
+router.delete('/:id/permanent', requireAuth, requireAdmin, ctrl.permanentlyDelete);
 
 module.exports = router;

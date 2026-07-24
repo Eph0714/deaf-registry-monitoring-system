@@ -55,6 +55,21 @@ const remove = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
+// Only allows hard-deleting accounts that are already deactivated - a safety guard so an
+// active account always has to go through remove() (soft delete) first. All FKs referencing
+// users.id are ON DELETE SET NULL (or CASCADE for user_devices), so this is safe to run.
+const permanentlyDelete = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await pool.query('SELECT name, email FROM users WHERE id = $1 AND is_active = false', [id]);
+  if (!rows.length) {
+    return res.status(404).json({ message: 'No deactivated account with this id was found' });
+  }
+  const { name, email } = rows[0];
+  await pool.query('DELETE FROM users WHERE id = $1', [id]);
+  await logAudit(req.user.id, 'PERMANENTLY_DELETED', 'user', id, { name, email });
+  res.status(204).send();
+});
+
 const listPendingSignups = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, name, email, contact_number, location, created_at
@@ -85,4 +100,7 @@ const rejectSignup = asyncHandler(async (req, res) => {
   res.json({ id: Number(id), approval_status: 'rejected' });
 });
 
-module.exports = { list, create, update, resetPassword, remove, listPendingSignups, approveSignup, rejectSignup };
+module.exports = {
+  list, create, update, resetPassword, remove, permanentlyDelete,
+  listPendingSignups, approveSignup, rejectSignup
+};

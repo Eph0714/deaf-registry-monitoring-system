@@ -65,6 +65,17 @@ data class UpdateUserRequest(
 
 data class ResetPasswordRequest(val newPassword: String)
 
+data class AuditLogDto(
+    val id: Int,
+    val action: String,
+    @SerializedName("entity_type") val entityType: String,
+    @SerializedName("entity_id") val entityId: Int?,
+    val details: String?,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("user_name") val userName: String?,
+    @SerializedName("user_email") val userEmail: String?
+)
+
 data class PendingDeviceDto(
     val id: Int,
     @SerializedName("device_id") val deviceId: String,

@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 
 const BACKUP_DIR = path.join(__dirname, '..', '..', 'backups');
@@ -26,4 +27,18 @@ const downloadBackup = asyncHandler(async (req, res) => {
   res.download(filePath);
 });
 
-module.exports = { backup, listBackups, downloadBackup };
+const auditLogs = asyncHandler(async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 500);
+  const { rows } = await pool.query(
+    `SELECT al.id, al.action, al.entity_type, al.entity_id, al.details, al.created_at,
+            u.name AS user_name, u.email AS user_email
+     FROM audit_logs al
+     LEFT JOIN users u ON u.id = al.user_id
+     ORDER BY al.created_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  res.json(rows);
+});
+
+module.exports = { backup, listBackups, downloadBackup, auditLogs };

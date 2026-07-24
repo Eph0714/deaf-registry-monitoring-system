@@ -18,6 +18,9 @@ class UserRepository(private val api: ApiService) {
         api.resetUserPassword(id, ResetPasswordRequest(newPassword))
 
     suspend fun deactivate(id: Int) = api.deactivateUser(id)
+    suspend fun permanentlyDelete(id: Int) = api.permanentlyDeleteUser(id)
+
+    suspend fun auditLogs(limit: Int = 100) = api.getAuditLogs(limit)
 
     suspend fun pendingDevices() = api.getPendingDevices()
     suspend fun approveDevice(id: Int) = api.approveDevice(id)

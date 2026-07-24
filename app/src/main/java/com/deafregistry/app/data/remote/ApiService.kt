@@ -80,6 +80,9 @@ interface ApiService {
     @DELETE("users/{id}")
     suspend fun deactivateUser(@Path("id") id: Int): Response<Unit>
 
+    @DELETE("users/{id}/permanent")
+    suspend fun permanentlyDeleteUser(@Path("id") id: Int): Response<Unit>
+
     // Device approvals (admin)
     @GET("devices/pending")
     suspend fun getPendingDevices(): List<PendingDeviceDto>
@@ -194,4 +197,7 @@ interface ApiService {
 
     @GET("admin/backups")
     suspend fun listBackups(): List<String>
+
+    @GET("admin/audit-logs")
+    suspend fun getAuditLogs(@Query("limit") limit: Int = 100): List<AuditLogDto>
 }
