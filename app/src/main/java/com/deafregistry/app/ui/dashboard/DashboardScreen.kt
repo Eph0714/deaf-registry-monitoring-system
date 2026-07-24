@@ -474,11 +474,8 @@ private fun DashboardQuickActionsRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DashboardQuickActionTile("Search", Icons.Default.Search, onOpenSearch, Modifier.weight(1f))
-                if (isAdmin) {
-                    DashboardQuickActionTile("Reports", Icons.Default.BarChart, onOpenReports, Modifier.weight(1f))
-                } else {
-                    Box(Modifier.weight(1f)) {}
-                }
+                // Conductors can view reports now too, just not export/print them (see ReportsScreen).
+                DashboardQuickActionTile("Reports", Icons.Default.BarChart, onOpenReports, Modifier.weight(1f))
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -775,15 +772,13 @@ private fun AppDrawerContent(
                 onClick = onNavigateDeafRecords,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
-            if (isAdmin) {
-                NavigationDrawerItem(
-                    label = { Text("Reports") },
-                    selected = false,
-                    icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
-                    onClick = onNavigateReports,
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
-            }
+            NavigationDrawerItem(
+                label = { Text("Reports") },
+                selected = false,
+                icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
+                onClick = onNavigateReports,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
             if (isAdmin) {
                 NavigationDrawerItem(
                     label = { Text("Admin") },

@@ -81,6 +81,7 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
         factory = GenericViewModelFactory { ReportsViewModel(ServiceLocator.reportRepository) }
     )
     val state by viewModel.uiState.collectAsState()
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedCategory by remember { mutableStateOf(CATEGORIES.first()) }
@@ -194,10 +195,13 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
                     Text("${entry.fullName} — ${entry.municipality}/${entry.barangay} (last: ${entry.lastVisit ?: "never"})", style = MaterialTheme.typography.bodySmall)
                 }
 
-                item {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { pendingExportFormat = "csv" }) { Text("Export CSV (Excel)") }
-                        OutlinedButton(onClick = { pendingExportFormat = "pdf" }) { Text("Export PDF") }
+                // Conductors can view reports but not export/print them - admin/super_admin only.
+                if (isAdmin) {
+                    item {
+                        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { pendingExportFormat = "csv" }) { Text("Export CSV (Excel)") }
+                            OutlinedButton(onClick = { pendingExportFormat = "pdf" }) { Text("Export PDF") }
+                        }
                     }
                 }
             }

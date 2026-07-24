@@ -1,18 +1,18 @@
 const express = require('express');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 const ctrl = require('../controllers/reports.controller');
 
 const router = express.Router();
 
-router.get('/summary', requireAuth, requireAdmin, ctrl.summary);
-router.get('/by-municipality', requireAuth, requireAdmin, ctrl.byMunicipality);
-router.get('/by-municipality-status', requireAuth, requireAdmin, ctrl.byMunicipalityStatus);
-router.get('/by-barangay', requireAuth, requireAdmin, ctrl.byBarangay);
-router.get('/by-gender', requireAuth, requireAdmin, ctrl.byGender);
-router.get('/by-skill', requireAuth, requireAdmin, ctrl.bySkill);
-router.get('/by-status', requireAuth, requireAdmin, ctrl.byStatus);
-router.get('/by-conductor', requireAuth, requireAdmin, ctrl.byConductor);
-router.get('/recent-visits', requireAuth, requireAdmin, ctrl.recentVisits);
-router.get('/not-visited', requireAuth, requireAdmin, ctrl.notVisited);
+router.get('/summary', requireAuth, ctrl.summary);
+router.get('/by-municipality', requireAuth, ctrl.byMunicipality);
+router.get('/by-municipality-status', requireAuth, ctrl.byMunicipalityStatus);
+router.get('/by-barangay', requireAuth, ctrl.byBarangay);
+router.get('/by-gender', requireAuth, ctrl.byGender);
+router.get('/by-skill', requireAuth, ctrl.bySkill);
+router.get('/by-status', requireAuth, ctrl.byStatus);
+router.get('/by-conductor', requireAuth, ctrl.byConductor);
+router.get('/recent-visits', requireAuth, ctrl.recentVisits);
+router.get('/not-visited', requireAuth, ctrl.notVisited);
 
 module.exports = router;
