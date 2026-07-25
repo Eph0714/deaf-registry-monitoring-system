@@ -34,8 +34,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -53,9 +56,17 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
         factory = GenericViewModelFactory { LoginViewModel(ServiceLocator.authRepository, ServiceLocator.sessionManager) }
     )
     val state by viewModel.uiState.collectAsState()
+    val emailFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(state.loggedIn) {
         if (state.loggedIn) onLoggedIn()
+    }
+
+    // Sets focus to the Email field whenever the Login screen appears - both on a normal app
+    // launch and, more importantly, right after an explicit Logout, so the next person at the
+    // device lands straight on the Email field instead of the previous user's leftover state.
+    LaunchedEffect(Unit) {
+        emailFocusRequester.requestFocus()
     }
 
     Scaffold { padding: PaddingValues ->
@@ -86,6 +97,7 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusRequester(emailFocusRequester)
                     .onFocusChanged { viewModel.onEmailFocusChanged(it.isFocused) }
             )
             if (state.showEmailSuggestions) {

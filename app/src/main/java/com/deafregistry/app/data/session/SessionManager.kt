@@ -36,6 +36,12 @@ class SessionManager(context: Context) {
     private val _session = MutableStateFlow<Session?>(null)
     val session = _session.asStateFlow()
 
+    // Deliberately in-memory only (not persisted to prefs) - true only for the remainder of this
+    // app process's lifetime right after an explicit Logout, so the Login screen can suppress
+    // Remember Password auto-fill just this once. A real app relaunch always starts with this
+    // false, which is what lets auto-fill keep working on a normal cold start.
+    private var loggedOutThisSession = false
+
     init {
         _session.value = loadFromPrefs()
     }
@@ -98,6 +104,21 @@ class SessionManager(context: Context) {
             .remove(KEY_PHOTO_URL)
             .apply()
         _session.value = null
+        loggedOutThisSession = true
+    }
+
+    /**
+     * True exactly once right after an explicit Logout (and only within this app process's
+     * lifetime) - reading it also resets it to false, so it doesn't keep suppressing auto-fill
+     * beyond the one Login screen visit that follows a logout. The Login screen uses this to
+     * decide whether to skip Remember Password auto-fill: populating the form again immediately
+     * after Logout would let a different person standing at the device log back in as the
+     * previous user without typing anything.
+     */
+    fun consumeLoggedOutFlag(): Boolean {
+        val was = loggedOutThisSession
+        loggedOutThisSession = false
+        return was
     }
 
     fun currentToken(): String? = _session.value?.token

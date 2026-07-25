@@ -29,14 +29,22 @@ class LoginViewModel(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(run {
-        val lastEmail = sessionManager.lastRememberedEmail()
-        val lastPassword = lastEmail?.let { sessionManager.rememberedPasswordFor(it) }
-        LoginUiState(
-            email = lastEmail ?: "",
-            password = lastPassword ?: "",
-            rememberMe = lastEmail != null && lastPassword != null,
-            rememberedEmails = sessionManager.rememberedEmails()
-        )
+        // Auto-fill only applies on a normal app launch - never right after an explicit Logout,
+        // so a different person picking up the device can't immediately log back in as the
+        // previous user without typing anything. consumeLoggedOutFlag() also resets the flag, so
+        // this suppression only ever applies to the one Login screen visit right after a logout.
+        if (sessionManager.consumeLoggedOutFlag()) {
+            LoginUiState(rememberedEmails = sessionManager.rememberedEmails())
+        } else {
+            val lastEmail = sessionManager.lastRememberedEmail()
+            val lastPassword = lastEmail?.let { sessionManager.rememberedPasswordFor(it) }
+            LoginUiState(
+                email = lastEmail ?: "",
+                password = lastPassword ?: "",
+                rememberMe = lastEmail != null && lastPassword != null,
+                rememberedEmails = sessionManager.rememberedEmails()
+            )
+        }
     })
     val uiState: StateFlow<LoginUiState> = _uiState
 
