@@ -93,7 +93,7 @@ fun AllIndividualsScreen(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var statusChoiceMenuExpanded by remember { mutableStateOf(false) }
     var statusChoice by remember { mutableStateOf(SearchStateHolder.individualsStatusChoice) }
-    var statusSearchText by remember { mutableStateOf(SearchStateHolder.individualsStatusSearchText) }
+    var searchText by remember { mutableStateOf(SearchStateHolder.individualsSearchText) }
     var skillChoiceMenuExpanded by remember { mutableStateOf(false) }
     var skillChoice by remember { mutableStateOf(SearchStateHolder.individualsSkillChoice) }
     var pendingExportFormat by remember { mutableStateOf<String?>(null) }
@@ -104,7 +104,7 @@ fun AllIndividualsScreen(
         category.key,
         statusChoice.takeIf { category.key == "status" },
         skillChoice.takeIf { category.key == "skill" },
-        statusSearchText.takeIf { category.key == "status" } ?: ""
+        searchText
     )
 
     Scaffold(
@@ -137,11 +137,11 @@ fun AllIndividualsScreen(
                                 category = option
                                 categoryMenuExpanded = false
                                 statusChoice = null
-                                statusSearchText = ""
+                                searchText = ""
                                 skillChoice = null
                                 SearchStateHolder.individualsCategoryKey = option.key
                                 SearchStateHolder.individualsStatusChoice = null
-                                SearchStateHolder.individualsStatusSearchText = ""
+                                SearchStateHolder.individualsSearchText = ""
                                 SearchStateHolder.individualsSkillChoice = null
                             }
                         )
@@ -181,16 +181,6 @@ fun AllIndividualsScreen(
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = statusSearchText,
-                    onValueChange = {
-                        statusSearchText = it
-                        SearchStateHolder.individualsStatusSearchText = it
-                    },
-                    label = { Text("Search by name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
-                )
             }
 
             if (category.key == "skill") {
@@ -227,6 +217,17 @@ fun AllIndividualsScreen(
                 }
             }
 
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = {
+                    searchText = it
+                    SearchStateHolder.individualsSearchText = it
+                },
+                label = { Text("Search by name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -241,13 +242,13 @@ fun AllIndividualsScreen(
             Spacer(Modifier.padding(top = 4.dp))
 
             if (category.key == "lastVisit") {
-                LastVisitList(onOpenProfile)
+                LastVisitList(searchText, onOpenProfile)
             } else {
                 GroupedIndividualsList(
                     category.key,
                     statusChoice.takeIf { category.key == "status" },
                     skillChoice.takeIf { category.key == "skill" },
-                    statusSearchText.takeIf { category.key == "status" } ?: "",
+                    searchText,
                     onOpenProfile
                 )
             }
@@ -288,16 +289,19 @@ fun AllIndividualsScreen(
 }
 
 @Composable
-private fun currentExportRows(categoryKey: String, statusFilter: String?, skillFilter: String?, statusSearchText: String): List<List<String>> {
+private fun currentExportRows(categoryKey: String, statusFilter: String?, skillFilter: String?, searchText: String): List<List<String>> {
     return if (categoryKey == "lastVisit") {
         val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
         val rows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
-        rows.map { toExportRow(it.individual) }
+        val filtered = if (searchText.isNotBlank()) {
+            rows.filter { it.individual.fullName.contains(searchText, ignoreCase = true) }
+        } else rows
+        filtered.map { toExportRow(it.individual) }
     } else {
         val flow = remember(categoryKey, statusFilter, skillFilter) { flowForCategory(categoryKey, statusFilter, skillFilter) }
         val individuals by flow.collectAsState(initial = emptyList())
-        val filtered = if (categoryKey == "status" && statusSearchText.isNotBlank()) {
-            individuals.filter { it.fullName.contains(statusSearchText, ignoreCase = true) }
+        val filtered = if (searchText.isNotBlank()) {
+            individuals.filter { it.fullName.contains(searchText, ignoreCase = true) }
         } else individuals
         filtered.map { toExportRow(it) }
     }
@@ -323,13 +327,13 @@ private fun GroupedIndividualsList(
     categoryKey: String,
     statusFilter: String?,
     skillFilter: String?,
-    statusSearchText: String,
+    searchText: String,
     onOpenProfile: (String) -> Unit
 ) {
     val flow = remember(categoryKey, statusFilter, skillFilter) { flowForCategory(categoryKey, statusFilter, skillFilter) }
     val rawIndividuals by flow.collectAsState(initial = emptyList())
-    val individuals = if (categoryKey == "status" && statusSearchText.isNotBlank()) {
-        rawIndividuals.filter { it.fullName.contains(statusSearchText, ignoreCase = true) }
+    val individuals = if (searchText.isNotBlank()) {
+        rawIndividuals.filter { it.fullName.contains(searchText, ignoreCase = true) }
     } else rawIndividuals
     val lastVisitByUuid = rememberLastVisitByUuid()
 
@@ -375,9 +379,12 @@ private fun rememberLastVisitByUuid(): Map<String, String?> {
 }
 
 @Composable
-private fun LastVisitList(onOpenProfile: (String) -> Unit) {
+private fun LastVisitList(searchText: String, onOpenProfile: (String) -> Unit) {
     val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
-    val rows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
+    val rawRows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
+    val rows = if (searchText.isNotBlank()) {
+        rawRows.filter { it.individual.fullName.contains(searchText, ignoreCase = true) }
+    } else rawRows
 
     if (rows.isEmpty()) {
         EmptyState("No registered individuals yet.")

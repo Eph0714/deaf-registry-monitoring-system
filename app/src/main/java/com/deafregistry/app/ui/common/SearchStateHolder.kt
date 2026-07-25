@@ -12,7 +12,7 @@ object SearchStateHolder {
     var searchQuery: String = ""
     var individualsCategoryKey: String? = null
     var individualsStatusChoice: String? = null
-    var individualsStatusSearchText: String = ""
+    var individualsSearchText: String = ""
     var individualsSkillChoice: String? = null
     var reportsCategoryKey: String? = null
     var reportsStatusChoice: String? = null
