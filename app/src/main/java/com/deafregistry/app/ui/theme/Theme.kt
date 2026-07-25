@@ -14,7 +14,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-/** System-wide theme choice, set by an admin in Control Panel - not a per-device preference. */
+/** System-wide theme choice, set by an admin in Control Panel. Conductors can override it for
+ * their own device only (see SettingsRepository.setLocalThemeOverride). */
 enum class AppThemeOption(val key: String) {
     LIGHT_BLUE("light_blue"),
     DARK_PURPLE("dark_purple");
@@ -52,8 +53,9 @@ private val LightBlueColors = lightColorScheme(
     surfaceVariant = Color(0xFFF5F8FC)
 )
 
-private val BannerPurple = Color(0xFF6A1B9A)
-private val BannerPurpleVariant = Color(0xFF4A148C)
+// Light purple banner, matching Material's Deep Purple 300/400.
+private val BannerPurple = Color(0xFF9575CD)
+private val BannerPurpleVariant = Color(0xFF7E57C2)
 
 private val DarkPurpleColors = darkColorScheme(
     primary = BannerPurple,
@@ -61,15 +63,14 @@ private val DarkPurpleColors = darkColorScheme(
     secondary = BannerPurpleVariant,
     onSecondary = Color.White,
     tertiary = BannerPurpleVariant,
-    background = Color.Black,
+    background = Color(0xFF121212),
     onBackground = Color.White,
-    // A hair above pure black so cards/surfaces stay visible against the background - still
-    // reads as "black" but keeps the UI usable (a card the exact same color as the page behind
-    // it would be invisible).
-    surface = Color(0xFF121212),
+    // A hair above the background so cards/surfaces stay visible against it - a card the exact
+    // same color as the page behind it would be invisible.
+    surface = Color(0xFF1E1E1E),
     onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFCBD5E1),
-    surfaceVariant = Color(0xFF1E1E1E)
+    onSurfaceVariant = Color.White,
+    surfaceVariant = Color(0xFF2A2A2A)
 )
 
 @Composable

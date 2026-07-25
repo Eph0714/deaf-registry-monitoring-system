@@ -29,31 +29,43 @@ import com.deafregistry.app.ui.common.AppTopBar
 
 data class AdminMenuItem(val title: String, val subtitle: String, val route: String, val badgeCount: Int = 0)
 
-/** Admin/Super Admin only - every admin tool in one place: reference data, system tools, and user/account management. */
+/**
+ * Admin/Super Admin get every admin tool: reference data, system tools, and user/account
+ * management. Conductors can open this screen too, but only see App Update (view-only) and
+ * Theme Color (applies to their own device only) - see AppUpdateSettingsScreen/ThemeSettingsScreen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
     var pendingApprovalCount by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
-        runCatching { ServiceLocator.userRepository.pendingSignups() }
-            .onSuccess { pendingApprovalCount = it.size }
+        if (isAdmin) {
+            runCatching { ServiceLocator.userRepository.pendingSignups() }
+                .onSuccess { pendingApprovalCount = it.size }
+        }
     }
 
     val items = buildList {
-        add(AdminMenuItem("Municipalities", "Add, rename, or remove municipalities", "admin_municipalities"))
-        add(AdminMenuItem("Barangays", "Manage barangays per municipality", "admin_barangays"))
-        add(AdminMenuItem("BS Conductors", "Manage teacher/conductor records", "admin_teachers"))
-        add(AdminMenuItem("Backup & Restore", "Local device backup and server database backup", "admin_backup"))
-        add(AdminMenuItem("Notification Settings", "Configure overdue-visit alert threshold", "admin_notifications"))
-        add(AdminMenuItem("App Update", "Set the latest version so users get prompted to update", "admin_app_update"))
-        add(AdminMenuItem("Theme Color", "Choose the app-wide color theme for every user", "admin_theme"))
-        add(AdminMenuItem("Location Sharing", "Set how long a shared location stays visible in Team Locations", "admin_location_sharing"))
-        add(AdminMenuItem("User Accounts", "Manage app user accounts and roles", "admin_users"))
-        add(AdminMenuItem("Pending User Approvals", "Approve or decline new self-service signups", "admin_pending_users", badgeCount = pendingApprovalCount))
-        add(AdminMenuItem("User Log Report", "See who did what across the app", "admin_audit_log"))
-        if (ServiceLocator.sessionManager.isSuperAdmin()) {
-            add(AdminMenuItem("Reset All Data", "Super Admin only - wipe all registry data on the server", "admin_reset_data"))
+        if (isAdmin) {
+            add(AdminMenuItem("Municipalities", "Add, rename, or remove municipalities", "admin_municipalities"))
+            add(AdminMenuItem("Barangays", "Manage barangays per municipality", "admin_barangays"))
+            add(AdminMenuItem("BS Conductors", "Manage teacher/conductor records", "admin_teachers"))
+            add(AdminMenuItem("Backup & Restore", "Local device backup and server database backup", "admin_backup"))
+            add(AdminMenuItem("Notification Settings", "Configure overdue-visit alert threshold", "admin_notifications"))
+            add(AdminMenuItem("App Update", "Set the latest version so users get prompted to update", "admin_app_update"))
+            add(AdminMenuItem("Theme Color", "Choose the app-wide color theme for every user", "admin_theme"))
+            add(AdminMenuItem("Location Sharing", "Set how long a shared location stays visible in Team Locations", "admin_location_sharing"))
+            add(AdminMenuItem("User Accounts", "Manage app user accounts and roles", "admin_users"))
+            add(AdminMenuItem("Pending User Approvals", "Approve or decline new self-service signups", "admin_pending_users", badgeCount = pendingApprovalCount))
+            add(AdminMenuItem("User Log Report", "See who did what across the app", "admin_audit_log"))
+            if (ServiceLocator.sessionManager.isSuperAdmin()) {
+                add(AdminMenuItem("Reset All Data", "Super Admin only - wipe all registry data on the server", "admin_reset_data"))
+            }
+        } else {
+            add(AdminMenuItem("App Update", "View the latest published version", "admin_app_update"))
+            add(AdminMenuItem("Theme Color", "Choose the app theme for your own device", "admin_theme"))
         }
     }
 

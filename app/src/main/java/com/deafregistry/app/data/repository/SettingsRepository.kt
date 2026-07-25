@@ -33,17 +33,24 @@ class SettingsRepository(
         api.updateAppVersion(AppVersionDto(versionCode, versionName, apkUrl, releaseNotes))
 
     /** Reads the last-known theme from disk into ThemeState so the very first frame (even the
-     * pre-login screen) renders correctly - call once at app startup, before setContent. */
+     * pre-login screen) renders correctly - call once at app startup, before setContent. A
+     * conductor's local override (see setLocalThemeOverride) takes priority if one is set. */
     fun applyCachedTheme() {
-        ThemeState.current = AppThemeOption.fromKey(prefs.getString(KEY_THEME, null))
+        ThemeState.current = cachedLocalThemeOverride() ?: AppThemeOption.fromKey(prefs.getString(KEY_THEME, null))
     }
 
-    /** Fetches the admin-configured theme from the server and applies it live. Safe to call on every pull/sync. */
+    /** Fetches the admin-configured theme from the server and caches it. Safe to call on every
+     * pull/sync. Does NOT touch ThemeState if a conductor has a local override set - otherwise
+     * every sync would silently revert their personal choice back to the global theme. Returns
+     * the effective theme (the override if one is set, otherwise the fetched global value). */
     suspend fun refreshTheme(): AppThemeOption {
         val remote = AppThemeOption.fromKey(api.getTheme().theme)
         prefs.edit().putString(KEY_THEME, remote.key).apply()
-        ThemeState.current = remote
-        return remote
+        val override = cachedLocalThemeOverride()
+        if (override == null) {
+            ThemeState.current = remote
+        }
+        return override ?: remote
     }
 
     /** Admin/Super Admin only - sets the theme for every user of the app, not just this device. */
@@ -53,6 +60,17 @@ class SettingsRepository(
         ThemeState.current = remote
         return remote
     }
+
+    /** Conductor-only: applies a theme choice to just this device, without calling the server
+     * (conductors aren't allowed to change the app-wide theme). Persists across restarts and
+     * takes priority over the global theme until cleared. */
+    fun setLocalThemeOverride(option: AppThemeOption) {
+        prefs.edit().putString(KEY_LOCAL_THEME_OVERRIDE, option.key).apply()
+        ThemeState.current = option
+    }
+
+    fun cachedLocalThemeOverride(): AppThemeOption? =
+        prefs.getString(KEY_LOCAL_THEME_OVERRIDE, null)?.let { AppThemeOption.fromKey(it) }
 
     suspend fun refreshLocationShareTtl(): Int {
         val remote = api.getLocationShareTtl().locationShareTtlMinutes
@@ -72,6 +90,7 @@ class SettingsRepository(
         private const val DEFAULT_OVERDUE_DAYS = 30
         private const val KEY_OVERDUE_DAYS = "overdue_days"
         private const val KEY_THEME = "app_theme"
+        private const val KEY_LOCAL_THEME_OVERRIDE = "local_theme_override"
         private const val DEFAULT_LOCATION_SHARE_TTL_MINUTES = 60
         private const val KEY_LOCATION_SHARE_TTL = "location_share_ttl_minutes"
     }

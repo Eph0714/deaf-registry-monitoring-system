@@ -223,7 +223,6 @@ fun DashboardScreen(
                 userName = state.userName,
                 userEmail = userEmail,
                 photoUrl = photoUrl,
-                isAdmin = state.isAdmin,
                 isOnline = state.isOnline,
                 pendingSyncCount = state.pendingSyncCount,
                 onAvatarClick = { showPhotoSourceDialog = true },
@@ -248,17 +247,17 @@ fun DashboardScreen(
                 onMenuClick = { scope.launch { drawerState.open() } },
                 actions = {
                     IconButton(onClick = onOpenSearch) { Icon(Icons.Default.Search, contentDescription = "Search") }
-                    if (state.isAdmin) {
-                        IconButton(onClick = onOpenControlPanel) {
-                            if (state.pendingApprovalCount > 0) {
-                                BadgedBox(badge = {
-                                    Badge { Text(state.pendingApprovalCount.toString()) }
-                                }) {
-                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel (${state.pendingApprovalCount} pending approvals)")
-                                }
-                            } else {
-                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel")
+                    // Conductors can open Control Panel too now, just with a reduced menu (App
+                    // Update view-only, Theme Color for their own device) - see ControlPanelScreen.
+                    IconButton(onClick = onOpenControlPanel) {
+                        if (state.pendingApprovalCount > 0) {
+                            BadgedBox(badge = {
+                                Badge { Text(state.pendingApprovalCount.toString()) }
+                            }) {
+                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel (${state.pendingApprovalCount} pending approvals)")
                             }
+                        } else {
+                            Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel")
                         }
                     }
                     UserAvatar(state.userName, photoUrl) { showPhotoSourceDialog = true }
@@ -688,11 +687,8 @@ private fun DashboardQuickActionsRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, onOpenMunicipality, Modifier.weight(1f))
-                if (isAdmin) {
-                    DashboardQuickActionTile("Control Panel", Icons.Default.Settings, onOpenControlPanel, Modifier.weight(1f))
-                } else {
-                    Box(Modifier.weight(1f)) {}
-                }
+                // Conductors can open Control Panel too now, with a reduced menu (see ControlPanelScreen).
+                DashboardQuickActionTile("Control Panel", Icons.Default.Settings, onOpenControlPanel, Modifier.weight(1f))
             }
             if (isAdmin) {
                 Row(
@@ -880,7 +876,6 @@ private fun AppDrawerContent(
     userName: String,
     userEmail: String,
     photoUrl: String?,
-    isAdmin: Boolean,
     isOnline: Boolean,
     pendingSyncCount: Int,
     onAvatarClick: () -> Unit,
@@ -952,15 +947,14 @@ private fun AppDrawerContent(
                 onClick = onNavigateSearch,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
-            if (isAdmin) {
-                NavigationDrawerItem(
-                    label = { Text("Control Panel") },
-                    selected = false,
-                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    onClick = onNavigateControlPanel,
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
-            }
+            // Conductors can open Control Panel too now, with a reduced menu (see ControlPanelScreen).
+            NavigationDrawerItem(
+                label = { Text("Control Panel") },
+                selected = false,
+                icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                onClick = onNavigateControlPanel,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
             NavigationDrawerItem(
                 label = { Text("About") },
                 selected = false,

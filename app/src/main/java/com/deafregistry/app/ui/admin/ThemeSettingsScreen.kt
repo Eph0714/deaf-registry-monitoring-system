@@ -34,15 +34,20 @@ import com.deafregistry.app.ui.theme.ThemeState
 import kotlinx.coroutines.launch
 
 /**
- * Admin/Super Admin only. This sets the theme for every user of the app, not a per-device
- * preference - matches the pattern of every other Control Panel setting (overdue days, app
- * version). Saving applies live for this device immediately via ThemeState; other devices pick
- * it up on their next pull/sync.
+ * Admin/Super Admin sets the theme for every user of the app, not a per-device preference -
+ * matches the pattern of every other Control Panel setting (overdue days, app version). Saving
+ * applies live for this device immediately via ThemeState; other devices pick it up on their
+ * next pull/sync.
+ *
+ * Conductors can open this screen too, but their choice only ever applies to their own device
+ * (SettingsRepository.setLocalThemeOverride) - it never touches the server, so it can't affect
+ * anyone else's app.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeSettingsScreen(onBack: () -> Unit) {
     val repo = ServiceLocator.settingsRepository
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
     val scope = rememberCoroutineScope()
     var selected by remember { mutableStateOf(ThemeState.current) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -58,7 +63,11 @@ fun ThemeSettingsScreen(onBack: () -> Unit) {
     ) { padding: PaddingValues ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             Text(
-                "Sets the color theme for every user of the app - not just this device.",
+                if (isAdmin) {
+                    "Sets the color theme for every user of the app - not just this device."
+                } else {
+                    "Sets the color theme for your device only - it won't change anyone else's app."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -73,7 +82,7 @@ fun ThemeSettingsScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             ThemeOptionRow(
                 title = "Dark Purple",
-                subtitle = "Black background, purple banner, white text",
+                subtitle = "Dark background, light purple banner, white text",
                 selected = selected == AppThemeOption.DARK_PURPLE,
                 onClick = { selected = AppThemeOption.DARK_PURPLE }
             )
@@ -81,12 +90,17 @@ fun ThemeSettingsScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = {
-                    isSaving = true
-                    scope.launch {
-                        val result = runCatching { repo.updateTheme(selected) }
-                        isSaving = false
-                        result.onSuccess { message = "Saved" }
-                        result.onFailure { message = "Failed to save: ${it.message}" }
+                    if (isAdmin) {
+                        isSaving = true
+                        scope.launch {
+                            val result = runCatching { repo.updateTheme(selected) }
+                            isSaving = false
+                            result.onSuccess { message = "Saved for everyone" }
+                            result.onFailure { message = "Failed to save: ${it.message}" }
+                        }
+                    } else {
+                        repo.setLocalThemeOverride(selected)
+                        message = "Saved on this device"
                     }
                 },
                 enabled = !isSaving,

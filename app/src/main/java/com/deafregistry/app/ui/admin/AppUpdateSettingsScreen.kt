@@ -30,14 +30,18 @@ import com.deafregistry.app.ui.common.AppTopBar
 import kotlinx.coroutines.launch
 
 /**
- * Admin/Super Admin only. Sets what version+download link every device gets prompted to update
- * to (see the Dashboard's update-available dialog) - this app isn't distributed through Google
+ * Admin/Super Admin sets what version+download link every device gets prompted to update to
+ * (see the Dashboard's update-available dialog) - this app isn't distributed through Google
  * Play, so there's no automatic update channel; this is the manual substitute.
+ *
+ * Conductors can open this screen too, but view-only - the fields are read-only and there's no
+ * Save button, since the server rejects this PUT for anyone but admin/super_admin anyway.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppUpdateSettingsScreen(onBack: () -> Unit) {
     val repo = ServiceLocator.settingsRepository
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
     val scope = rememberCoroutineScope()
     var versionCodeText by remember { mutableStateOf("") }
     var versionName by remember { mutableStateOf("") }
@@ -67,7 +71,11 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Set the newest published version below - anyone on an older version code will see an update prompt with a link to this URL.",
+                if (isAdmin) {
+                    "Set the newest published version below - anyone on an older version code will see an update prompt with a link to this URL."
+                } else {
+                    "View only - contact an administrator to change this."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -76,6 +84,7 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
                 value = versionCodeText,
                 onValueChange = { versionCodeText = it.filter { c -> c.isDigit() } },
                 label = { Text("Version code (matches versionCode in build.gradle.kts)") },
+                readOnly = !isAdmin,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -84,6 +93,7 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
                 value = versionName,
                 onValueChange = { versionName = it },
                 label = { Text("Version name (e.g. 1.1)") },
+                readOnly = !isAdmin,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
@@ -91,6 +101,7 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
                 value = apkUrl,
                 onValueChange = { apkUrl = it },
                 label = { Text("Download URL for the new APK") },
+                readOnly = !isAdmin,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
@@ -98,34 +109,37 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
                 value = releaseNotes,
                 onValueChange = { releaseNotes = it },
                 label = { Text("What's new (optional)") },
+                readOnly = !isAdmin,
                 minLines = 2,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = {
-                    val code = versionCodeText.toIntOrNull()
-                    if (code == null || code < 1) {
-                        message = "Enter a valid version code"
-                        return@Button
-                    }
-                    if (versionName.isBlank() || apkUrl.isBlank()) {
-                        message = "Version name and download URL are required"
-                        return@Button
-                    }
-                    isSaving = true
-                    scope.launch {
-                        val result = runCatching {
-                            repo.updateLatestAppVersion(code, versionName.trim(), apkUrl.trim(), releaseNotes.trim())
+            if (isAdmin) {
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        val code = versionCodeText.toIntOrNull()
+                        if (code == null || code < 1) {
+                            message = "Enter a valid version code"
+                            return@Button
                         }
-                        isSaving = false
-                        result.onSuccess { message = "Saved" }
-                        result.onFailure { message = "Failed to save: ${it.message}" }
-                    }
-                },
-                enabled = !isSaving,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Save") }
+                        if (versionName.isBlank() || apkUrl.isBlank()) {
+                            message = "Version name and download URL are required"
+                            return@Button
+                        }
+                        isSaving = true
+                        scope.launch {
+                            val result = runCatching {
+                                repo.updateLatestAppVersion(code, versionName.trim(), apkUrl.trim(), releaseNotes.trim())
+                            }
+                            isSaving = false
+                            result.onSuccess { message = "Saved" }
+                            result.onFailure { message = "Failed to save: ${it.message}" }
+                        }
+                    },
+                    enabled = !isSaving,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Save") }
+            }
 
             message?.let {
                 Spacer(Modifier.height(8.dp))
