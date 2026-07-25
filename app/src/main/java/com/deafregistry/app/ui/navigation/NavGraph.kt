@@ -23,6 +23,7 @@ import com.deafregistry.app.ui.admin.NotificationSettingsScreen
 import com.deafregistry.app.ui.admin.LocationSharingSettingsScreen
 import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
+import com.deafregistry.app.ui.municipality.MunicipalityDirectoryScreen
 import com.deafregistry.app.ui.login.LoginScreen
 import com.deafregistry.app.ui.login.SignUpScreen
 import com.deafregistry.app.ui.profile.DeafProfileScreen
@@ -56,7 +57,7 @@ fun AppNavGraph(sessionManager: SessionManager) {
 
         composable(Routes.DASHBOARD) {
             DashboardScreen(
-                onOpenDeafRecords = { navController.navigate(Routes.allIndividuals("Municipalities", "municipality")) },
+                onOpenDeafRecords = { navController.navigate(Routes.MUNICIPALITY_DIRECTORY) },
                 onOpenAllIndividuals = { title, sort -> navController.navigate(Routes.allIndividuals(title, sort)) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
@@ -69,6 +70,15 @@ fun AppNavGraph(sessionManager: SessionManager) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(Routes.MUNICIPALITY_DIRECTORY) {
+            MunicipalityDirectoryScreen(
+                onBack = { navController.popBackStack() },
+                onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
+                onEditProfile = { uuid -> navController.navigate(Routes.deafEditorEdit(uuid)) },
+                onAddNew = { navController.navigate(Routes.deafEditorNew(-1)) }
             )
         }
 

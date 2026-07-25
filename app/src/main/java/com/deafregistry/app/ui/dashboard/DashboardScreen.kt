@@ -51,10 +51,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,7 +59,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -90,7 +86,6 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.deafregistry.app.BuildConfig
-import com.deafregistry.app.data.local.entity.DeafIndividualEntity
 import com.deafregistry.app.data.remote.dto.CalendarEventDto
 import com.deafregistry.app.data.remote.dto.NotVisitedDto
 import com.deafregistry.app.data.remote.dto.RecentVisitDto
@@ -165,27 +160,6 @@ fun DashboardScreen(
         }
     }
     LaunchedEffect(Unit) { loadCalendarEvents() }
-
-    // Municipality/Barangay directory: every deaf record grouped by whichever the dropdown
-    // picks, with a header count per group - a local Room flow, so no ViewModel wiring needed
-    // (same lightweight ServiceLocator-direct pattern MyLocationCard already uses above).
-    var directoryCategory by remember { mutableStateOf("municipality") }
-    var directoryCategoryMenuExpanded by remember { mutableStateOf(false) }
-    val directoryFlow = remember(directoryCategory) {
-        if (directoryCategory == "municipality") {
-            ServiceLocator.deafIndividualRepository.observeAllActiveByMunicipality()
-        } else {
-            ServiceLocator.deafIndividualRepository.observeAllActiveByBarangay()
-        }
-    }
-    val directoryIndividuals by directoryFlow.collectAsState(initial = emptyList())
-    val directoryGroups = remember(directoryIndividuals, directoryCategory) {
-        if (directoryCategory == "municipality") {
-            directoryIndividuals.groupBy { it.municipalityName }
-        } else {
-            directoryIndividuals.groupBy { "${it.municipalityName} / ${it.barangayName}" }
-        }.toSortedMap()
-    }
 
     fun loadTeamLocations() {
         scope.launch {
@@ -464,71 +438,6 @@ fun DashboardScreen(
                         }
                     }
 
-
-                    item {
-                        Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                            Text(
-                                "Municipality Directory",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            ExposedDropdownMenuBox(
-                                expanded = directoryCategoryMenuExpanded,
-                                onExpandedChange = { directoryCategoryMenuExpanded = it }
-                            ) {
-                                OutlinedTextField(
-                                    value = if (directoryCategory == "municipality") "Municipality" else "Barangay",
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Search by") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = directoryCategoryMenuExpanded) },
-                                    modifier = Modifier.fillMaxWidth().menuAnchor()
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = directoryCategoryMenuExpanded,
-                                    onDismissRequest = { directoryCategoryMenuExpanded = false }
-                                ) {
-                                    DropdownMenuItem(text = { Text("Municipality") }, onClick = {
-                                        directoryCategory = "municipality"
-                                        directoryCategoryMenuExpanded = false
-                                    })
-                                    DropdownMenuItem(text = { Text("Barangay") }, onClick = {
-                                        directoryCategory = "barangay"
-                                        directoryCategoryMenuExpanded = false
-                                    })
-                                }
-                            }
-                        }
-                    }
-
-                    if (directoryGroups.isEmpty()) {
-                        item { EmptyState("No registered individuals yet.") }
-                    } else {
-                        directoryGroups.forEach { (header, members) ->
-                            item(key = "directory_header_$header") {
-                                Text(
-                                    "$header (${members.size})",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)
-                                )
-                            }
-                            items(members, key = { "directory_${it.uuid}" }) { individual ->
-                                Text(
-                                    individual.fullName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onOpenProfile(individual.uuid) }
-                                        .padding(vertical = 6.dp)
-                                )
-                            }
-                        }
-                    }
 
                     item {
                         FollowUpNeededCard(
