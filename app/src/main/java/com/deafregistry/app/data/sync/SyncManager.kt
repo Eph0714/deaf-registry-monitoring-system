@@ -25,7 +25,10 @@ class SyncManager(
      * until the user explicitly syncs.
      */
     suspend fun sync() {
-        referenceDataRepository.refreshAll()
+        // Each step is independent - reference data or profile refresh failing (e.g. a slow
+        // Render cold start timing out on an early call) must not prevent deaf individuals from
+        // being pushed/pulled, which is the part users actually notice as "Sync doesn't work".
+        runCatching { referenceDataRepository.refreshAll() }
         runCatching { settingsRepository.refreshOverdueDays() }
         runCatching { authRepository.refreshProfile() }
         deafIndividualRepository.pushDirty()
@@ -40,7 +43,7 @@ class SyncManager(
      * locally-queued changes to the server - only sync() does that.
      */
     suspend fun pull() {
-        referenceDataRepository.refreshAll()
+        runCatching { referenceDataRepository.refreshAll() }
         runCatching { settingsRepository.refreshOverdueDays() }
         runCatching { authRepository.refreshProfile() }
         deafIndividualRepository.refreshFromServer()

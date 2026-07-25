@@ -108,7 +108,19 @@ class DeafIndividualRepository(
         val remote = api.getDeafIndividuals()
         val dirtyUuids = dao.getDirty().map { it.uuid }.toSet()
         val entities = remote.filter { it.uuid !in dirtyUuids }.map { toDto(it) }
-        dao.upsertAll(entities)
+        try {
+            dao.upsertAll(entities)
+        } catch (e: Exception) {
+            // upsertAll is one transaction - a single malformed row (e.g. a legacy record with an
+            // unexpectedly null field) would otherwise throw and silently block every other
+            // record in the batch from syncing too. Fall back to one-at-a-time so a bad row only
+            // costs itself, not everyone else's sync.
+            android.util.Log.w("DeafIndividualRepository", "Batch upsert failed, retrying individually", e)
+            for (entity in entities) {
+                runCatching { dao.upsert(entity) }
+                    .onFailure { android.util.Log.w("DeafIndividualRepository", "Skipping unsyncable record ${entity.uuid}", it) }
+            }
+        }
     }
 
     suspend fun createLocal(

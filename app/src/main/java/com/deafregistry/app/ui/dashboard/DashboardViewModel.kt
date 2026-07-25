@@ -9,6 +9,7 @@ import com.deafregistry.app.data.remote.dto.NotVisitedDto
 import com.deafregistry.app.data.remote.dto.RecentVisitDto
 import com.deafregistry.app.data.repository.ReferenceDataRepository
 import com.deafregistry.app.data.repository.ReportRepository
+import com.deafregistry.app.data.repository.SettingsRepository
 import com.deafregistry.app.data.repository.UserRepository
 import com.deafregistry.app.data.session.SessionManager
 import com.deafregistry.app.data.sync.SyncManager
@@ -41,6 +42,7 @@ class DashboardViewModel(
     private val sessionManager: SessionManager,
     private val userRepository: UserRepository,
     private val reportRepository: ReportRepository,
+    private val settingsRepository: SettingsRepository,
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
@@ -72,7 +74,7 @@ class DashboardViewModel(
             viewModelScope.launch {
                 try {
                     val recentVisits = reportRepository.recentVisits(5)
-                    val pendingFollowUps = reportRepository.notVisited(30)
+                    val pendingFollowUps = reportRepository.notVisited(settingsRepository.cachedOverdueDays().toInt())
                     val byStatus = reportRepository.byStatus()
                     val bySkill = reportRepository.bySkill()
                     _uiState.value = _uiState.value.copy(

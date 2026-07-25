@@ -104,6 +104,7 @@ fun DashboardScreen(
                 ServiceLocator.sessionManager,
                 ServiceLocator.userRepository,
                 ServiceLocator.reportRepository,
+                ServiceLocator.settingsRepository,
                 ServiceLocator.networkMonitor
             )
         }

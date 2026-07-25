@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -250,6 +252,7 @@ private fun flowForCategory(categoryKey: String, statusFilter: String? = null) =
 private fun GroupedIndividualsList(categoryKey: String, statusFilter: String?, onOpenProfile: (String) -> Unit) {
     val flow = remember(categoryKey, statusFilter) { flowForCategory(categoryKey, statusFilter) }
     val individuals by flow.collectAsState(initial = emptyList())
+    val lastVisitByUuid = rememberLastVisitByUuid()
 
     if (individuals.isEmpty()) {
         EmptyState("No registered individuals yet.")
@@ -269,17 +272,25 @@ private fun GroupedIndividualsList(categoryKey: String, statusFilter: String?, o
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         if (groupKeyOf == null) {
             items(individuals, key = { it.uuid }) { individual ->
-                IndividualRow(individual) { onOpenProfile(individual.uuid) }
+                IndividualRow(individual, lastVisitByUuid[individual.uuid]) { onOpenProfile(individual.uuid) }
             }
         } else {
             individuals.groupBy(groupKeyOf).forEach { (header, members) ->
                 item(key = "header_$header") { GroupHeader(header, members.size) }
                 items(members, key = { it.uuid }) { individual ->
-                    IndividualRow(individual) { onOpenProfile(individual.uuid) }
+                    IndividualRow(individual, lastVisitByUuid[individual.uuid]) { onOpenProfile(individual.uuid) }
                 }
             }
         }
     }
+}
+
+/** Looked up by uuid and merged into every category's rows, not just the "Last Date of Visit" one. */
+@Composable
+private fun rememberLastVisitByUuid(): Map<String, String?> {
+    val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
+    val rows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
+    return remember(rows) { rows.associate { it.individual.uuid to it.lastVisitDate } }
 }
 
 @Composable
@@ -296,7 +307,7 @@ private fun LastVisitList(onOpenProfile: (String) -> Unit) {
         rows.groupBy { it.lastVisitDate?.take(10) ?: "Never Visited" }.forEach { (header, members) ->
             item(key = "header_$header") { GroupHeader(header, members.size) }
             items(members, key = { it.individual.uuid }) { row ->
-                IndividualRow(row.individual) { onOpenProfile(row.individual.uuid) }
+                IndividualRow(row.individual, row.lastVisitDate) { onOpenProfile(row.individual.uuid) }
             }
         }
     }
@@ -314,26 +325,46 @@ private fun GroupHeader(text: String, count: Int) {
 }
 
 @Composable
-private fun IndividualRow(individual: DeafIndividualEntity, onClick: () -> Unit) {
+private fun IndividualRow(individual: DeafIndividualEntity, lastVisitDate: String? = null, onClick: () -> Unit) {
     // "Elephant" isn't a font Android ships or that we have a licensed file for, so BS records use
     // the heaviest available weight (Black) as the closest stand-in, plus the app's blue accent.
     val isBs = individual.monitoringStatus == "BS"
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable(onClick = onClick)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    individual.fullName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isBs) FontWeight.Black else FontWeight.Normal,
+                    color = if (isBs) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "${individual.barangayName}, ${individual.municipalityName} • ${individual.monitoringStatus}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = if (isBs) FontWeight.Black else FontWeight.Normal,
+                    color = if (isBs) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(8.dp))
             Text(
-                individual.fullName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = if (isBs) FontWeight.Black else FontWeight.Normal,
-                color = if (isBs) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                "${individual.barangayName}, ${individual.municipalityName} • ${individual.monitoringStatus}",
+                daysSinceVisitLabel(lastVisitDate),
                 style = MaterialTheme.typography.bodySmall,
-                fontWeight = if (isBs) FontWeight.Black else FontWeight.Normal,
-                color = if (isBs) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+private fun daysSinceVisitLabel(lastVisitDate: String?): String {
+    if (lastVisitDate.isNullOrBlank()) return "Never visited"
+    val days = runCatching {
+        java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.parse(lastVisitDate.take(10)), java.time.LocalDate.now())
+    }.getOrNull() ?: return "—"
+    return when {
+        days <= 0 -> "Today"
+        days == 1L -> "1 day ago"
+        else -> "$days days ago"
     }
 }
