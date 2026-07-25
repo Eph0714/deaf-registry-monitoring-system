@@ -21,6 +21,7 @@ object Routes {
     const val ADMIN_BACKUP = "admin_backup"
     const val ADMIN_NOTIFICATIONS = "admin_notifications"
     const val ADMIN_APP_UPDATE = "admin_app_update"
+    const val ADMIN_THEME = "admin_theme"
     const val ADMIN_PENDING_USERS = "admin_pending_users"
     const val ADMIN_AUDIT_LOG = "admin_audit_log"
     const val ADMIN_RESET_DATA = "admin_reset_data"

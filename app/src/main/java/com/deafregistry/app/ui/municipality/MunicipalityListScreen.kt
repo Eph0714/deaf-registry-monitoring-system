@@ -35,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -139,7 +138,7 @@ private fun DeafIndividualRow(individual: DeafIndividualEntity, onClick: () -> U
                 individual.fullName,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (isBsRecord) FontWeight.Bold else FontWeight.Normal,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 "${individual.barangayName} • ${individual.skillLevel} • ${individual.monitoringStatus}",

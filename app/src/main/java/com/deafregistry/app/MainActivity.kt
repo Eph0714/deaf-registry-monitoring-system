@@ -18,6 +18,10 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Applies the last-known theme (or the default, on first ever launch) before the first
+        // frame - even the pre-login screen should render in whichever theme was last set,
+        // without needing an authenticated fetch first.
+        ServiceLocator.settingsRepository.applyCachedTheme()
         setContent {
             DeafRegistryTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

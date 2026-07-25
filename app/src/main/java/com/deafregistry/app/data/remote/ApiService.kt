@@ -136,6 +136,12 @@ interface ApiService {
     @PUT("settings/app-version")
     suspend fun updateAppVersion(@Body request: AppVersionDto): AppVersionDto
 
+    @GET("settings/theme")
+    suspend fun getTheme(): ThemeDto
+
+    @PUT("settings/theme")
+    suspend fun updateTheme(@Body request: ThemeDto): ThemeDto
+
     // Visits
     @GET("deaf-individuals/{deafId}/visits")
     suspend fun getVisits(@Path("deafId") deafId: Int): List<VisitDto>

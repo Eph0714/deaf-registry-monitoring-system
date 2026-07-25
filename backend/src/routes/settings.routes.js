@@ -8,5 +8,7 @@ router.get('/overdue-days', requireAuth, ctrl.getOverdueDays);
 router.put('/overdue-days', requireAuth, requireAdmin, ctrl.updateOverdueDays);
 router.get('/app-version', requireAuth, ctrl.getAppVersion);
 router.put('/app-version', requireAuth, requireAdmin, ctrl.updateAppVersion);
+router.get('/theme', requireAuth, ctrl.getTheme);
+router.put('/theme', requireAuth, requireAdmin, ctrl.updateTheme);
 
 module.exports = router;

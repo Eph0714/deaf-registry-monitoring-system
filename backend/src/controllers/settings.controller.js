@@ -65,4 +65,25 @@ const updateAppVersion = asyncHandler(async (req, res) => {
   res.json({ version_code: code, version_name, apk_url, release_notes: release_notes || null });
 });
 
-module.exports = { getOverdueDays, updateOverdueDays, getAppVersion, updateAppVersion };
+const THEME_KEY = 'app_theme';
+const VALID_THEMES = ['light_blue', 'dark_purple'];
+
+const getTheme = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query('SELECT "value" FROM settings WHERE "key" = $1', [THEME_KEY]);
+  res.json({ theme: rows.length && VALID_THEMES.includes(rows[0].value) ? rows[0].value : VALID_THEMES[0] });
+});
+
+const updateTheme = asyncHandler(async (req, res) => {
+  const { theme } = req.body;
+  if (!VALID_THEMES.includes(theme)) {
+    return res.status(400).json({ message: `theme must be one of: ${VALID_THEMES.join(', ')}` });
+  }
+  await pool.query(
+    'INSERT INTO settings ("key", "value") VALUES ($1, $2) ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED.value',
+    [THEME_KEY, theme]
+  );
+  await logAudit(req.user.id, 'UPDATE', 'setting', null, { key: THEME_KEY, value: theme });
+  res.json({ theme });
+});
+
+module.exports = { getOverdueDays, updateOverdueDays, getAppVersion, updateAppVersion, getTheme, updateTheme };

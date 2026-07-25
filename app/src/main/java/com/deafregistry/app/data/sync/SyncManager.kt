@@ -30,6 +30,7 @@ class SyncManager(
         // being pushed/pulled, which is the part users actually notice as "Sync doesn't work".
         runCatching { referenceDataRepository.refreshAll() }
         runCatching { settingsRepository.refreshOverdueDays() }
+        runCatching { settingsRepository.refreshTheme() }
         runCatching { authRepository.refreshProfile() }
         deafIndividualRepository.pushDirty()
         visitRepository.pushDirty()
@@ -45,6 +46,7 @@ class SyncManager(
     suspend fun pull() {
         runCatching { referenceDataRepository.refreshAll() }
         runCatching { settingsRepository.refreshOverdueDays() }
+        runCatching { settingsRepository.refreshTheme() }
         runCatching { authRepository.refreshProfile() }
         deafIndividualRepository.refreshFromServer()
     }

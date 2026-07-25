@@ -21,7 +21,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -86,7 +85,7 @@ fun SearchScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit) {
                                     individual.fullName,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = if (isBsRecord) FontWeight.Bold else FontWeight.Normal,
-                                    color = Color.Black
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     "${individual.municipalityName} • ${individual.barangayName} • ${individual.monitoringStatus}",

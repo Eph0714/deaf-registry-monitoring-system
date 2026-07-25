@@ -52,3 +52,5 @@ data class AppVersionDto(
     @SerializedName("apk_url") val apkUrl: String?,
     @SerializedName("release_notes") val releaseNotes: String?
 )
+
+data class ThemeDto(@SerializedName("theme") val theme: String)
