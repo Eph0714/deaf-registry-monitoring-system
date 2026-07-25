@@ -1,6 +1,9 @@
 package com.deafregistry.app.ui.common
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -34,13 +37,26 @@ import kotlinx.coroutines.launch
 /**
  * Full-screen photo viewer with a Download button, used for both user and deaf-individual photos.
  * [photoUrl] can be either a real network URL or a local, not-yet-synced file path -
- * [ExportUtils.downloadImage] handles both the same way, so the button always works.
+ * [ExportUtils.writeImageToUri] handles both the same way, so the button always works.
+ * Download opens the system's "Save As" picker so the user chooses exactly where to save it.
  */
 @Composable
 fun PhotoViewerDialog(photoUrl: String, fileName: String, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isDownloading by remember { mutableStateOf(false) }
+
+    val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/jpeg")) { uri: Uri? ->
+        if (uri != null) {
+            isDownloading = true
+            scope.launch {
+                runCatching { ExportUtils.writeImageToUri(context, uri, photoUrl) }
+                    .onSuccess { Toast.makeText(context, "Saved", Toast.LENGTH_LONG).show() }
+                    .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                isDownloading = false
+            }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -52,15 +68,7 @@ fun PhotoViewerDialog(photoUrl: String, fileName: String, onDismiss: () -> Unit)
             )
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp)) {
                 IconButton(
-                    onClick = {
-                        isDownloading = true
-                        scope.launch {
-                            runCatching { ExportUtils.downloadImage(context, photoUrl, fileName) }
-                                .onSuccess { Toast.makeText(context, "Saved to $it", Toast.LENGTH_LONG).show() }
-                                .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
-                            isDownloading = false
-                        }
-                    },
+                    onClick = { saveLauncher.launch(fileName) },
                     enabled = !isDownloading
                 ) {
                     if (isDownloading) {

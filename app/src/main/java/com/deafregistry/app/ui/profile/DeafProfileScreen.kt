@@ -2,6 +2,7 @@ package com.deafregistry.app.ui.profile
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -98,18 +99,30 @@ fun DeafProfileScreen(
     var pendingVisit by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var showPhotoViewer by remember { mutableStateOf(false) }
     var isDownloadingPhoto by remember { mutableStateOf(false) }
+    var pendingPhotoSource by remember { mutableStateOf<String?>(null) }
     val isAdmin = ServiceLocator.sessionManager.isAdmin()
 
-    fun downloadPhoto(photoUrl: String, fullName: String) {
-        isDownloadingPhoto = true
-        scope.launch {
-            val resolved = resolvePhotoUrl(photoUrl, BuildConfig.API_BASE_URL)
-            val fileName = "${fullName.replace(Regex("[^A-Za-z0-9-_ ]"), "").ifBlank { "deaf_record" }}.jpg"
-            runCatching { resolved?.let { ExportUtils.downloadImage(context, it, fileName) } }
-                .onSuccess { path -> Toast.makeText(context, "Saved to $path", Toast.LENGTH_LONG).show() }
-                .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
-            isDownloadingPhoto = false
+    // Opens the system's "Save As" picker so the user chooses exactly where to save the photo,
+    // instead of it always landing in Downloads.
+    val savePhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/jpeg")) { uri: Uri? ->
+        val source = pendingPhotoSource
+        pendingPhotoSource = null
+        if (uri != null && source != null) {
+            isDownloadingPhoto = true
+            scope.launch {
+                runCatching { ExportUtils.writeImageToUri(context, uri, source) }
+                    .onSuccess { Toast.makeText(context, "Saved", Toast.LENGTH_LONG).show() }
+                    .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                isDownloadingPhoto = false
+            }
         }
+    }
+
+    fun downloadPhoto(photoUrl: String, fullName: String) {
+        val resolved = resolvePhotoUrl(photoUrl, BuildConfig.API_BASE_URL) ?: return
+        pendingPhotoSource = resolved
+        val fileName = "${fullName.replace(Regex("[^A-Za-z0-9-_ ]"), "").ifBlank { "deaf_record" }}.jpg"
+        savePhotoLauncher.launch(fileName)
     }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->

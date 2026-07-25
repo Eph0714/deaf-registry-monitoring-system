@@ -23,33 +23,32 @@ import java.net.URL
 object ExportUtils {
 
     /**
-     * Saves a photo into the device's Downloads folder. Returns the saved display path. Works for
-     * both a real network URL (fetched over HTTP) and a local, not-yet-synced file path (copied
-     * directly) - the same photo picker/camera flow used elsewhere in the app hands either kind
-     * of string to `AsyncImage`, so downloading needs to handle both the same way.
+     * Writes a photo to a destination the user picked themselves via the system's Storage Access
+     * Framework "Save As" picker (`ActivityResultContracts.CreateDocument`) - callers launch that
+     * picker for a `Uri`, then hand it here rather than this util choosing a folder on its own.
+     * Works for both a real network URL (fetched over HTTP) and a local, not-yet-synced file path
+     * (copied directly) - the same photo picker/camera flow used elsewhere in the app hands either
+     * kind of string to `AsyncImage`, so this needs to handle both the same way.
      */
-    suspend fun downloadImage(context: Context, source: String, fileName: String): String = withContext(Dispatchers.IO) {
-        if (source.startsWith("http://") || source.startsWith("https://")) {
-            val connection = URL(source).openConnection() as HttpURLConnection
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
-            try {
-                connection.connect()
-                val mimeType = connection.contentType?.takeIf { it.startsWith("image/") } ?: "image/jpeg"
-                val result = writeToDownloads(context, fileName, mimeType) { out ->
+    suspend fun writeImageToUri(context: Context, destination: Uri, source: String): Unit = withContext(Dispatchers.IO) {
+        val output = context.contentResolver.openOutputStream(destination)
+            ?: throw IllegalStateException("Could not open the chosen location for writing")
+        output.use { out ->
+            if (source.startsWith("http://") || source.startsWith("https://")) {
+                val connection = URL(source).openConnection() as HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                try {
+                    connection.connect()
                     connection.inputStream.use { input -> input.copyTo(out) }
+                } finally {
+                    connection.disconnect()
                 }
-                result.displayPath
-            } finally {
-                connection.disconnect()
-            }
-        } else {
-            val sourceFile = File(source)
-            if (!sourceFile.exists()) throw IllegalStateException("Photo file not found")
-            val result = writeToDownloads(context, fileName, "image/jpeg") { out ->
+            } else {
+                val sourceFile = File(source)
+                if (!sourceFile.exists()) throw IllegalStateException("Photo file not found")
                 sourceFile.inputStream().use { input -> input.copyTo(out) }
             }
-            result.displayPath
         }
     }
 
