@@ -177,6 +177,9 @@ interface DeafIndividualDao {
     @Query("DELETE FROM deaf_individuals WHERE uuid = :uuid")
     suspend fun hardDelete(uuid: String)
 
-    @Query("DELETE FROM deaf_individuals WHERE serverId IS NOT NULL")
-    suspend fun clearSynced()
+    // Removes previously-synced records that are no longer dirty, excluding whatever's
+    // currently mid-edit (see refreshFromServer() - this is how a deletion made on another
+    // device gets reconciled locally, since upsertAll alone only ever adds/updates, never removes).
+    @Query("DELETE FROM deaf_individuals WHERE serverId IS NOT NULL AND uuid NOT IN (:protectedUuids)")
+    suspend fun clearSyncedExcept(protectedUuids: List<String>)
 }

@@ -108,6 +108,11 @@ class DeafIndividualRepository(
         val remote = api.getDeafIndividuals()
         val dirtyUuids = dao.getDirty().map { it.uuid }.toSet()
         val entities = remote.filter { it.uuid !in dirtyUuids }.map { toDto(it) }
+        // Reconciles deletions made on another device. upsertAll alone only ever adds/updates -
+        // a record deleted server-side (by any device) would otherwise stay cached here forever,
+        // showing up as a permanent "ghost" no matter how many times this device syncs. Dirty
+        // (mid-edit or not-yet-pushed) records are protected so this can never discard local work.
+        dao.clearSyncedExcept(dirtyUuids.toList())
         try {
             dao.upsertAll(entities)
         } catch (e: Exception) {
