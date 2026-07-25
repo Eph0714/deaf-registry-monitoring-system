@@ -2,6 +2,7 @@ package com.deafregistry.app.ui.profile
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Schedule
@@ -28,6 +30,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,6 +64,7 @@ import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.GenericViewModelFactory
 import com.deafregistry.app.ui.common.PhotoViewerDialog
 import com.deafregistry.app.ui.common.resolvePhotoUrl
+import com.deafregistry.app.util.ExportUtils
 import com.deafregistry.app.util.LocationHelper
 import com.deafregistry.app.util.MapsUtil
 import kotlinx.coroutines.launch
@@ -93,7 +97,20 @@ fun DeafProfileScreen(
     var showAddVisitDialog by remember { mutableStateOf(false) }
     var pendingVisit by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var showPhotoViewer by remember { mutableStateOf(false) }
+    var isDownloadingPhoto by remember { mutableStateOf(false) }
     val isAdmin = ServiceLocator.sessionManager.isAdmin()
+
+    fun downloadPhoto(photoUrl: String, fullName: String) {
+        isDownloadingPhoto = true
+        scope.launch {
+            val resolved = resolvePhotoUrl(photoUrl, BuildConfig.API_BASE_URL)
+            val fileName = "${fullName.replace(Regex("[^A-Za-z0-9-_ ]"), "").ifBlank { "deaf_record" }}.jpg"
+            runCatching { resolved?.let { ExportUtils.downloadImage(context, it, fileName) } }
+                .onSuccess { path -> Toast.makeText(context, "Saved to $path", Toast.LENGTH_LONG).show() }
+                .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
+            isDownloadingPhoto = false
+        }
+    }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         scope.launch {
@@ -146,7 +163,11 @@ fun DeafProfileScreen(
                         calculateAge(individual.birthDate),
                         individual.gender,
                         individual.photoUrl ?: individual.localPhotoPath,
-                        onPhotoClick = if (individual.photoUrl != null) { { showPhotoViewer = true } } else null
+                        onPhotoClick = if (individual.photoUrl != null) { { showPhotoViewer = true } } else null,
+                        onDownloadClick = if (individual.photoUrl != null) {
+                            { downloadPhoto(individual.photoUrl, individual.fullName) }
+                        } else null,
+                        isDownloading = isDownloadingPhoto
                     )
                     Spacer(Modifier.height(16.dp))
 
@@ -369,7 +390,15 @@ private fun calculateAge(birthDate: String?): Int? {
 }
 
 @Composable
-private fun ProfileHeader(name: String, age: Int?, gender: String, photo: String?, onPhotoClick: (() -> Unit)? = null) {
+private fun ProfileHeader(
+    name: String,
+    age: Int?,
+    gender: String,
+    photo: String?,
+    onPhotoClick: (() -> Unit)? = null,
+    onDownloadClick: (() -> Unit)? = null,
+    isDownloading: Boolean = false
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
@@ -380,10 +409,22 @@ private fun ProfileHeader(name: String, age: Int?, gender: String, photo: String
             contentDescription = "Profile photo",
             contentScale = ContentScale.Crop,
             // dp is defined as 1/160 inch at baseline density, so 320.dp is a true 2x2 inch square
-            // regardless of screen density. Tap to view full-size and download (see PhotoViewerDialog).
+            // regardless of screen density. Tap to view full-size (see PhotoViewerDialog).
             modifier = Modifier.size(320.dp)
                 .let { if (onPhotoClick != null) it.clickable(onClick = onPhotoClick) else it }
         )
+        if (onDownloadClick != null) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onDownloadClick, enabled = !isDownloading) {
+                if (isDownloading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                } else {
+                    Icon(Icons.Default.Download, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Download Photo")
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
         Text(name, style = MaterialTheme.typography.headlineSmall)
         Text("${age ?: "—"} years old • $gender", color = MaterialTheme.colorScheme.onSurfaceVariant)
