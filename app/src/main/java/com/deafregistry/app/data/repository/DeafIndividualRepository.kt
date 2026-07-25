@@ -49,6 +49,8 @@ class DeafIndividualRepository(
 
     fun observeAllActiveByStatus(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveByStatus()
 
+    fun observeAllActiveBySkillLevel(): Flow<List<DeafIndividualEntity>> = dao.observeAllActiveBySkillLevel()
+
     fun observeAllActiveWithLastVisit(): Flow<List<DeafIndividualWithLastVisit>> = dao.observeAllActiveWithLastVisit()
 
     fun observeByCategory(

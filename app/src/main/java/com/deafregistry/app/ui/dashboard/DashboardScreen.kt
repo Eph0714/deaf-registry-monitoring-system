@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Search
@@ -132,6 +133,7 @@ fun DashboardScreen(
     }
 
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
     var pendingPhotoFile by remember { mutableStateOf<File?>(null) }
     val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) pendingPhotoFile?.let { file ->
@@ -177,9 +179,8 @@ fun DashboardScreen(
                 pendingSyncCount = state.pendingSyncCount,
                 onAvatarClick = { showPhotoSourceDialog = true },
                 onNavigateSearch = { closeDrawer(onOpenSearch) },
-                onNavigateDeafRecords = { closeDrawer(onOpenDeafRecords) },
-                onNavigateReports = { closeDrawer(onOpenReports) },
                 onNavigateControlPanel = { closeDrawer(onOpenControlPanel) },
+                onNavigateAbout = { closeDrawer { showAboutDialog = true } },
                 onSync = { closeDrawer(viewModel::sync) },
                 onLogout = {
                     closeDrawer {
@@ -375,6 +376,17 @@ fun DashboardScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showPhotoSourceDialog = false; pickImageLauncher.launch("image/*") }) { Text("Gallery") }
+            }
+        )
+    }
+
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            title = { Text("About") },
+            text = { Text("Created to praise Jehovah and support Matthew 24:14") },
+            confirmButton = {
+                TextButton(onClick = { showAboutDialog = false }) { Text("OK") }
             }
         )
     }
@@ -698,9 +710,8 @@ private fun AppDrawerContent(
     pendingSyncCount: Int,
     onAvatarClick: () -> Unit,
     onNavigateSearch: () -> Unit,
-    onNavigateDeafRecords: () -> Unit,
-    onNavigateReports: () -> Unit,
     onNavigateControlPanel: () -> Unit,
+    onNavigateAbout: () -> Unit,
     onSync: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -766,20 +777,6 @@ private fun AppDrawerContent(
                 onClick = onNavigateSearch,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
-            NavigationDrawerItem(
-                label = { Text("Deaf Records") },
-                selected = false,
-                icon = { Icon(Icons.Default.LocationCity, contentDescription = null) },
-                onClick = onNavigateDeafRecords,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-            NavigationDrawerItem(
-                label = { Text("Reports") },
-                selected = false,
-                icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
-                onClick = onNavigateReports,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
             if (isAdmin) {
                 NavigationDrawerItem(
                     label = { Text("Control Panel") },
@@ -789,6 +786,13 @@ private fun AppDrawerContent(
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
+            NavigationDrawerItem(
+                label = { Text("About") },
+                selected = false,
+                icon = { Icon(Icons.Default.Info, contentDescription = null) },
+                onClick = onNavigateAbout,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
 

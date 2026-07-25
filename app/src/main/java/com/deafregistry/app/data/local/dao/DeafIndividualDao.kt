@@ -83,6 +83,9 @@ interface DeafIndividualDao {
     @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY monitoringStatus ASC, fullName ASC")
     fun observeAllActiveByStatus(): Flow<List<DeafIndividualEntity>>
 
+    @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY skillLevel ASC, fullName ASC")
+    fun observeAllActiveBySkillLevel(): Flow<List<DeafIndividualEntity>>
+
     @Query("SELECT * FROM deaf_individuals WHERE isDeleted = 0 ORDER BY municipalityName ASC, barangayName ASC, fullName ASC")
     fun observeAllActiveByBarangay(): Flow<List<DeafIndividualEntity>>
 

@@ -56,13 +56,16 @@ private val CATEGORIES = listOf(
     CategoryOption("barangay", "Barangay"),
     CategoryOption("name", "Name"),
     CategoryOption("conductor", "BS Conductor"),
-    CategoryOption("status", "Deaf Status"),
+    CategoryOption("status", "Monitoring Status"),
+    CategoryOption("skill", "Skill Level"),
     CategoryOption("lastVisit", "Last Date of Visit")
 )
 
-// Matches the exact casing stored in monitoring_status (see DeafEditorScreen's STATUS_OPTIONS) -
-// the local Room query behind this sub-filter is a case-sensitive exact match.
+// Matches the exact casing stored in monitoring_status/skill_level (see DeafEditorScreen's
+// STATUS_OPTIONS/SKILL_OPTIONS) - the local Room queries behind these sub-filters are a
+// case-sensitive exact match.
 private val MONITORING_STATUS_CHOICES = listOf("BS", "RV", "Transferred", "Unlocated")
+private val SKILL_LEVEL_CHOICES = listOf("Skilled", "Semi-skilled", "Natural")
 
 /**
  * The single landing screen for "Deaf Records": opens showing everyone, name ascending, with a
@@ -90,11 +93,19 @@ fun AllIndividualsScreen(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var statusChoiceMenuExpanded by remember { mutableStateOf(false) }
     var statusChoice by remember { mutableStateOf(SearchStateHolder.individualsStatusChoice) }
+    var statusSearchText by remember { mutableStateOf(SearchStateHolder.individualsStatusSearchText) }
+    var skillChoiceMenuExpanded by remember { mutableStateOf(false) }
+    var skillChoice by remember { mutableStateOf(SearchStateHolder.individualsSkillChoice) }
     var pendingExportFormat by remember { mutableStateOf<String?>(null) }
     var exportHeading by remember { mutableStateOf(title) }
     val context = LocalContext.current
 
-    val exportRows = currentExportRows(category.key, statusChoice.takeIf { category.key == "status" })
+    val exportRows = currentExportRows(
+        category.key,
+        statusChoice.takeIf { category.key == "status" },
+        skillChoice.takeIf { category.key == "skill" },
+        statusSearchText.takeIf { category.key == "status" } ?: ""
+    )
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -126,8 +137,12 @@ fun AllIndividualsScreen(
                                 category = option
                                 categoryMenuExpanded = false
                                 statusChoice = null
+                                statusSearchText = ""
+                                skillChoice = null
                                 SearchStateHolder.individualsCategoryKey = option.key
                                 SearchStateHolder.individualsStatusChoice = null
+                                SearchStateHolder.individualsStatusSearchText = ""
+                                SearchStateHolder.individualsSkillChoice = null
                             }
                         )
                     }
@@ -166,6 +181,50 @@ fun AllIndividualsScreen(
                         }
                     }
                 }
+                OutlinedTextField(
+                    value = statusSearchText,
+                    onValueChange = {
+                        statusSearchText = it
+                        SearchStateHolder.individualsStatusSearchText = it
+                    },
+                    label = { Text("Search by name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
+            if (category.key == "skill") {
+                ExposedDropdownMenuBox(
+                    expanded = skillChoiceMenuExpanded,
+                    onExpandedChange = { skillChoiceMenuExpanded = it },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    OutlinedTextField(
+                        value = skillChoice ?: "All skill levels",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Skill Level") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = skillChoiceMenuExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = skillChoiceMenuExpanded, onDismissRequest = { skillChoiceMenuExpanded = false }) {
+                        DropdownMenuItem(text = { Text("All skill levels") }, onClick = {
+                            skillChoiceMenuExpanded = false
+                            skillChoice = null
+                            SearchStateHolder.individualsSkillChoice = null
+                        })
+                        SKILL_LEVEL_CHOICES.forEach { choice ->
+                            DropdownMenuItem(
+                                text = { Text(choice) },
+                                onClick = {
+                                    skillChoiceMenuExpanded = false
+                                    skillChoice = choice
+                                    SearchStateHolder.individualsSkillChoice = choice
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             Row(
@@ -184,7 +243,13 @@ fun AllIndividualsScreen(
             if (category.key == "lastVisit") {
                 LastVisitList(onOpenProfile)
             } else {
-                GroupedIndividualsList(category.key, statusChoice.takeIf { category.key == "status" }, onOpenProfile)
+                GroupedIndividualsList(
+                    category.key,
+                    statusChoice.takeIf { category.key == "status" },
+                    skillChoice.takeIf { category.key == "skill" },
+                    statusSearchText.takeIf { category.key == "status" } ?: "",
+                    onOpenProfile
+                )
             }
         }
     }
@@ -223,15 +288,18 @@ fun AllIndividualsScreen(
 }
 
 @Composable
-private fun currentExportRows(categoryKey: String, statusFilter: String?): List<List<String>> {
+private fun currentExportRows(categoryKey: String, statusFilter: String?, skillFilter: String?, statusSearchText: String): List<List<String>> {
     return if (categoryKey == "lastVisit") {
         val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
         val rows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
         rows.map { toExportRow(it.individual) }
     } else {
-        val flow = remember(categoryKey, statusFilter) { flowForCategory(categoryKey, statusFilter) }
+        val flow = remember(categoryKey, statusFilter, skillFilter) { flowForCategory(categoryKey, statusFilter, skillFilter) }
         val individuals by flow.collectAsState(initial = emptyList())
-        individuals.map { toExportRow(it) }
+        val filtered = if (categoryKey == "status" && statusSearchText.isNotBlank()) {
+            individuals.filter { it.fullName.contains(statusSearchText, ignoreCase = true) }
+        } else individuals
+        filtered.map { toExportRow(it) }
     }
 }
 
@@ -239,19 +307,30 @@ private fun toExportRow(individual: DeafIndividualEntity): List<String> = listOf
     individual.fullName, individual.barangayName, individual.municipalityName, individual.monitoringStatus
 )
 
-private fun flowForCategory(categoryKey: String, statusFilter: String? = null) = when {
+private fun flowForCategory(categoryKey: String, statusFilter: String? = null, skillFilter: String? = null) = when {
     categoryKey == "status" && statusFilter != null -> ServiceLocator.deafIndividualRepository.observeByCategory(monitoringStatus = statusFilter)
+    categoryKey == "skill" && skillFilter != null -> ServiceLocator.deafIndividualRepository.observeByCategory(skillLevel = skillFilter)
     categoryKey == "municipality" -> ServiceLocator.deafIndividualRepository.observeAllActiveByMunicipality()
     categoryKey == "barangay" -> ServiceLocator.deafIndividualRepository.observeAllActiveByBarangay()
     categoryKey == "conductor" -> ServiceLocator.deafIndividualRepository.observeAllActiveByConductor()
     categoryKey == "status" -> ServiceLocator.deafIndividualRepository.observeAllActiveByStatus()
+    categoryKey == "skill" -> ServiceLocator.deafIndividualRepository.observeAllActiveBySkillLevel()
     else -> ServiceLocator.deafIndividualRepository.observeAllActive()
 }
 
 @Composable
-private fun GroupedIndividualsList(categoryKey: String, statusFilter: String?, onOpenProfile: (String) -> Unit) {
-    val flow = remember(categoryKey, statusFilter) { flowForCategory(categoryKey, statusFilter) }
-    val individuals by flow.collectAsState(initial = emptyList())
+private fun GroupedIndividualsList(
+    categoryKey: String,
+    statusFilter: String?,
+    skillFilter: String?,
+    statusSearchText: String,
+    onOpenProfile: (String) -> Unit
+) {
+    val flow = remember(categoryKey, statusFilter, skillFilter) { flowForCategory(categoryKey, statusFilter, skillFilter) }
+    val rawIndividuals by flow.collectAsState(initial = emptyList())
+    val individuals = if (categoryKey == "status" && statusSearchText.isNotBlank()) {
+        rawIndividuals.filter { it.fullName.contains(statusSearchText, ignoreCase = true) }
+    } else rawIndividuals
     val lastVisitByUuid = rememberLastVisitByUuid()
 
     if (individuals.isEmpty()) {
@@ -259,13 +338,15 @@ private fun GroupedIndividualsList(categoryKey: String, statusFilter: String?, o
         return
     }
 
-    // A specific status choice already fully filters the list - no need to re-group by status too.
+    // A specific status/skill choice already fully filters the list - no need to re-group too.
     val groupKeyOf: ((DeafIndividualEntity) -> String)? = when {
         categoryKey == "status" && statusFilter != null -> null
+        categoryKey == "skill" && skillFilter != null -> null
         categoryKey == "municipality" -> { it -> it.municipalityName }
         categoryKey == "barangay" -> { it -> "${it.municipalityName} / ${it.barangayName}" }
         categoryKey == "conductor" -> { it -> it.assignedTeacherName ?: "Unassigned" }
         categoryKey == "status" -> { it -> it.monitoringStatus }
+        categoryKey == "skill" -> { it -> it.skillLevel }
         else -> null
     }
 

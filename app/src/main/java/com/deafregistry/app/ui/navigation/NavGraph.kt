@@ -24,9 +24,6 @@ import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
 import com.deafregistry.app.ui.login.LoginScreen
 import com.deafregistry.app.ui.login.SignUpScreen
-import com.deafregistry.app.ui.municipality.BarangayListScreen
-import com.deafregistry.app.ui.municipality.MunicipalityListScreen
-import com.deafregistry.app.ui.municipality.MunicipalityOverviewScreen
 import com.deafregistry.app.ui.profile.DeafProfileScreen
 import com.deafregistry.app.ui.reports.ReportCategoryDetailScreen
 import com.deafregistry.app.ui.reports.ReportsScreen
@@ -58,7 +55,7 @@ fun AppNavGraph(sessionManager: SessionManager) {
 
         composable(Routes.DASHBOARD) {
             DashboardScreen(
-                onOpenDeafRecords = { navController.navigate(Routes.MUNICIPALITY_OVERVIEW) },
+                onOpenDeafRecords = { navController.navigate(Routes.allIndividuals("Municipalities", "municipality")) },
                 onOpenAllIndividuals = { title, sort -> navController.navigate(Routes.allIndividuals(title, sort)) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
@@ -68,13 +65,6 @@ fun AppNavGraph(sessionManager: SessionManager) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
-            )
-        }
-
-        composable(Routes.MUNICIPALITY_OVERVIEW) {
-            MunicipalityOverviewScreen(
-                onBack = { navController.popBackStack() },
-                onOpenMunicipality = { id, name -> navController.navigate(Routes.barangayList(id, name)) }
             )
         }
 
@@ -93,49 +83,6 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onBack = { navController.popBackStack() },
                 onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
                 onAddNew = { navController.navigate(Routes.deafEditorNew(-1)) }
-            )
-        }
-
-        composable(
-            Routes.BARANGAY_LIST,
-            arguments = listOf(
-                navArgument("municipalityId") { type = NavType.IntType },
-                navArgument("municipalityName") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getInt("municipalityId") ?: 0
-            val name = URLDecoder.decode(backStackEntry.arguments?.getString("municipalityName") ?: "", "UTF-8")
-            BarangayListScreen(
-                municipalityId = id,
-                municipalityName = name,
-                onBack = { navController.popBackStack() },
-                onOpenBarangay = { barangayId, barangayName ->
-                    navController.navigate(Routes.municipalityList(id, name, barangayId, barangayName))
-                }
-            )
-        }
-
-        composable(
-            Routes.MUNICIPALITY_LIST,
-            arguments = listOf(
-                navArgument("municipalityId") { type = NavType.IntType },
-                navArgument("municipalityName") { type = NavType.StringType },
-                navArgument("barangayId") { type = NavType.IntType; defaultValue = -1 },
-                navArgument("barangayName") { type = NavType.StringType; defaultValue = "" }
-            )
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getInt("municipalityId") ?: 0
-            val name = URLDecoder.decode(backStackEntry.arguments?.getString("municipalityName") ?: "", "UTF-8")
-            val barangayIdArg = backStackEntry.arguments?.getInt("barangayId")?.takeIf { it != -1 }
-            val barangayNameArg = URLDecoder.decode(backStackEntry.arguments?.getString("barangayName") ?: "", "UTF-8").ifBlank { null }
-            MunicipalityListScreen(
-                municipalityId = id,
-                municipalityName = name,
-                onBack = { navController.popBackStack() },
-                onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
-                onAddNew = { navController.navigate(Routes.deafEditorNew(id)) },
-                initialBarangayId = barangayIdArg,
-                barangayName = barangayNameArg
             )
         }
 
