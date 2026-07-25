@@ -107,6 +107,7 @@ fun DashboardScreen(
     onOpenReports: () -> Unit,
     onOpenControlPanel: () -> Unit,
     onOpenAppUpdate: () -> Unit,
+    onOpenUserAccounts: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -389,8 +390,8 @@ fun DashboardScreen(
                                 DashboardMetricCard(
                                     title = "Users",
                                     value = state.totalUsers.toString(),
-                                    subtitle = "Access control",
-                                    onClick = onOpenControlPanel,
+                                    subtitle = "Account management",
+                                    onClick = onOpenUserAccounts,
                                     modifier = Modifier.weight(1f)
                                 )
                             }
