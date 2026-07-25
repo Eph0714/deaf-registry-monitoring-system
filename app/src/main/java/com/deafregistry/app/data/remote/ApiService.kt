@@ -21,6 +21,9 @@ interface ApiService {
     @POST("auth/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequest): ResponseBody
 
+    @POST("auth/logout")
+    suspend fun logout(): ResponseBody
+
     @Multipart
     @POST("auth/photo")
     suspend fun uploadUserPhoto(@Part photo: MultipartBody.Part): PhotoUploadResponse

@@ -67,6 +67,10 @@ class AuthRepository(
         refreshProfile()
     }
 
+    /** Fresh copy of the logged-in user's own record straight from the server - used by the View
+     * Profile dialog so fields like Last Login always reflect the current session, not a cached one. */
+    suspend fun fetchProfile(): UserDto = api.me()
+
     /** Re-fetches the logged-in user's own record (name/role/photo/etc.) and updates the stored session. */
     suspend fun refreshProfile() {
         val session = sessionManager.session.value ?: return
@@ -89,7 +93,13 @@ class AuthRepository(
 
     suspend fun getUserLocations(): List<UserLocationDto> = api.getUserLocations()
 
-    fun logout() {
+    /**
+     * Records the logout in the server-side Audit Trail before clearing the local session - best
+     * effort only (wrapped so a failed/offline request never blocks the local logout, which must
+     * always succeed so the user can get back to the Login form).
+     */
+    suspend fun logout() {
+        runCatching { api.logout() }
         sessionManager.clear()
     }
 }

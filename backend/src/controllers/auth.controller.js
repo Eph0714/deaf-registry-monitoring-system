@@ -42,14 +42,24 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const token = signToken(user);
+  const { rows: loginRows } = await pool.query(
+    'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING last_login_at',
+    [user.id]
+  );
   await logAudit(user.id, 'LOGIN', 'user', user.id, null);
   res.json({
     token,
     user: {
       id: user.id, name: user.name, email: user.email, role: user.role,
-      teacher_id: user.teacher_id, photo_url: user.photo_url
+      teacher_id: user.teacher_id, photo_url: user.photo_url,
+      last_login_at: loginRows[0].last_login_at
     }
   });
+});
+
+const logout = asyncHandler(async (req, res) => {
+  await logAudit(req.user.id, 'LOGOUT', 'user', req.user.id, null);
+  res.json({ message: 'Logged out' });
 });
 
 const signup = asyncHandler(async (req, res) => {
@@ -75,7 +85,10 @@ const signup = asyncHandler(async (req, res) => {
 });
 
 const me = asyncHandler(async (req, res) => {
-  const { rows } = await pool.query('SELECT id, name, email, role, teacher_id, photo_url FROM users WHERE id = $1', [req.user.id]);
+  const { rows } = await pool.query(
+    'SELECT id, name, email, role, teacher_id, photo_url, last_login_at FROM users WHERE id = $1',
+    [req.user.id]
+  );
   if (!rows.length) return res.status(404).json({ message: 'User not found' });
   res.json(rows[0]);
 });
@@ -115,4 +128,4 @@ const changePassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password updated' });
 });
 
-module.exports = { login, signup, me, changePassword, uploadPhoto, shareLocation };
+module.exports = { login, signup, me, changePassword, uploadPhoto, shareLocation, logout };

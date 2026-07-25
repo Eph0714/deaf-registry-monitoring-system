@@ -94,6 +94,7 @@ import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.GenericViewModelFactory
+import com.deafregistry.app.util.ImageUtils
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -147,6 +148,8 @@ fun DashboardScreen(
 
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showViewProfileDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
     // Full Location Sharing UI moved to its own screen so the Dashboard doesn't grow too tall -
     // this list is only kept here to drive the count badge on the Quick Access tile.
     var teamLocations by remember { mutableStateOf<List<UserLocationDto>>(emptyList()) }
@@ -174,17 +177,23 @@ fun DashboardScreen(
         }
     }
     LaunchedEffect(Unit) { loadTeamLocations() }
+    // The raw camera/gallery pick isn't uploaded directly anymore - it's first auto-cropped to a
+    // square and downsized (ImageUtils.prepareSquareProfileImage), then held here so the user gets
+    // a preview with Save/Cancel before anything is actually uploaded.
+    var pendingProfilePreview by remember { mutableStateOf<File?>(null) }
     var pendingPhotoFile by remember { mutableStateOf<File?>(null) }
     val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) pendingPhotoFile?.let { file ->
-            scope.launch { runCatching { ServiceLocator.authRepository.uploadProfilePhoto(file.absolutePath) } }
+            runCatching { ImageUtils.prepareSquareProfileImage(context, Uri.fromFile(file)) }
+                .onSuccess { pendingProfilePreview = it }
+                .onFailure { Toast.makeText(context, "Couldn't process photo: ${it.message}", Toast.LENGTH_LONG).show() }
         }
     }
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            val file = File(context.cacheDir, "profile_${System.currentTimeMillis()}.jpg")
-            context.contentResolver.openInputStream(uri)?.use { input -> file.outputStream().use { input.copyTo(it) } }
-            scope.launch { runCatching { ServiceLocator.authRepository.uploadProfilePhoto(file.absolutePath) } }
+            runCatching { ImageUtils.prepareSquareProfileImage(context, uri) }
+                .onSuccess { pendingProfilePreview = it }
+                .onFailure { Toast.makeText(context, "Couldn't process photo: ${it.message}", Toast.LENGTH_LONG).show() }
         }
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -222,12 +231,7 @@ fun DashboardScreen(
                 onNavigateControlPanel = { closeDrawer(onOpenControlPanel) },
                 onNavigateAbout = { closeDrawer { showAboutDialog = true } },
                 onSync = { closeDrawer(viewModel::sync) },
-                onLogout = {
-                    closeDrawer {
-                        ServiceLocator.authRepository.logout()
-                        onLogout()
-                    }
-                }
+                onLogout = { closeDrawer { showLogoutConfirm = true } }
             )
         }
     ) {
@@ -252,7 +256,14 @@ fun DashboardScreen(
                             Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel")
                         }
                     }
-                    UserAvatar(state.userName, photoUrl) { showPhotoSourceDialog = true }
+                    UserProfileMenu(
+                        userName = state.userName,
+                        userRole = session?.role ?: "conductor",
+                        photoUrl = photoUrl,
+                        onViewProfile = { showViewProfileDialog = true },
+                        onUpdatePhoto = { showPhotoSourceDialog = true },
+                        onLogout = { showLogoutConfirm = true }
+                    )
                 }
             )
         }
@@ -410,6 +421,88 @@ fun DashboardScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showPhotoSourceDialog = false; pickImageLauncher.launch("image/*") }) { Text("Gallery") }
+            }
+        )
+    }
+
+    pendingProfilePreview?.let { file ->
+        var isUploading by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { if (!isUploading) pendingProfilePreview = null },
+            title = { Text("Update Profile Photo") },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(160.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        AsyncImage(
+                            model = file,
+                            contentDescription = "New profile photo preview",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Already cropped to a square and resized. Save to update your profile photo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (isUploading) {
+                        Spacer(Modifier.height(12.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isUploading,
+                    onClick = {
+                        isUploading = true
+                        scope.launch {
+                            runCatching { ServiceLocator.authRepository.uploadProfilePhoto(file.absolutePath) }
+                                .onFailure { Toast.makeText(context, "Upload failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                            isUploading = false
+                            pendingProfilePreview = null
+                        }
+                    }
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(enabled = !isUploading, onClick = { pendingProfilePreview = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showViewProfileDialog) {
+        ViewProfileDialog(
+            sessionName = state.userName,
+            sessionEmail = userEmail,
+            sessionRole = session?.role ?: "conductor",
+            photoUrl = photoUrl,
+            onDismiss = { showViewProfileDialog = false }
+        )
+    }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text("Log Out") },
+            text = { Text("Are you sure you want to log out?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutConfirm = false
+                    scope.launch {
+                        ServiceLocator.authRepository.logout()
+                        onLogout()
+                    }
+                }) { Text("Yes") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) { Text("No") }
             }
         )
     }
@@ -819,35 +912,6 @@ private fun DashboardInsightCard(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun UserAvatar(userName: String, photoUrl: String?, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .padding(end = 8.dp)
-            .size(32.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.25f))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        if (photoUrl != null) {
-            AsyncImage(
-                model = photoUrl,
-                contentDescription = "Profile photo",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Text(
-                userName.trim().firstOrNull()?.uppercase() ?: "?",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }

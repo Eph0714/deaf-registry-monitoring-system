@@ -38,7 +38,8 @@ data class UserDto(
     @SerializedName("teacher_id") val teacherId: Int?,
     @SerializedName("is_active") val isActive: Boolean? = true,
     @SerializedName("teacher_name") val teacherName: String? = null,
-    @SerializedName("photo_url") val photoUrl: String? = null
+    @SerializedName("photo_url") val photoUrl: String? = null,
+    @SerializedName("last_login_at") val lastLoginAt: String? = null
 )
 
 data class ChangePasswordRequest(

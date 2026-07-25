@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,7 +26,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -60,10 +65,9 @@ fun PhotoViewerDialog(photoUrl: String, fileName: String, onDismiss: () -> Unit)
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
-            AsyncImage(
+            ZoomableAsyncImage(
                 model = photoUrl,
                 contentDescription = "Photo",
-                contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp)) {
@@ -88,3 +92,40 @@ fun PhotoViewerDialog(photoUrl: String, fileName: String, onDismiss: () -> Unit)
 /** Resolves a possibly-relative legacy `/uploads/...` photo path into a full URL; passes full URLs through unchanged. */
 fun resolvePhotoUrl(raw: String?, apiBaseUrl: String): String? =
     raw?.let { if (it.startsWith("/uploads")) apiBaseUrl.removeSuffix("/api/") + it else it }
+
+/**
+ * An [AsyncImage] with pinch-to-zoom (1x-5x) and pan while zoomed in - double-tap resets back to
+ * 1x. Shared by [PhotoViewerDialog] and the profile "View Profile Image" dialog so both get the
+ * same zoom in/out gesture instead of duplicating the pointer-input handling.
+ */
+@Composable
+fun ZoomableAsyncImage(model: Any?, contentDescription: String?, modifier: Modifier = Modifier) {
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    Box(
+        modifier
+            .pointerInput(Unit) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    scale = (scale * zoom).coerceIn(1f, 5f)
+                    offset = if (scale <= 1f) Offset.Zero else offset + pan
+                }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(onDoubleTap = { scale = 1f; offset = Offset.Zero })
+            }
+    ) {
+        AsyncImage(
+            model = model,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offset.x,
+                    translationY = offset.y
+                )
+        )
+    }
+}

@@ -54,7 +54,8 @@ async function ensureColumns(client) {
     { table: 'users', column: 'location', definition: 'VARCHAR(255) NULL' },
     { table: 'users', column: 'shared_latitude', definition: 'DOUBLE PRECISION NULL' },
     { table: 'users', column: 'shared_longitude', definition: 'DOUBLE PRECISION NULL' },
-    { table: 'users', column: 'shared_location_at', definition: 'TIMESTAMP NULL' }
+    { table: 'users', column: 'shared_location_at', definition: 'TIMESTAMP NULL' },
+    { table: 'users', column: 'last_login_at', definition: 'TIMESTAMP NULL' }
   ];
 
   for (const { table, column, definition } of columnsToAdd) {
