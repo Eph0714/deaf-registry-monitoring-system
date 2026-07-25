@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.WarningAmber
@@ -92,6 +93,7 @@ fun DashboardScreen(
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenAdmin: () -> Unit,
+    onOpenControlPanel: () -> Unit,
     onLogout: () -> Unit
 ) {
     val viewModel: DashboardViewModel = viewModel(
@@ -175,6 +177,7 @@ fun DashboardScreen(
                 onNavigateDeafRecords = { closeDrawer(onOpenDeafRecords) },
                 onNavigateReports = { closeDrawer(onOpenReports) },
                 onNavigateAdmin = { closeDrawer(onOpenAdmin) },
+                onNavigateControlPanel = { closeDrawer(onOpenControlPanel) },
                 onSync = { closeDrawer(viewModel::sync) },
                 onLogout = {
                     closeDrawer {
@@ -199,10 +202,10 @@ fun DashboardScreen(
                                 BadgedBox(badge = {
                                     Badge { Text(state.pendingApprovalCount.toString()) }
                                 }) {
-                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin (${state.pendingApprovalCount} pending approvals)")
+                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = "Users (${state.pendingApprovalCount} pending approvals)")
                                 }
                             } else {
-                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin")
+                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Users")
                             }
                         }
                     }
@@ -277,6 +280,7 @@ fun DashboardScreen(
                             onOpenSearch = onOpenSearch,
                             onOpenReports = onOpenReports,
                             onOpenAdmin = onOpenAdmin,
+                            onOpenControlPanel = onOpenControlPanel,
                             onOpenMunicipality = onOpenDeafRecords,
                             isAdmin = state.isAdmin
                         )
@@ -453,6 +457,7 @@ private fun DashboardQuickActionsRow(
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenAdmin: () -> Unit,
+    onOpenControlPanel: () -> Unit,
     onOpenMunicipality: () -> Unit,
     isAdmin: Boolean
 ) {
@@ -485,6 +490,15 @@ private fun DashboardQuickActionsRow(
                 if (isAdmin) {
                     DashboardQuickActionTile("Users", Icons.Default.AdminPanelSettings, onOpenAdmin, Modifier.weight(1f))
                 } else {
+                    Box(Modifier.weight(1f)) {}
+                }
+            }
+            if (isAdmin) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    DashboardQuickActionTile("Control Panel", Icons.Default.Settings, onOpenControlPanel, Modifier.weight(1f))
                     Box(Modifier.weight(1f)) {}
                 }
             }
@@ -700,6 +714,7 @@ private fun AppDrawerContent(
     onNavigateDeafRecords: () -> Unit,
     onNavigateReports: () -> Unit,
     onNavigateAdmin: () -> Unit,
+    onNavigateControlPanel: () -> Unit,
     onSync: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -781,10 +796,17 @@ private fun AppDrawerContent(
             )
             if (isAdmin) {
                 NavigationDrawerItem(
-                    label = { Text("Admin") },
+                    label = { Text("Users") },
                     selected = false,
                     icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
                     onClick = onNavigateAdmin,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    label = { Text("Control Panel") },
+                    selected = false,
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    onClick = onNavigateControlPanel,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }

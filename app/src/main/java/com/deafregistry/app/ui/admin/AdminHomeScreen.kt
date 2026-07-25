@@ -40,12 +40,7 @@ fun AdminHomeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     }
 
     val items = buildList {
-        add(AdminMenuItem("Municipalities", "Add, rename, or remove municipalities", "admin_municipalities"))
-        add(AdminMenuItem("Barangays", "Manage barangays per municipality", "admin_barangays"))
-        add(AdminMenuItem("BS Conductors", "Manage teacher/conductor records", "admin_teachers"))
         add(AdminMenuItem("User Accounts", "Manage app user accounts and roles", "admin_users"))
-        add(AdminMenuItem("Backup & Restore", "Local device backup and server database backup", "admin_backup"))
-        add(AdminMenuItem("Notification Settings", "Configure overdue-visit alert threshold", "admin_notifications"))
         add(AdminMenuItem("Pending User Approvals", "Approve or decline new self-service signups", "admin_pending_users", badgeCount = pendingApprovalCount))
         add(AdminMenuItem("User Log Report", "See who did what across the app", "admin_audit_log"))
         if (ServiceLocator.sessionManager.isSuperAdmin()) {
@@ -56,7 +51,7 @@ fun AdminHomeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            AppTopBar(title = "Administration", onBack = onBack)
+            AppTopBar(title = "Users", onBack = onBack)
         }
     ) { padding: PaddingValues ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
