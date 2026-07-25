@@ -78,6 +78,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -333,13 +334,18 @@ fun DashboardScreen(
                             onShowCoordinates = { showMyCoordinates() },
                             onShare = { shareMyLocation() },
                             onOpenInMaps = { lat, lng, label ->
+                                val mapsUrl = "https://www.google.com/maps/search/?api=1&query=$lat,$lng"
                                 runCatching {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label)})"))
-                                    )
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(mapsUrl)))
                                 }.onFailure {
-                                    if (it is ActivityNotFoundException) {
-                                        Toast.makeText(context, "No app found to open this location", Toast.LENGTH_LONG).show()
+                                    runCatching {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label)})"))
+                                        )
+                                    }.onFailure { fallbackError ->
+                                        if (fallbackError is ActivityNotFoundException) {
+                                            Toast.makeText(context, "No app found to open this location", Toast.LENGTH_LONG).show()
+                                        }
                                     }
                                 }
                             }
@@ -578,8 +584,9 @@ private fun MyLocationCard(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "Lat: ${it.latitude}, Lng: ${it.longitude}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.Underline),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { onOpenInMaps(it.latitude, it.longitude, "My Location") }
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -610,18 +617,32 @@ private fun MyLocationCard(
                 Text("Team Locations", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 teamLocations.forEach { loc ->
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onOpenInMaps(loc.sharedLatitude, loc.sharedLongitude, loc.name) }
-                            .padding(vertical = 6.dp)
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(loc.name, style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            "${loc.role} — shared ${loc.sharedLocationAt}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
                         )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                loc.name,
+                                style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                "${loc.role} — shared ${loc.sharedLocationAt}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
