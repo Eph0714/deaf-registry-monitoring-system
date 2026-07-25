@@ -16,7 +16,11 @@ data class LoginUiState(
     val passwordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val loggedIn: Boolean = false
+    val loggedIn: Boolean = false,
+    /** A previously-remembered email shown as a tappable suggestion - tapping it fills both
+     * the email and password fields. Null once selected or once the user edits either field
+     * by hand. */
+    val rememberedEmailSuggestion: String? = null
 )
 
 class LoginViewModel(
@@ -24,21 +28,30 @@ class LoginViewModel(
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(LoginUiState())
+    // Held privately (not put in uiState) so the password never shows up in the UI until the
+    // user explicitly taps the remembered-account suggestion.
+    private val rememberedCredentials = sessionManager.rememberedCredentials()
+
+    private val _uiState = MutableStateFlow(
+        LoginUiState(
+            rememberMe = rememberedCredentials != null,
+            rememberedEmailSuggestion = rememberedCredentials?.first
+        )
+    )
     val uiState: StateFlow<LoginUiState> = _uiState
 
-    init {
-        sessionManager.rememberedCredentials()?.let { (email, password) ->
-            _uiState.value = _uiState.value.copy(email = email, password = password, rememberMe = true)
-        }
+    /** Fills both fields from the remembered credentials - called when the user taps the suggestion. */
+    fun selectRememberedAccount() {
+        val (email, password) = rememberedCredentials ?: return
+        _uiState.value = _uiState.value.copy(email = email, password = password, rememberedEmailSuggestion = null, error = null)
     }
 
     fun onEmailChange(value: String) {
-        _uiState.value = _uiState.value.copy(email = value, error = null)
+        _uiState.value = _uiState.value.copy(email = value, error = null, rememberedEmailSuggestion = null)
     }
 
     fun onPasswordChange(value: String) {
-        _uiState.value = _uiState.value.copy(password = value, error = null)
+        _uiState.value = _uiState.value.copy(password = value, error = null, rememberedEmailSuggestion = null)
     }
 
     fun onRememberMeChange(value: Boolean) {
