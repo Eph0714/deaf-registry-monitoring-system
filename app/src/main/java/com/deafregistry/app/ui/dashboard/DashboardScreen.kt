@@ -357,7 +357,6 @@ fun DashboardScreen(
                         DashboardQuickActionsRow(
                             onOpenSearch = onOpenSearch,
                             onOpenReports = onOpenReports,
-                            onOpenControlPanel = onOpenControlPanel,
                             onOpenMunicipality = onOpenDeafRecords,
                             onOpenAppUpdate = onOpenAppUpdate,
                             isAdmin = state.isAdmin
@@ -656,7 +655,6 @@ private fun MyLocationCard(
 private fun DashboardQuickActionsRow(
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
-    onOpenControlPanel: () -> Unit,
     onOpenMunicipality: () -> Unit,
     onOpenAppUpdate: () -> Unit,
     isAdmin: Boolean
@@ -687,15 +685,9 @@ private fun DashboardQuickActionsRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, onOpenMunicipality, Modifier.weight(1f))
-                // Conductors can open Control Panel too now, with a reduced menu (see ControlPanelScreen).
-                DashboardQuickActionTile("Control Panel", Icons.Default.Settings, onOpenControlPanel, Modifier.weight(1f))
-            }
-            if (isAdmin) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                if (isAdmin) {
                     DashboardQuickActionTile("App Update", Icons.Default.SystemUpdate, onOpenAppUpdate, Modifier.weight(1f))
+                } else {
                     Box(Modifier.weight(1f)) {}
                 }
             }
