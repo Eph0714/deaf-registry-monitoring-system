@@ -70,7 +70,7 @@ const byConductor = asyncHandler(async (req, res) => {
 const recentVisits = asyncHandler(async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 20, 200);
   const { rows } = await pool.query(`
-    SELECT v.id, v.visit_datetime, v.conductor_name, d.full_name, d.id AS deaf_individual_id
+    SELECT v.id, v.visit_datetime, v.conductor_name, d.full_name, d.id AS deaf_individual_id, d.uuid
     FROM visits v JOIN deaf_individuals d ON d.id = v.deaf_individual_id
     ORDER BY v.visit_datetime DESC LIMIT $1`, [limit]);
   res.json(rows);

@@ -87,6 +87,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.deafregistry.app.BuildConfig
 import com.deafregistry.app.data.remote.dto.NotVisitedDto
+import com.deafregistry.app.data.remote.dto.RecentVisitDto
 import com.deafregistry.app.data.remote.dto.UserLocationDto
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
@@ -424,13 +425,9 @@ fun DashboardScreen(
                     }
 
                     item {
-                        DashboardActivityCard(
-                            title = "Latest Visits",
-                            icon = Icons.Default.History,
-                            items = state.recentVisits.take(5).map {
-                                it.fullName to "${it.conductorName ?: "—"} • ${it.visitDateTime}"
-                            },
-                            subtitle = "Most recently recorded visits"
+                        LatestVisitsCard(
+                            items = state.recentVisits.take(5),
+                            onOpenProfile = onOpenProfile
                         )
                     }
                 }
@@ -744,12 +741,11 @@ private fun DashboardMetricCard(
     }
 }
 
+/** Rows are clickable through to that individual's profile, same as FollowUpNeededCard. */
 @Composable
-private fun DashboardActivityCard(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    items: List<Pair<String, String>>
+private fun LatestVisitsCard(
+    items: List<RecentVisitDto>,
+    onOpenProfile: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
@@ -759,22 +755,30 @@ private fun DashboardActivityCard(
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.History, contentDescription = "Latest Visits", tint = MaterialTheme.colorScheme.primary)
                 Text(
-                    title,
+                    "Latest Visits",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
-            items.forEach { (primary, secondary) ->
+            Text(
+                "Most recently recorded visits",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            items.forEach { visit ->
                 Text(
-                    "$primary — $secondary",
+                    "${visit.fullName} — ${visit.conductorName ?: "—"} • ${visit.visitDateTime}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenProfile(visit.uuid) }
+                        .padding(top = 8.dp)
                 )
             }
         }

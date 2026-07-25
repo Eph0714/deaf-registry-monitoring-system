@@ -22,7 +22,8 @@ data class RecentVisitDto(
     @SerializedName("visit_datetime") val visitDateTime: String,
     @SerializedName("conductor_name") val conductorName: String?,
     @SerializedName("full_name") val fullName: String,
-    @SerializedName("deaf_individual_id") val deafIndividualId: Int
+    @SerializedName("deaf_individual_id") val deafIndividualId: Int,
+    val uuid: String
 )
 
 data class NotVisitedDto(

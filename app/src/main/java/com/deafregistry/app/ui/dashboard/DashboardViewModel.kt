@@ -74,32 +74,7 @@ class DashboardViewModel(
             .launchIn(viewModelScope)
 
         refreshUserCounts()
-
-        // Reports are viewable by every role now (server-enforced too - only export/print on
-        // ReportsScreen stays admin-only), so these Dashboard summary cards fetch for everyone.
-        viewModelScope.launch {
-            try {
-                val overdueDays = settingsRepository.cachedOverdueDays().toInt()
-                val recentVisits = reportRepository.recentVisits(5)
-                val pendingFollowUps = reportRepository.notVisited(overdueDays)
-                val byStatus = reportRepository.byStatus()
-                val bySkill = reportRepository.bySkill()
-                _uiState.value = _uiState.value.copy(
-                    recentVisits = recentVisits,
-                    pendingFollowUps = pendingFollowUps,
-                    byStatus = byStatus,
-                    bySkill = bySkill,
-                    overdueDaysThreshold = overdueDays
-                )
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    recentVisits = emptyList(),
-                    pendingFollowUps = emptyList(),
-                    byStatus = emptyList(),
-                    bySkill = emptyList()
-                )
-            }
-        }
+        refreshReportCards()
 
         refreshPendingSyncCount()
         // Pull-only refresh on screen load - downloads fresh data but never pushes local edits.
@@ -125,6 +100,39 @@ class DashboardViewModel(
                         _uiState.value = _uiState.value.copy(updateInfo = info, showUpdateDialog = true)
                     }
                 }
+        }
+    }
+
+    /**
+     * Reports are viewable by every role (server-enforced too - only export/print on
+     * ReportsScreen stays admin-only), so these Dashboard summary cards - including Latest
+     * Visits - fetch for everyone. Called on load and again from sync() so tapping Sync (or
+     * pull-to-refresh, which also calls sync()) re-fetches the latest recorded visit instead of
+     * only ever showing what was on screen when the Dashboard first opened.
+     */
+    private fun refreshReportCards() {
+        viewModelScope.launch {
+            try {
+                val overdueDays = settingsRepository.cachedOverdueDays().toInt()
+                val recentVisits = reportRepository.recentVisits(5)
+                val pendingFollowUps = reportRepository.notVisited(overdueDays)
+                val byStatus = reportRepository.byStatus()
+                val bySkill = reportRepository.bySkill()
+                _uiState.value = _uiState.value.copy(
+                    recentVisits = recentVisits,
+                    pendingFollowUps = pendingFollowUps,
+                    byStatus = byStatus,
+                    bySkill = bySkill,
+                    overdueDaysThreshold = overdueDays
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    recentVisits = emptyList(),
+                    pendingFollowUps = emptyList(),
+                    byStatus = emptyList(),
+                    bySkill = emptyList()
+                )
+            }
         }
     }
 
@@ -159,6 +167,7 @@ class DashboardViewModel(
             refreshPendingSyncCount()
         }
         refreshUserCounts()
+        refreshReportCards()
         checkForUpdate()
     }
 
