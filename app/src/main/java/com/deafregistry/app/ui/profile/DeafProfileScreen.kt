@@ -166,9 +166,9 @@ fun DeafProfileScreen(
                         onPhotoClick = if (individual.photoUrl != null || individual.localPhotoPath != null) {
                             { showPhotoViewer = true }
                         } else null,
-                        onDownloadClick = if (individual.photoUrl != null) {
-                            { downloadPhoto(individual.photoUrl, individual.fullName) }
-                        } else null,
+                        onDownloadClick = (individual.photoUrl ?: individual.localPhotoPath)?.let { source ->
+                            { downloadPhoto(source, individual.fullName) }
+                        },
                         isDownloading = isDownloadingPhoto
                     )
                     Spacer(Modifier.height(16.dp))
@@ -295,8 +295,7 @@ fun DeafProfileScreen(
             PhotoViewerDialog(
                 photoUrl = resolvedPhoto,
                 fileName = "${individual.fullName.replace(Regex("[^A-Za-z0-9-_ ]"), "").ifBlank { "deaf_record" }}.jpg",
-                onDismiss = { showPhotoViewer = false },
-                allowDownload = individual.photoUrl != null
+                onDismiss = { showPhotoViewer = false }
             )
         }
     }
