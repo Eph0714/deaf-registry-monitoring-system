@@ -268,7 +268,7 @@ fun DashboardScreen(
     ) { padding: PaddingValues ->
         PullToRefreshBox(
             isRefreshing = state.isSyncing,
-            onRefresh = { viewModel.sync() },
+            onRefresh = { viewModel.sync(); loadTeamLocations() },
             modifier = Modifier.padding(padding)
         ) {
             if (state.municipalities.isEmpty() && !state.isSyncing) {
@@ -323,7 +323,7 @@ fun DashboardScreen(
                             isSyncing = state.isSyncing,
                             syncError = state.syncError,
                             pendingSyncCount = state.pendingSyncCount,
-                            onSync = { viewModel.sync() }
+                            onSync = { viewModel.sync(); loadTeamLocations() }
                         )
                     }
 
