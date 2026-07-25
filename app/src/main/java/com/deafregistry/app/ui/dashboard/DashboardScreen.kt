@@ -319,15 +319,6 @@ fun DashboardScreen(
                         }
                     }
 
-                    if (state.isAdmin) {
-                        item {
-                            DashboardActionCard(
-                                title = "User Management",
-                                subtitle = "Manage access, accounts, and active users.",
-                                onClick = onOpenControlPanel
-                            )
-                        }
-                    }
 
                     if (state.isAdmin) {
                         item {
@@ -576,33 +567,6 @@ private fun DashboardMetricCard(
             Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.Black)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun DashboardActionCard(title: String, subtitle: String, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = Color.Black, fontWeight = FontWeight.Bold)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Box(
-                modifier = Modifier.background(MaterialTheme.colorScheme.primary, CircleShape).padding(10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.AdminPanelSettings, contentDescription = title, tint = MaterialTheme.colorScheme.onPrimary)
-            }
         }
     }
 }
