@@ -107,9 +107,16 @@ class DashboardViewModel(
             runCatching { syncManager.pull() }
         }
 
-        // Checked once per app session (this ViewModel is only created once per login), not on
-        // every return to Dashboard. This app isn't distributed through Google Play, so there's
-        // no automatic update channel - App Update in Control Panel is what sets this value.
+        checkForUpdate()
+    }
+
+    /**
+     * This app isn't distributed through Google Play, so there's no automatic update channel -
+     * App Update in Control Panel is what sets this value. Checked on Dashboard load and again
+     * every time the user taps Sync or pulls to refresh (see sync() below), so a version an
+     * admin just published shows up without needing to fully restart the app.
+     */
+    private fun checkForUpdate() {
         viewModelScope.launch {
             runCatching { settingsRepository.getLatestAppVersion() }
                 .onSuccess { info ->
@@ -151,6 +158,7 @@ class DashboardViewModel(
             refreshPendingSyncCount()
         }
         refreshUserCounts()
+        checkForUpdate()
     }
 
     /**
