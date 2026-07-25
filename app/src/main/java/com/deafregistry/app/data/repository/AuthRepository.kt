@@ -4,8 +4,10 @@ import com.deafregistry.app.data.remote.ApiService
 import com.deafregistry.app.data.remote.dto.ChangePasswordRequest
 import com.deafregistry.app.data.remote.dto.LoginErrorBody
 import com.deafregistry.app.data.remote.dto.LoginRequest
+import com.deafregistry.app.data.remote.dto.ShareLocationRequest
 import com.deafregistry.app.data.remote.dto.SignupRequest
 import com.deafregistry.app.data.remote.dto.UserDto
+import com.deafregistry.app.data.remote.dto.UserLocationDto
 import com.deafregistry.app.data.session.SessionManager
 import com.google.gson.Gson
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -80,6 +82,12 @@ class AuthRepository(
             )
         )
     }
+
+    suspend fun shareLocation(latitude: Double, longitude: Double) {
+        api.shareLocation(ShareLocationRequest(latitude, longitude))
+    }
+
+    suspend fun getUserLocations(): List<UserLocationDto> = api.getUserLocations()
 
     fun logout() {
         sessionManager.clear()

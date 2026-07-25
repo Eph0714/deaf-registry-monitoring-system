@@ -94,6 +94,18 @@ const permanentlyDelete = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
+// Any authenticated user can see who has shared their location - a simple team
+// location board, not gated to admins (confirmed with the user).
+const listLocations = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, name, role, shared_latitude, shared_longitude, shared_location_at
+     FROM users
+     WHERE is_active = true AND shared_location_at IS NOT NULL
+     ORDER BY shared_location_at DESC`
+  );
+  res.json(rows);
+});
+
 const listPendingSignups = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, name, email, contact_number, location, created_at
@@ -131,5 +143,5 @@ const rejectSignup = asyncHandler(async (req, res) => {
 
 module.exports = {
   list, create, update, resetPassword, remove, permanentlyDelete,
-  listPendingSignups, approveSignup, rejectSignup
+  listPendingSignups, approveSignup, rejectSignup, listLocations
 };

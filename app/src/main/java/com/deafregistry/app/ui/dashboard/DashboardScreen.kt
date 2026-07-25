@@ -34,9 +34,11 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.WarningAmber
@@ -82,10 +84,13 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.deafregistry.app.BuildConfig
+import com.deafregistry.app.data.remote.dto.UserLocationDto
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.GenericViewModelFactory
+import com.deafregistry.app.util.GpsPoint
+import com.deafregistry.app.util.LocationHelper
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -134,6 +139,18 @@ fun DashboardScreen(
 
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var myCoordinates by remember { mutableStateOf<GpsPoint?>(null) }
+    var isCapturingLocation by remember { mutableStateOf(false) }
+    var isSharingLocation by remember { mutableStateOf(false) }
+    var teamLocations by remember { mutableStateOf<List<UserLocationDto>>(emptyList()) }
+
+    fun loadTeamLocations() {
+        scope.launch {
+            runCatching { ServiceLocator.authRepository.getUserLocations() }
+                .onSuccess { teamLocations = it }
+        }
+    }
+    LaunchedEffect(Unit) { loadTeamLocations() }
     var pendingPhotoFile by remember { mutableStateOf<File?>(null) }
     val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) pendingPhotoFile?.let { file ->
@@ -164,6 +181,35 @@ fun DashboardScreen(
             takePictureLauncher.launch(uri)
         } else {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    fun captureMyLocation() {
+        scope.launch {
+            isCapturingLocation = true
+            myCoordinates = LocationHelper.getCurrentLocation(context)
+            isCapturingLocation = false
+        }
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) captureMyLocation()
+    }
+    fun showMyCoordinates() {
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission) {
+            captureMyLocation()
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+    fun shareMyLocation() {
+        val coords = myCoordinates ?: return
+        scope.launch {
+            isSharingLocation = true
+            runCatching { ServiceLocator.authRepository.shareLocation(coords.latitude, coords.longitude) }
+                .onSuccess { loadTeamLocations() }
+                .onFailure { Toast.makeText(context, "Failed to share location: ${it.message}", Toast.LENGTH_LONG).show() }
+            isSharingLocation = false
         }
     }
 
@@ -275,6 +321,28 @@ fun DashboardScreen(
                             syncError = state.syncError,
                             pendingSyncCount = state.pendingSyncCount,
                             onSync = { viewModel.sync() }
+                        )
+                    }
+
+                    item {
+                        MyLocationCard(
+                            coordinates = myCoordinates,
+                            isCapturing = isCapturingLocation,
+                            isSharing = isSharingLocation,
+                            teamLocations = teamLocations,
+                            onShowCoordinates = { showMyCoordinates() },
+                            onShare = { shareMyLocation() },
+                            onOpenInMaps = { lat, lng, label ->
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label)})"))
+                                    )
+                                }.onFailure {
+                                    if (it is ActivityNotFoundException) {
+                                        Toast.makeText(context, "No app found to open this location", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }
                         )
                     }
 
@@ -482,6 +550,79 @@ private fun SyncStatusRow(
                     Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Sync")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MyLocationCard(
+    coordinates: GpsPoint?,
+    isCapturing: Boolean,
+    isSharing: Boolean,
+    teamLocations: List<UserLocationDto>,
+    onShowCoordinates: () -> Unit,
+    onShare: () -> Unit,
+    onOpenInMaps: (Double, Double, String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Text("My Location", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            coordinates?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Lat: ${it.latitude}, Lng: ${it.longitude}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onShowCoordinates, enabled = !isCapturing) {
+                    if (isCapturing) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Show my coordinates")
+                    }
+                }
+                Button(onClick = onShare, enabled = coordinates != null && !isSharing) {
+                    if (isSharing) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Share")
+                    }
+                }
+            }
+            if (teamLocations.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(8.dp))
+                Text("Team Locations", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                teamLocations.forEach { loc ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenInMaps(loc.sharedLatitude, loc.sharedLongitude, loc.name) }
+                            .padding(vertical = 6.dp)
+                    ) {
+                        Text(loc.name, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${loc.role} — shared ${loc.sharedLocationAt}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

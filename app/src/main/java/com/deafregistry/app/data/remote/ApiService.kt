@@ -25,6 +25,12 @@ interface ApiService {
     @POST("auth/photo")
     suspend fun uploadUserPhoto(@Part photo: MultipartBody.Part): PhotoUploadResponse
 
+    @PUT("auth/share-location")
+    suspend fun shareLocation(@Body request: ShareLocationRequest): ShareLocationResponse
+
+    @GET("users/locations")
+    suspend fun getUserLocations(): List<UserLocationDto>
+
     // Municipalities
     @GET("municipalities")
     suspend fun getMunicipalities(): List<MunicipalityDto>

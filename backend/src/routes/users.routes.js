@@ -5,6 +5,7 @@ const ctrl = require('../controllers/users.controller');
 const router = express.Router();
 
 router.get('/', requireAuth, requireAdmin, ctrl.list);
+router.get('/locations', requireAuth, ctrl.listLocations);
 router.post('/', requireAuth, requireAdmin, ctrl.create);
 router.get('/pending-signups', requireAuth, requireAdmin, ctrl.listPendingSignups);
 router.post('/:id/approve-signup', requireAuth, requireAdmin, ctrl.approveSignup);

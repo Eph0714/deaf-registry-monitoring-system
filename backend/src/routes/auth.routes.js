@@ -10,5 +10,6 @@ router.post('/signup', ctrl.signup);
 router.get('/me', requireAuth, ctrl.me);
 router.post('/change-password', requireAuth, ctrl.changePassword);
 router.post('/photo', requireAuth, upload.single('photo'), ctrl.uploadPhoto);
+router.put('/share-location', requireAuth, ctrl.shareLocation);
 
 module.exports = router;

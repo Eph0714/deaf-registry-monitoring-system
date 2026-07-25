@@ -69,6 +69,9 @@ CREATE TABLE IF NOT EXISTS users (
   approval_status VARCHAR(20) NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending','approved','rejected')),
   contact_number VARCHAR(30) NULL,
   location VARCHAR(255) NULL,
+  shared_latitude DOUBLE PRECISION NULL,
+  shared_longitude DOUBLE PRECISION NULL,
+  shared_location_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

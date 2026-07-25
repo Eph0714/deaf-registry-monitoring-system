@@ -63,6 +63,23 @@ data class UpdateUserRequest(
 
 data class ResetPasswordRequest(val newPassword: String)
 
+data class ShareLocationRequest(val latitude: Double, val longitude: Double)
+
+data class ShareLocationResponse(
+    @SerializedName("shared_latitude") val sharedLatitude: Double?,
+    @SerializedName("shared_longitude") val sharedLongitude: Double?,
+    @SerializedName("shared_location_at") val sharedLocationAt: String?
+)
+
+data class UserLocationDto(
+    val id: Int,
+    val name: String,
+    val role: String,
+    @SerializedName("shared_latitude") val sharedLatitude: Double,
+    @SerializedName("shared_longitude") val sharedLongitude: Double,
+    @SerializedName("shared_location_at") val sharedLocationAt: String
+)
+
 data class AuditLogDto(
     val id: Int,
     val action: String,

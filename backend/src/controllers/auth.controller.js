@@ -88,6 +88,19 @@ const uploadPhoto = asyncHandler(async (req, res) => {
   res.json({ photo_url: photoUrl });
 });
 
+const shareLocation = asyncHandler(async (req, res) => {
+  const { latitude, longitude } = req.body;
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return res.status(400).json({ message: 'latitude and longitude are required numbers' });
+  }
+  const { rows } = await pool.query(
+    `UPDATE users SET shared_latitude = $1, shared_longitude = $2, shared_location_at = CURRENT_TIMESTAMP
+     WHERE id = $3 RETURNING shared_latitude, shared_longitude, shared_location_at`,
+    [latitude, longitude, req.user.id]
+  );
+  res.json(rows[0]);
+});
+
 const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
@@ -102,4 +115,4 @@ const changePassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password updated' });
 });
 
-module.exports = { login, signup, me, changePassword, uploadPhoto };
+module.exports = { login, signup, me, changePassword, uploadPhoto, shareLocation };
