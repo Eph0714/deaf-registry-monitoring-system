@@ -380,7 +380,8 @@ fun DashboardScreen(
         )
     }
 
-    state.updateInfo?.let { info ->
+    val visibleUpdateInfo = if (state.showUpdateDialog) state.updateInfo else null
+    visibleUpdateInfo?.let { info ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissUpdatePrompt() },
             title = { Text("Update Available") },

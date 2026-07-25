@@ -16,6 +16,8 @@ import com.deafregistry.app.data.repository.UserRepository
 import com.deafregistry.app.data.session.SessionManager
 import com.deafregistry.app.data.sync.SyncManager
 import com.deafregistry.app.util.NetworkMonitor
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -36,7 +38,8 @@ data class DashboardUiState(
     val byStatus: List<ByStatusDto> = emptyList(),
     val bySkill: List<BySkillDto> = emptyList(),
     val pendingSyncCount: Int = 0,
-    val updateInfo: AppVersionDto? = null
+    val updateInfo: AppVersionDto? = null,
+    val showUpdateDialog: Boolean = false
 )
 
 class DashboardViewModel(
@@ -105,21 +108,35 @@ class DashboardViewModel(
         }
 
         // Checked once per app session (this ViewModel is only created once per login), not on
-        // every return to Dashboard - an update prompt that reappears every time you navigate
-        // back here would be naggy. This app isn't distributed through Google Play, so there's
+        // every return to Dashboard. This app isn't distributed through Google Play, so there's
         // no automatic update channel - App Update in Control Panel is what sets this value.
         viewModelScope.launch {
             runCatching { settingsRepository.getLatestAppVersion() }
                 .onSuccess { info ->
                     if (info.versionCode > BuildConfig.VERSION_CODE && !info.apkUrl.isNullOrBlank()) {
-                        _uiState.value = _uiState.value.copy(updateInfo = info)
+                        _uiState.value = _uiState.value.copy(updateInfo = info, showUpdateDialog = true)
                     }
                 }
         }
     }
 
+    private var updateReminderJob: Job? = null
+
+    /**
+     * Hides the dialog but keeps nagging - re-shows it a few minutes later, and keeps doing so
+     * for the rest of the session, since dismissing (even via "Update Now", which just opens a
+     * browser and can't confirm the install actually happened) doesn't mean the device is
+     * actually on the new version yet. Only a real app restart on the new build stops this.
+     */
     fun dismissUpdatePrompt() {
-        _uiState.value = _uiState.value.copy(updateInfo = null)
+        _uiState.value = _uiState.value.copy(showUpdateDialog = false)
+        updateReminderJob?.cancel()
+        updateReminderJob = viewModelScope.launch {
+            delay(UPDATE_REMINDER_INTERVAL_MS)
+            if (_uiState.value.updateInfo != null) {
+                _uiState.value = _uiState.value.copy(showUpdateDialog = true)
+            }
+        }
     }
 
     fun sync() {
@@ -169,5 +186,9 @@ class DashboardViewModel(
             runCatching { syncManager.pendingCount() }
                 .onSuccess { count -> _uiState.value = _uiState.value.copy(pendingSyncCount = count) }
         }
+    }
+
+    private companion object {
+        const val UPDATE_REMINDER_INTERVAL_MS = 5 * 60 * 1000L
     }
 }
