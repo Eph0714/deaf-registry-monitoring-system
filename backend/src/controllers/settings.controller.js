@@ -86,4 +86,29 @@ const updateTheme = asyncHandler(async (req, res) => {
   res.json({ theme });
 });
 
-module.exports = { getOverdueDays, updateOverdueDays, getAppVersion, updateAppVersion, getTheme, updateTheme };
+const LOCATION_SHARE_TTL_KEY = 'location_share_ttl_minutes';
+const DEFAULT_LOCATION_SHARE_TTL_MINUTES = 60;
+
+const getLocationShareTtl = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query('SELECT "value" FROM settings WHERE "key" = $1', [LOCATION_SHARE_TTL_KEY]);
+  res.json({ location_share_ttl_minutes: rows.length ? Number(rows[0].value) : DEFAULT_LOCATION_SHARE_TTL_MINUTES });
+});
+
+const updateLocationShareTtl = asyncHandler(async (req, res) => {
+  const { location_share_ttl_minutes } = req.body;
+  const minutes = Number(location_share_ttl_minutes);
+  if (!Number.isInteger(minutes) || minutes < 1) {
+    return res.status(400).json({ message: 'location_share_ttl_minutes must be a positive integer' });
+  }
+  await pool.query(
+    'INSERT INTO settings ("key", "value") VALUES ($1, $2) ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED.value',
+    [LOCATION_SHARE_TTL_KEY, String(minutes)]
+  );
+  await logAudit(req.user.id, 'UPDATE', 'setting', null, { key: LOCATION_SHARE_TTL_KEY, value: minutes });
+  res.json({ location_share_ttl_minutes: minutes });
+});
+
+module.exports = {
+  getOverdueDays, updateOverdueDays, getAppVersion, updateAppVersion, getTheme, updateTheme,
+  getLocationShareTtl, updateLocationShareTtl
+};

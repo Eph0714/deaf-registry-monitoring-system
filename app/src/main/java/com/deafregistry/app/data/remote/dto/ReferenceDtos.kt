@@ -54,3 +54,5 @@ data class AppVersionDto(
 )
 
 data class ThemeDto(@SerializedName("theme") val theme: String)
+
+data class LocationShareTtlDto(@SerializedName("location_share_ttl_minutes") val locationShareTtlMinutes: Int)

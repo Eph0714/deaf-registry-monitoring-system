@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
@@ -103,6 +104,7 @@ fun DashboardScreen(
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenControlPanel: () -> Unit,
+    onOpenAppUpdate: () -> Unit,
     onLogout: () -> Unit
 ) {
     val viewModel: DashboardViewModel = viewModel(
@@ -358,6 +360,7 @@ fun DashboardScreen(
                             onOpenReports = onOpenReports,
                             onOpenControlPanel = onOpenControlPanel,
                             onOpenMunicipality = onOpenDeafRecords,
+                            onOpenAppUpdate = onOpenAppUpdate,
                             isAdmin = state.isAdmin
                         )
                     }
@@ -656,6 +659,7 @@ private fun DashboardQuickActionsRow(
     onOpenReports: () -> Unit,
     onOpenControlPanel: () -> Unit,
     onOpenMunicipality: () -> Unit,
+    onOpenAppUpdate: () -> Unit,
     isAdmin: Boolean
 ) {
     Card(
@@ -687,6 +691,15 @@ private fun DashboardQuickActionsRow(
                 if (isAdmin) {
                     DashboardQuickActionTile("Control Panel", Icons.Default.Settings, onOpenControlPanel, Modifier.weight(1f))
                 } else {
+                    Box(Modifier.weight(1f)) {}
+                }
+            }
+            if (isAdmin) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    DashboardQuickActionTile("App Update", Icons.Default.SystemUpdate, onOpenAppUpdate, Modifier.weight(1f))
                     Box(Modifier.weight(1f)) {}
                 }
             }

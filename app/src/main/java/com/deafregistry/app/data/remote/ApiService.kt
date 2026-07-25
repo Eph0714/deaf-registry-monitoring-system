@@ -148,6 +148,12 @@ interface ApiService {
     @PUT("settings/theme")
     suspend fun updateTheme(@Body request: ThemeDto): ThemeDto
 
+    @GET("settings/location-share-ttl")
+    suspend fun getLocationShareTtl(): LocationShareTtlDto
+
+    @PUT("settings/location-share-ttl")
+    suspend fun updateLocationShareTtl(@Body request: LocationShareTtlDto): LocationShareTtlDto
+
     // Visits
     @GET("deaf-individuals/{deafId}/visits")
     suspend fun getVisits(@Path("deafId") deafId: Int): List<VisitDto>

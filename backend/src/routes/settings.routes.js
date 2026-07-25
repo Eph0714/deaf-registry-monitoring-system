@@ -10,5 +10,7 @@ router.get('/app-version', requireAuth, ctrl.getAppVersion);
 router.put('/app-version', requireAuth, requireAdmin, ctrl.updateAppVersion);
 router.get('/theme', requireAuth, ctrl.getTheme);
 router.put('/theme', requireAuth, requireAdmin, ctrl.updateTheme);
+router.get('/location-share-ttl', requireAuth, ctrl.getLocationShareTtl);
+router.put('/location-share-ttl', requireAuth, requireAdmin, ctrl.updateLocationShareTtl);
 
 module.exports = router;

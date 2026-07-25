@@ -95,13 +95,22 @@ const permanentlyDelete = asyncHandler(async (req, res) => {
 });
 
 // Any authenticated user can see who has shared their location - a simple team
-// location board, not gated to admins (confirmed with the user).
+// location board, not gated to admins (confirmed with the user). Entries older than the
+// admin-configured TTL (settings.location_share_ttl_minutes, see locationRetention.js for
+// the job that actually clears them) are excluded here too, so a share never briefly
+// reappears in the window between retention-job runs.
 const listLocations = asyncHandler(async (req, res) => {
+  const { rows: ttlRows } = await pool.query(
+    `SELECT "value" FROM settings WHERE "key" = 'location_share_ttl_minutes'`
+  );
+  const ttlMinutes = ttlRows.length ? Number(ttlRows[0].value) : 60;
   const { rows } = await pool.query(
     `SELECT id, name, role, shared_latitude, shared_longitude, shared_location_at
      FROM users
      WHERE is_active = true AND shared_location_at IS NOT NULL
-     ORDER BY shared_location_at DESC`
+       AND shared_location_at > NOW() - ($1 || ' minutes')::interval
+     ORDER BY shared_location_at DESC`,
+    [ttlMinutes]
   );
   res.json(rows);
 });

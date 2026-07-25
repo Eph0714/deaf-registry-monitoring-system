@@ -20,6 +20,7 @@ import com.deafregistry.app.ui.admin.ManageUsersScreen
 import com.deafregistry.app.ui.admin.AppUpdateSettingsScreen
 import com.deafregistry.app.ui.admin.ThemeSettingsScreen
 import com.deafregistry.app.ui.admin.NotificationSettingsScreen
+import com.deafregistry.app.ui.admin.LocationSharingSettingsScreen
 import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
 import com.deafregistry.app.ui.login.LoginScreen
@@ -60,6 +61,7 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
                 onOpenControlPanel = { navController.navigate(Routes.CONTROL_PANEL) },
+                onOpenAppUpdate = { navController.navigate(Routes.ADMIN_APP_UPDATE) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
@@ -177,6 +179,9 @@ fun AppNavGraph(sessionManager: SessionManager) {
         }
         composable(Routes.ADMIN_THEME) {
             ThemeSettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.ADMIN_LOCATION_SHARING) {
+            LocationSharingSettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.ADMIN_PENDING_USERS) {
             AdminPendingUsersScreen(onBack = { navController.popBackStack() })

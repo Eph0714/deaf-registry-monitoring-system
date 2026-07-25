@@ -3,6 +3,7 @@ package com.deafregistry.app.data.repository
 import android.content.SharedPreferences
 import com.deafregistry.app.data.remote.ApiService
 import com.deafregistry.app.data.remote.dto.AppVersionDto
+import com.deafregistry.app.data.remote.dto.LocationShareTtlDto
 import com.deafregistry.app.data.remote.dto.OverdueDaysDto
 import com.deafregistry.app.data.remote.dto.ThemeDto
 import com.deafregistry.app.ui.theme.AppThemeOption
@@ -53,9 +54,25 @@ class SettingsRepository(
         return remote
     }
 
+    suspend fun refreshLocationShareTtl(): Int {
+        val remote = api.getLocationShareTtl().locationShareTtlMinutes
+        prefs.edit().putInt(KEY_LOCATION_SHARE_TTL, remote).apply()
+        return remote
+    }
+
+    suspend fun updateLocationShareTtl(minutes: Int): Int {
+        val response = api.updateLocationShareTtl(LocationShareTtlDto(minutes)).locationShareTtlMinutes
+        prefs.edit().putInt(KEY_LOCATION_SHARE_TTL, response).apply()
+        return response
+    }
+
+    fun cachedLocationShareTtl(): Int = prefs.getInt(KEY_LOCATION_SHARE_TTL, DEFAULT_LOCATION_SHARE_TTL_MINUTES)
+
     companion object {
         private const val DEFAULT_OVERDUE_DAYS = 30
         private const val KEY_OVERDUE_DAYS = "overdue_days"
         private const val KEY_THEME = "app_theme"
+        private const val DEFAULT_LOCATION_SHARE_TTL_MINUTES = 60
+        private const val KEY_LOCATION_SHARE_TTL = "location_share_ttl_minutes"
     }
 }
