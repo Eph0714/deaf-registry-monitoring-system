@@ -16,4 +16,16 @@ object SearchStateHolder {
     var individualsSkillChoice: String? = null
     var reportsCategoryKey: String? = null
     var reportsStatusChoice: String? = null
+
+    // Municipality Directory module - preserves the user's search/filter/sort/expand/scroll
+    // state across navigating away (View/Edit/Add Record, etc.) and back, same reasoning as
+    // every other field above.
+    var municipalityDirectorySearchText: String = ""
+    var municipalityDirectoryGroupMode: String? = null
+    var municipalityDirectoryMunicipalityFilter: String? = null
+    var municipalityDirectoryBarangayFilter: String? = null
+    var municipalityDirectorySortOption: String? = null
+    var municipalityDirectoryExpandedGroups: Set<String> = emptySet()
+    var municipalityDirectoryScrollIndex: Int = 0
+    var municipalityDirectoryScrollOffset: Int = 0
 }

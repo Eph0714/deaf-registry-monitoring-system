@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,11 +43,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.deafregistry.app.data.local.dao.DeafIndividualWithLastVisit
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
+import com.deafregistry.app.ui.common.SearchStateHolder
 import com.deafregistry.app.util.ExportUtils
 import java.time.LocalDate
 import java.time.Period
@@ -90,16 +94,35 @@ fun MunicipalityDirectoryScreen(
 ) {
     val context = LocalContext.current
 
-    var searchText by remember { mutableStateOf("") }
-    var groupMode by remember { mutableStateOf(GroupMode.MUNICIPALITY) }
+    // Every filter/sort/expand/scroll choice below is mirrored into SearchStateHolder as it
+    // changes, and read back here as the initial value - Navigation-Compose disposes this
+    // composable's remembered state when you navigate away (e.g. to View/Edit/Add Record) and
+    // recreates it fresh on Back, so without this the whole module would reset every time.
+    var searchText by remember { mutableStateOf(SearchStateHolder.municipalityDirectorySearchText) }
+    var groupMode by remember {
+        mutableStateOf(GroupMode.entries.firstOrNull { it.name == SearchStateHolder.municipalityDirectoryGroupMode } ?: GroupMode.MUNICIPALITY)
+    }
     var groupModeMenuExpanded by remember { mutableStateOf(false) }
-    var municipalityFilter by remember { mutableStateOf<String?>(null) }
+    var municipalityFilter by remember { mutableStateOf(SearchStateHolder.municipalityDirectoryMunicipalityFilter) }
     var municipalityMenuExpanded by remember { mutableStateOf(false) }
-    var barangayFilter by remember { mutableStateOf<String?>(null) }
+    var barangayFilter by remember { mutableStateOf(SearchStateHolder.municipalityDirectoryBarangayFilter) }
     var barangayMenuExpanded by remember { mutableStateOf(false) }
-    var sortOption by remember { mutableStateOf(SortOption.NAME_ASC) }
+    var sortOption by remember {
+        mutableStateOf(SortOption.entries.firstOrNull { it.name == SearchStateHolder.municipalityDirectorySortOption } ?: SortOption.NAME_ASC)
+    }
     var sortMenuExpanded by remember { mutableStateOf(false) }
-    var expandedGroups by remember { mutableStateOf(setOf<String>()) }
+    var expandedGroups by remember { mutableStateOf(SearchStateHolder.municipalityDirectoryExpandedGroups) }
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = SearchStateHolder.municipalityDirectoryScrollIndex,
+        initialFirstVisibleItemScrollOffset = SearchStateHolder.municipalityDirectoryScrollOffset
+    )
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                SearchStateHolder.municipalityDirectoryScrollIndex = index
+                SearchStateHolder.municipalityDirectoryScrollOffset = offset
+            }
+    }
 
     val municipalities by ServiceLocator.referenceDataRepository.observeMunicipalitiesWithCounts()
         .collectAsState(initial = emptyList())
@@ -162,7 +185,7 @@ fun MunicipalityDirectoryScreen(
             FloatingActionButton(onClick = onAddNew) { Icon(Icons.Default.Add, contentDescription = "Add") }
         }
     ) { padding: PaddingValues ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), state = listState) {
             item {
                 Spacer(Modifier.height(8.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -176,7 +199,7 @@ fun MunicipalityDirectoryScreen(
 
                 OutlinedTextField(
                     value = searchText,
-                    onValueChange = { searchText = it },
+                    onValueChange = { searchText = it; SearchStateHolder.municipalityDirectorySearchText = it },
                     label = { Text("Search by Name, Municipality, Barangay...") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -201,6 +224,7 @@ fun MunicipalityDirectoryScreen(
                             GroupMode.entries.forEach { mode ->
                                 DropdownMenuItem(text = { Text(mode.label) }, onClick = {
                                     groupMode = mode
+                                    SearchStateHolder.municipalityDirectoryGroupMode = mode.name
                                     groupModeMenuExpanded = false
                                 })
                             }
@@ -224,6 +248,7 @@ fun MunicipalityDirectoryScreen(
                             SortOption.entries.forEach { option ->
                                 DropdownMenuItem(text = { Text(option.label) }, onClick = {
                                     sortOption = option
+                                    SearchStateHolder.municipalityDirectorySortOption = option.name
                                     sortMenuExpanded = false
                                 })
                             }
@@ -249,11 +274,13 @@ fun MunicipalityDirectoryScreen(
                         ExposedDropdownMenu(expanded = municipalityMenuExpanded, onDismissRequest = { municipalityMenuExpanded = false }) {
                             DropdownMenuItem(text = { Text("All Municipalities") }, onClick = {
                                 municipalityFilter = null
+                                SearchStateHolder.municipalityDirectoryMunicipalityFilter = null
                                 municipalityMenuExpanded = false
                             })
                             municipalities.forEach { m ->
                                 DropdownMenuItem(text = { Text(m.name) }, onClick = {
                                     municipalityFilter = m.name
+                                    SearchStateHolder.municipalityDirectoryMunicipalityFilter = m.name
                                     municipalityMenuExpanded = false
                                 })
                             }
@@ -275,6 +302,7 @@ fun MunicipalityDirectoryScreen(
                         ExposedDropdownMenu(expanded = barangayMenuExpanded, onDismissRequest = { barangayMenuExpanded = false }) {
                             DropdownMenuItem(text = { Text("All Barangays") }, onClick = {
                                 barangayFilter = null
+                                SearchStateHolder.municipalityDirectoryBarangayFilter = null
                                 barangayMenuExpanded = false
                             })
                             allBarangays
@@ -282,6 +310,7 @@ fun MunicipalityDirectoryScreen(
                                 .forEach { b ->
                                     DropdownMenuItem(text = { Text("${b.name} (${b.municipalityName})") }, onClick = {
                                         barangayFilter = b.name
+                                        SearchStateHolder.municipalityDirectoryBarangayFilter = b.name
                                         barangayMenuExpanded = false
                                     })
                                 }
@@ -300,6 +329,7 @@ fun MunicipalityDirectoryScreen(
                         expanded = header in expandedGroups,
                         onToggle = {
                             expandedGroups = if (header in expandedGroups) expandedGroups - header else expandedGroups + header
+                            SearchStateHolder.municipalityDirectoryExpandedGroups = expandedGroups
                         }
                     )
                 }
