@@ -202,6 +202,19 @@ interface ApiService {
     @GET("reports/not-visited")
     suspend fun reportNotVisited(@Query("days") days: Int = 30): List<NotVisitedDto>
 
+    // Calendar events - GET is open to any authenticated user, writes are admin/super_admin only.
+    @GET("calendar-events")
+    suspend fun getCalendarEvents(): List<CalendarEventDto>
+
+    @POST("calendar-events")
+    suspend fun createCalendarEvent(@Body request: CalendarEventRequest): CalendarEventDto
+
+    @PUT("calendar-events/{id}")
+    suspend fun updateCalendarEvent(@Path("id") id: Int, @Body request: CalendarEventRequest): CalendarEventDto
+
+    @DELETE("calendar-events/{id}")
+    suspend fun deleteCalendarEvent(@Path("id") id: Int): Response<Unit>
+
     // Admin backup
     @POST("admin/backup")
     suspend fun createBackup(): ResponseBody

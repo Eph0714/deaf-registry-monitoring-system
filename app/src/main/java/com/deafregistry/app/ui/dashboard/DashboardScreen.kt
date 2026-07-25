@@ -91,6 +91,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.deafregistry.app.BuildConfig
 import com.deafregistry.app.data.local.entity.DeafIndividualEntity
+import com.deafregistry.app.data.remote.dto.CalendarEventDto
 import com.deafregistry.app.data.remote.dto.NotVisitedDto
 import com.deafregistry.app.data.remote.dto.RecentVisitDto
 import com.deafregistry.app.data.remote.dto.UserLocationDto
@@ -155,6 +156,15 @@ fun DashboardScreen(
     var isCapturingLocation by remember { mutableStateOf(false) }
     var isSharingLocation by remember { mutableStateOf(false) }
     var teamLocations by remember { mutableStateOf<List<UserLocationDto>>(emptyList()) }
+
+    var calendarEvents by remember { mutableStateOf<List<CalendarEventDto>>(emptyList()) }
+    fun loadCalendarEvents() {
+        scope.launch {
+            runCatching { ServiceLocator.calendarEventRepository.list() }
+                .onSuccess { calendarEvents = it }
+        }
+    }
+    LaunchedEffect(Unit) { loadCalendarEvents() }
 
     // Municipality/Barangay directory: every deaf record grouped by whichever the dropdown
     // picks, with a header count per group - a local Room flow, so no ViewModel wiring needed
@@ -297,7 +307,7 @@ fun DashboardScreen(
     ) { padding: PaddingValues ->
         PullToRefreshBox(
             isRefreshing = state.isSyncing,
-            onRefresh = { viewModel.sync(); loadTeamLocations() },
+            onRefresh = { viewModel.sync(); loadTeamLocations(); loadCalendarEvents() },
             modifier = Modifier.padding(padding)
         ) {
             if (state.municipalities.isEmpty() && !state.isSyncing) {
@@ -352,7 +362,37 @@ fun DashboardScreen(
                             isSyncing = state.isSyncing,
                             syncError = state.syncError,
                             pendingSyncCount = state.pendingSyncCount,
-                            onSync = { viewModel.sync(); loadTeamLocations() }
+                            onSync = { viewModel.sync(); loadTeamLocations(); loadCalendarEvents() }
+                        )
+                    }
+
+                    item {
+                        CalendarCard(
+                            events = calendarEvents,
+                            isAdmin = state.isAdmin,
+                            onAddEvent = { date, title, description ->
+                                scope.launch {
+                                    runCatching {
+                                        ServiceLocator.calendarEventRepository.create(title, description.ifBlank { null }, date.toString())
+                                    }.onSuccess { loadCalendarEvents() }
+                                        .onFailure { Toast.makeText(context, "Failed to add event: ${it.message}", Toast.LENGTH_LONG).show() }
+                                }
+                            },
+                            onEditEvent = { id, date, title, description ->
+                                scope.launch {
+                                    runCatching {
+                                        ServiceLocator.calendarEventRepository.update(id, title, description.ifBlank { null }, date.toString())
+                                    }.onSuccess { loadCalendarEvents() }
+                                        .onFailure { Toast.makeText(context, "Failed to save event: ${it.message}", Toast.LENGTH_LONG).show() }
+                                }
+                            },
+                            onDeleteEvent = { id ->
+                                scope.launch {
+                                    runCatching { ServiceLocator.calendarEventRepository.delete(id) }
+                                        .onSuccess { loadCalendarEvents() }
+                                        .onFailure { Toast.makeText(context, "Failed to delete event: ${it.message}", Toast.LENGTH_LONG).show() }
+                                }
+                            }
                         )
                     }
 
