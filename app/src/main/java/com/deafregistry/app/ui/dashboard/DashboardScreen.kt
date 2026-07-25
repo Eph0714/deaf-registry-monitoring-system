@@ -397,44 +397,41 @@ fun DashboardScreen(
                     }
 
 
-                    if (state.isAdmin) {
-                        item {
-                            FollowUpNeededCard(
-                                items = state.pendingFollowUps.take(3),
-                                overdueDaysThreshold = state.overdueDaysThreshold,
-                                onOpenProfile = onOpenProfile
-                            )
-                        }
+                    item {
+                        FollowUpNeededCard(
+                            items = state.pendingFollowUps.take(3),
+                            overdueDaysThreshold = state.overdueDaysThreshold,
+                            onOpenProfile = onOpenProfile
+                        )
+                    }
 
-                        item {
-                            DashboardInsightCard(
-                                title = "Monitoring Status",
-                                icon = Icons.Default.TrendingUp,
-                                rows = state.byStatus.take(4).map { it.monitoringStatus to it.total },
-                                total = state.municipalities.sumOf { it.deafCount }
-                            )
-                        }
+                    item {
+                        DashboardInsightCard(
+                            title = "Monitoring Status",
+                            icon = Icons.Default.TrendingUp,
+                            rows = state.byStatus.take(4).map { it.monitoringStatus to it.total },
+                            total = state.municipalities.sumOf { it.deafCount }
+                        )
+                    }
 
-                        item {
-                            DashboardInsightCard(
-                                title = "Skill Levels",
-                                icon = Icons.Default.TrendingUp,
-                                rows = state.bySkill.take(4).map { it.skillLevel to it.total },
-                                total = state.municipalities.sumOf { it.deafCount }
-                            )
-                        }
+                    item {
+                        DashboardInsightCard(
+                            title = "Skill Levels",
+                            icon = Icons.Default.TrendingUp,
+                            rows = state.bySkill.take(4).map { it.skillLevel to it.total },
+                            total = state.municipalities.sumOf { it.deafCount }
+                        )
+                    }
 
-                        item {
-                            DashboardActivityCard(
-                                title = "Latest Visits",
-                                icon = Icons.Default.History,
-                                items = state.recentVisits.take(5).map {
-                                    it.fullName to "${it.conductorName ?: "—"} • ${it.visitDateTime}"
-                                },
-                                subtitle = "Most recently recorded visits"
-                            )
-                        }
-
+                    item {
+                        DashboardActivityCard(
+                            title = "Latest Visits",
+                            icon = Icons.Default.History,
+                            items = state.recentVisits.take(5).map {
+                                it.fullName to "${it.conductorName ?: "—"} • ${it.visitDateTime}"
+                            },
+                            subtitle = "Most recently recorded visits"
+                        )
                     }
                 }
             }

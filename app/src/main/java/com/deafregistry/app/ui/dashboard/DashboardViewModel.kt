@@ -75,31 +75,29 @@ class DashboardViewModel(
 
         refreshUserCounts()
 
-        // Reports are admin-only (server-enforced too) - conductors never see this data, so
-        // skip the calls entirely rather than hitting an expected 403.
-        if (sessionManager.isAdmin()) {
-            viewModelScope.launch {
-                try {
-                    val overdueDays = settingsRepository.cachedOverdueDays().toInt()
-                    val recentVisits = reportRepository.recentVisits(5)
-                    val pendingFollowUps = reportRepository.notVisited(overdueDays)
-                    val byStatus = reportRepository.byStatus()
-                    val bySkill = reportRepository.bySkill()
-                    _uiState.value = _uiState.value.copy(
-                        recentVisits = recentVisits,
-                        pendingFollowUps = pendingFollowUps,
-                        byStatus = byStatus,
-                        bySkill = bySkill,
-                        overdueDaysThreshold = overdueDays
-                    )
-                } catch (_: Exception) {
-                    _uiState.value = _uiState.value.copy(
-                        recentVisits = emptyList(),
-                        pendingFollowUps = emptyList(),
-                        byStatus = emptyList(),
-                        bySkill = emptyList()
-                    )
-                }
+        // Reports are viewable by every role now (server-enforced too - only export/print on
+        // ReportsScreen stays admin-only), so these Dashboard summary cards fetch for everyone.
+        viewModelScope.launch {
+            try {
+                val overdueDays = settingsRepository.cachedOverdueDays().toInt()
+                val recentVisits = reportRepository.recentVisits(5)
+                val pendingFollowUps = reportRepository.notVisited(overdueDays)
+                val byStatus = reportRepository.byStatus()
+                val bySkill = reportRepository.bySkill()
+                _uiState.value = _uiState.value.copy(
+                    recentVisits = recentVisits,
+                    pendingFollowUps = pendingFollowUps,
+                    byStatus = byStatus,
+                    bySkill = bySkill,
+                    overdueDaysThreshold = overdueDays
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    recentVisits = emptyList(),
+                    pendingFollowUps = emptyList(),
+                    byStatus = emptyList(),
+                    bySkill = emptyList()
+                )
             }
         }
 
