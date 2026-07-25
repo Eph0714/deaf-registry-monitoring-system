@@ -270,7 +270,14 @@ class DeafIndividualRepository(
         for (item in dao.getDirty()) {
             try {
                 if (item.isDeleted) {
-                    item.serverId?.let { api.deleteDeafIndividual(it) }
+                    item.serverId?.let {
+                        val response = api.deleteDeafIndividual(it)
+                        // Same Response<Unit>-doesn't-throw issue as the update path below - without
+                        // this check, a failed server-side delete would still get hard-deleted locally,
+                        // and the "deleted" record would silently reappear on the next pull since the
+                        // server still has it and it's no longer excluded by the dirty filter.
+                        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+                    }
                     dao.hardDelete(item.uuid)
                     continue
                 }
@@ -311,12 +318,18 @@ class DeafIndividualRepository(
                             // it instead of leaving this record stuck forever.
                             if (e.code() == 409) {
                                 val existing = api.getDeafIndividuals().find { it.uuid == current.uuid } ?: throw e
-                                api.updateDeafIndividual(existing.id, request)
+                                val response = api.updateDeafIndividual(existing.id, request)
+                                if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 existing.id
                             } else throw e
                         }
                     } else {
-                        api.updateDeafIndividual(current.serverId, request)
+                        val response = api.updateDeafIndividual(current.serverId, request)
+                        // Response<Unit> doesn't throw on a non-2xx by itself - without this check,
+                        // a failed edit would still get marked isDirty=false below and look "synced"
+                        // on this device forever, even though the server never actually received it,
+                        // which meant it could never reach any other device either.
+                        if (!response.isSuccessful) throw retrofit2.HttpException(response)
                         current.serverId
                     }
 

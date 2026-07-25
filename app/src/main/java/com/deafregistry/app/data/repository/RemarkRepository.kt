@@ -74,7 +74,12 @@ class RemarkRepository(
                 val visit = visitDao.getByUuid(item.visitUuid) ?: continue
                 val visitServerId = visit.serverId ?: continue // parent visit must be synced first
                 if (item.isDeleted) {
-                    item.serverId?.let { api.deleteRemark(visitServerId, it) }
+                    item.serverId?.let {
+                        // Response<Unit> doesn't throw on a non-2xx by itself - without this check,
+                        // a failed server-side delete would still get hard-deleted locally.
+                        val response = api.deleteRemark(visitServerId, it)
+                        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+                    }
                     remarkDao.hardDelete(item.uuid)
                     continue
                 }
@@ -82,7 +87,8 @@ class RemarkRepository(
                     val response = api.createRemark(visitServerId, RemarkRequest(remark_text = item.remarkText, uuid = item.uuid))
                     remarkDao.upsert(item.copy(serverId = response.id, isDirty = false))
                 } else {
-                    api.updateRemark(visitServerId, item.serverId, RemarkUpdateRequest(item.remarkText))
+                    val response = api.updateRemark(visitServerId, item.serverId, RemarkUpdateRequest(item.remarkText))
+                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                     remarkDao.upsert(item.copy(isDirty = false))
                 }
             } catch (e: Exception) {
