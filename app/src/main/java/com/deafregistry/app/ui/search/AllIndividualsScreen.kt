@@ -223,7 +223,7 @@ fun AllIndividualsScreen(
                     searchText = it
                     SearchStateHolder.individualsSearchText = it
                 },
-                label = { Text("Search by name") },
+                label = { Text("Search All") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
             )
@@ -294,14 +294,14 @@ private fun currentExportRows(categoryKey: String, statusFilter: String?, skillF
         val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
         val rows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
         val filtered = if (searchText.isNotBlank()) {
-            rows.filter { it.individual.fullName.contains(searchText, ignoreCase = true) }
+            rows.filter { matchesSearch(it.individual, searchText) }
         } else rows
         filtered.map { toExportRow(it.individual) }
     } else {
         val flow = remember(categoryKey, statusFilter, skillFilter) { flowForCategory(categoryKey, statusFilter, skillFilter) }
         val individuals by flow.collectAsState(initial = emptyList())
         val filtered = if (searchText.isNotBlank()) {
-            individuals.filter { it.fullName.contains(searchText, ignoreCase = true) }
+            individuals.filter { matchesSearch(it, searchText) }
         } else individuals
         filtered.map { toExportRow(it) }
     }
@@ -310,6 +310,15 @@ private fun currentExportRows(categoryKey: String, statusFilter: String?, skillF
 private fun toExportRow(individual: DeafIndividualEntity): List<String> = listOf(
     individual.fullName, individual.barangayName, individual.municipalityName, individual.monitoringStatus
 )
+
+/** "Search All" - matches against every field shown in a row/export, not just the name. */
+private fun matchesSearch(individual: DeafIndividualEntity, query: String): Boolean =
+    individual.fullName.contains(query, ignoreCase = true) ||
+        individual.barangayName.contains(query, ignoreCase = true) ||
+        individual.municipalityName.contains(query, ignoreCase = true) ||
+        individual.monitoringStatus.contains(query, ignoreCase = true) ||
+        individual.skillLevel.contains(query, ignoreCase = true) ||
+        (individual.assignedTeacherName?.contains(query, ignoreCase = true) == true)
 
 private fun flowForCategory(categoryKey: String, statusFilter: String? = null, skillFilter: String? = null) = when {
     categoryKey == "status" && statusFilter != null -> ServiceLocator.deafIndividualRepository.observeByCategory(monitoringStatus = statusFilter)
@@ -333,7 +342,7 @@ private fun GroupedIndividualsList(
     val flow = remember(categoryKey, statusFilter, skillFilter) { flowForCategory(categoryKey, statusFilter, skillFilter) }
     val rawIndividuals by flow.collectAsState(initial = emptyList())
     val individuals = if (searchText.isNotBlank()) {
-        rawIndividuals.filter { it.fullName.contains(searchText, ignoreCase = true) }
+        rawIndividuals.filter { matchesSearch(it, searchText) }
     } else rawIndividuals
     val lastVisitByUuid = rememberLastVisitByUuid()
 
@@ -383,7 +392,7 @@ private fun LastVisitList(searchText: String, onOpenProfile: (String) -> Unit) {
     val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
     val rawRows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
     val rows = if (searchText.isNotBlank()) {
-        rawRows.filter { it.individual.fullName.contains(searchText, ignoreCase = true) }
+        rawRows.filter { matchesSearch(it.individual, searchText) }
     } else rawRows
 
     if (rows.isEmpty()) {
