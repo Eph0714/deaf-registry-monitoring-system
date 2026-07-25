@@ -1,7 +1,11 @@
 package com.deafregistry.app.ui.dashboard
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -381,6 +385,37 @@ fun DashboardScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showPhotoSourceDialog = false; pickImageLauncher.launch("image/*") }) { Text("Gallery") }
+            }
+        )
+    }
+
+    state.updateInfo?.let { info ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissUpdatePrompt() },
+            title = { Text("Update Available") },
+            text = {
+                Column {
+                    Text("Version ${info.versionName ?: info.versionCode} is available. You're running ${BuildConfig.VERSION_NAME}.")
+                    if (!info.releaseNotes.isNullOrBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(info.releaseNotes, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.dismissUpdatePrompt()
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(info.apkUrl)))
+                    }.onFailure {
+                        if (it is ActivityNotFoundException) {
+                            Toast.makeText(context, "No app found to open this link", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }) { Text("Update Now") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissUpdatePrompt() }) { Text("Later") }
             }
         )
     }

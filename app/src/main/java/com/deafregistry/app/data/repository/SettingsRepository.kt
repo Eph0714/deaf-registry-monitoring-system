@@ -2,6 +2,7 @@ package com.deafregistry.app.data.repository
 
 import android.content.SharedPreferences
 import com.deafregistry.app.data.remote.ApiService
+import com.deafregistry.app.data.remote.dto.AppVersionDto
 import com.deafregistry.app.data.remote.dto.OverdueDaysDto
 
 class SettingsRepository(
@@ -21,6 +22,11 @@ class SettingsRepository(
     }
 
     fun cachedOverdueDays(): Long = prefs.getInt(KEY_OVERDUE_DAYS, DEFAULT_OVERDUE_DAYS).toLong()
+
+    suspend fun getLatestAppVersion(): AppVersionDto = api.getAppVersion()
+
+    suspend fun updateLatestAppVersion(versionCode: Int, versionName: String, apkUrl: String, releaseNotes: String?): AppVersionDto =
+        api.updateAppVersion(AppVersionDto(versionCode, versionName, apkUrl, releaseNotes))
 
     companion object {
         private const val DEFAULT_OVERDUE_DAYS = 30

@@ -2,7 +2,9 @@ package com.deafregistry.app.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deafregistry.app.BuildConfig
 import com.deafregistry.app.data.local.dao.MunicipalityWithCount
+import com.deafregistry.app.data.remote.dto.AppVersionDto
 import com.deafregistry.app.data.remote.dto.BySkillDto
 import com.deafregistry.app.data.remote.dto.ByStatusDto
 import com.deafregistry.app.data.remote.dto.NotVisitedDto
@@ -33,7 +35,8 @@ data class DashboardUiState(
     val pendingFollowUps: List<NotVisitedDto> = emptyList(),
     val byStatus: List<ByStatusDto> = emptyList(),
     val bySkill: List<BySkillDto> = emptyList(),
-    val pendingSyncCount: Int = 0
+    val pendingSyncCount: Int = 0,
+    val updateInfo: AppVersionDto? = null
 )
 
 class DashboardViewModel(
@@ -100,6 +103,23 @@ class DashboardViewModel(
         viewModelScope.launch {
             runCatching { syncManager.pull() }
         }
+
+        // Checked once per app session (this ViewModel is only created once per login), not on
+        // every return to Dashboard - an update prompt that reappears every time you navigate
+        // back here would be naggy. This app isn't distributed through Google Play, so there's
+        // no automatic update channel - App Update in Control Panel is what sets this value.
+        viewModelScope.launch {
+            runCatching { settingsRepository.getLatestAppVersion() }
+                .onSuccess { info ->
+                    if (info.versionCode > BuildConfig.VERSION_CODE && !info.apkUrl.isNullOrBlank()) {
+                        _uiState.value = _uiState.value.copy(updateInfo = info)
+                    }
+                }
+        }
+    }
+
+    fun dismissUpdatePrompt() {
+        _uiState.value = _uiState.value.copy(updateInfo = null)
     }
 
     fun sync() {

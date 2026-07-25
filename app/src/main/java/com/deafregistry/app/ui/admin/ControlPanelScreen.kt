@@ -46,6 +46,7 @@ fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
         add(AdminMenuItem("BS Conductors", "Manage teacher/conductor records", "admin_teachers"))
         add(AdminMenuItem("Backup & Restore", "Local device backup and server database backup", "admin_backup"))
         add(AdminMenuItem("Notification Settings", "Configure overdue-visit alert threshold", "admin_notifications"))
+        add(AdminMenuItem("App Update", "Set the latest version so users get prompted to update", "admin_app_update"))
         add(AdminMenuItem("User Accounts", "Manage app user accounts and roles", "admin_users"))
         add(AdminMenuItem("Pending User Approvals", "Approve or decline new self-service signups", "admin_pending_users", badgeCount = pendingApprovalCount))
         add(AdminMenuItem("User Log Report", "See who did what across the app", "admin_audit_log"))

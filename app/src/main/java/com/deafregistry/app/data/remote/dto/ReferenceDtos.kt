@@ -45,3 +45,10 @@ data class BulkReassignRequest(val from_teacher_id: Int, val to_teacher_id: Int,
 data class BulkReassignResponse(@SerializedName("reassigned_count") val reassignedCount: Int)
 
 data class OverdueDaysDto(@SerializedName("overdue_days") val overdueDays: Int)
+
+data class AppVersionDto(
+    @SerializedName("version_code") val versionCode: Int,
+    @SerializedName("version_name") val versionName: String?,
+    @SerializedName("apk_url") val apkUrl: String?,
+    @SerializedName("release_notes") val releaseNotes: String?
+)
