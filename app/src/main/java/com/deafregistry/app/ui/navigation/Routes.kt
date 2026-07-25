@@ -6,6 +6,7 @@ object Routes {
     const val DASHBOARD = "dashboard"
     const val ALL_INDIVIDUALS = "all_individuals/{title}?sort={sort}"
     const val MUNICIPALITY_DIRECTORY = "municipality_directory"
+    const val CALENDAR = "calendar"
     const val DEAF_PROFILE = "deaf/{uuid}"
     const val DEAF_EDITOR = "deaf_editor?uuid={uuid}&municipalityId={municipalityId}"
     const val SEARCH = "search"

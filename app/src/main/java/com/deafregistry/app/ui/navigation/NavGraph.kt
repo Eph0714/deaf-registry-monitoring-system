@@ -21,6 +21,7 @@ import com.deafregistry.app.ui.admin.AppUpdateSettingsScreen
 import com.deafregistry.app.ui.admin.ThemeSettingsScreen
 import com.deafregistry.app.ui.admin.NotificationSettingsScreen
 import com.deafregistry.app.ui.admin.LocationSharingSettingsScreen
+import com.deafregistry.app.ui.calendar.CalendarScreen
 import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
 import com.deafregistry.app.ui.municipality.MunicipalityDirectoryScreen
@@ -64,6 +65,7 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenControlPanel = { navController.navigate(Routes.CONTROL_PANEL) },
                 onOpenAppUpdate = { navController.navigate(Routes.ADMIN_APP_UPDATE) },
                 onOpenUserAccounts = { navController.navigate(Routes.ADMIN_USERS) },
+                onOpenCalendar = { navController.navigate(Routes.CALENDAR) },
                 onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
@@ -71,6 +73,10 @@ fun AppNavGraph(sessionManager: SessionManager) {
                     }
                 }
             )
+        }
+
+        composable(Routes.CALENDAR) {
+            CalendarScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.MUNICIPALITY_DIRECTORY) {

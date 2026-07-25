@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -109,6 +111,7 @@ fun DashboardScreen(
     onOpenControlPanel: () -> Unit,
     onOpenAppUpdate: () -> Unit,
     onOpenUserAccounts: () -> Unit,
+    onOpenCalendar: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -158,6 +161,13 @@ fun DashboardScreen(
             runCatching { ServiceLocator.calendarEventRepository.list() }
                 .onSuccess { calendarEvents = it }
         }
+    }
+    // Drives the bell badge on the Calendar Quick Access tile - the calendar itself moved to its
+    // own screen so the Dashboard doesn't grow too tall, but "is there something today" still
+    // needs to be visible at a glance from here.
+    val hasEventToday = remember(calendarEvents) {
+        val today = java.time.LocalDate.now().toString()
+        calendarEvents.any { it.eventDate.take(10) == today }
     }
     LaunchedEffect(Unit) { loadCalendarEvents() }
 
@@ -341,36 +351,6 @@ fun DashboardScreen(
                     }
 
                     item {
-                        CalendarCard(
-                            events = calendarEvents,
-                            isAdmin = state.isAdmin,
-                            onAddEvent = { date, title, description ->
-                                scope.launch {
-                                    runCatching {
-                                        ServiceLocator.calendarEventRepository.create(title, description.ifBlank { null }, date.toString())
-                                    }.onSuccess { loadCalendarEvents() }
-                                        .onFailure { Toast.makeText(context, "Failed to add event: ${it.message}", Toast.LENGTH_LONG).show() }
-                                }
-                            },
-                            onEditEvent = { id, date, title, description ->
-                                scope.launch {
-                                    runCatching {
-                                        ServiceLocator.calendarEventRepository.update(id, title, description.ifBlank { null }, date.toString())
-                                    }.onSuccess { loadCalendarEvents() }
-                                        .onFailure { Toast.makeText(context, "Failed to save event: ${it.message}", Toast.LENGTH_LONG).show() }
-                                }
-                            },
-                            onDeleteEvent = { id ->
-                                scope.launch {
-                                    runCatching { ServiceLocator.calendarEventRepository.delete(id) }
-                                        .onSuccess { loadCalendarEvents() }
-                                        .onFailure { Toast.makeText(context, "Failed to delete event: ${it.message}", Toast.LENGTH_LONG).show() }
-                                }
-                            }
-                        )
-                    }
-
-                    item {
                         MyLocationCard(
                             coordinates = myCoordinates,
                             isCapturing = isCapturingLocation,
@@ -403,6 +383,8 @@ fun DashboardScreen(
                             onOpenReports = onOpenReports,
                             onOpenMunicipality = onOpenDeafRecords,
                             onOpenAppUpdate = onOpenAppUpdate,
+                            onOpenCalendar = onOpenCalendar,
+                            hasEventToday = hasEventToday,
                             isAdmin = state.isAdmin
                         )
                     }
@@ -693,6 +675,8 @@ private fun DashboardQuickActionsRow(
     onOpenReports: () -> Unit,
     onOpenMunicipality: () -> Unit,
     onOpenAppUpdate: () -> Unit,
+    onOpenCalendar: () -> Unit,
+    hasEventToday: Boolean,
     isAdmin: Boolean
 ) {
     Card(
@@ -727,6 +711,19 @@ private fun DashboardQuickActionsRow(
                     Box(Modifier.weight(1f)) {}
                 }
             }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DashboardQuickActionTile(
+                    "Calendar",
+                    Icons.Default.CalendarMonth,
+                    onOpenCalendar,
+                    Modifier.weight(1f),
+                    showBell = hasEventToday
+                )
+                Box(Modifier.weight(1f)) {}
+            }
         }
     }
 }
@@ -736,7 +733,8 @@ private fun DashboardQuickActionTile(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showBell: Boolean = false
 ) {
     Card(
         modifier = modifier.clickable(onClick = onClick),
@@ -748,7 +746,15 @@ private fun DashboardQuickActionTile(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+            if (showBell) {
+                BadgedBox(badge = {
+                    Badge { Icon(Icons.Default.Notifications, contentDescription = "Event today", modifier = Modifier.size(10.dp)) }
+                }) {
+                    Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+                }
+            } else {
+                Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+            }
             Text(
                 label,
                 style = MaterialTheme.typography.labelLarge,

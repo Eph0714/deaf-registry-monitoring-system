@@ -1,23 +1,26 @@
-package com.deafregistry.app.ui.dashboard
+package com.deafregistry.app.ui.calendar
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
@@ -26,44 +29,62 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.deafregistry.app.data.remote.dto.CalendarEventDto
+import com.deafregistry.app.di.ServiceLocator
+import com.deafregistry.app.ui.common.AppTopBar
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * Shared, system-wide activity calendar shown on the Dashboard. Anyone can browse months and view
- * events; only admin/super_admin get Add/Edit/Delete controls (also enforced server-side - see
- * calendarEvents.routes.js). Today's event(s), if any, surface in a banner at the top so everyone
- * notices without having to open the calendar.
+ * Dedicated Calendar screen, reached from the Dashboard's Quick Access tile (kept off the main
+ * form itself so the Dashboard doesn't grow too tall - see the bell-badged tile in
+ * DashboardScreen.kt's DashboardQuickActionsRow). Self-contained: fetches and mutates its own
+ * event list directly via ServiceLocator, same as AllIndividualsScreen/MunicipalityDirectoryScreen.
+ * Anyone can browse months and view events; only admin/super_admin get Add/Edit/Delete (also
+ * enforced server-side - see calendarEvents.routes.js).
  */
 @Composable
-fun CalendarCard(
-    events: List<CalendarEventDto>,
-    isAdmin: Boolean,
-    onAddEvent: (date: LocalDate, title: String, description: String) -> Unit,
-    onEditEvent: (id: Int, date: LocalDate, title: String, description: String) -> Unit,
-    onDeleteEvent: (id: Int) -> Unit
-) {
+fun CalendarScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
+
+    var events by remember { mutableStateOf<List<CalendarEventDto>>(emptyList()) }
+    fun loadEvents() {
+        scope.launch {
+            runCatching { ServiceLocator.calendarEventRepository.list() }
+                .onSuccess { events = it }
+                .onFailure { Toast.makeText(context, "Failed to load calendar: ${it.message}", Toast.LENGTH_LONG).show() }
+        }
+    }
+    LaunchedEffect(Unit) { loadEvents() }
+
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     var showDayDialog by remember { mutableStateOf(false) }
@@ -77,29 +98,30 @@ fun CalendarCard(
     val today = LocalDate.now()
     val todaysEvents = eventsByDate[today].orEmpty()
 
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar", tint = MaterialTheme.colorScheme.primary)
-                Text(
-                    "Calendar",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = { AppTopBar(title = "Calendar", onBack = onBack) },
+        floatingActionButton = {
+            if (isAdmin) {
+                FloatingActionButton(onClick = {
+                    editingEvent = null
+                    selectedDate = selectedDate ?: today
+                    showEditor = true
+                }) { Icon(Icons.Default.Add, contentDescription = "Add Event") }
             }
-
+        }
+    ) { padding: PaddingValues ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
             if (todaysEvents.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Column(Modifier.padding(12.dp)) {
@@ -123,9 +145,9 @@ fun CalendarCard(
                         }
                     }
                 }
+                Spacer(Modifier.height(12.dp))
             }
 
-            Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -136,7 +158,7 @@ fun CalendarCard(
                 }
                 Text(
                     "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
@@ -180,7 +202,7 @@ fun CalendarCard(
                                             selectedDate = date
                                             showDayDialog = true
                                         }
-                                        .background(if (isToday) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent)
+                                        .background(if (isToday) MaterialTheme.colorScheme.primary else Color.Transparent)
                                         .padding(4.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
@@ -196,7 +218,7 @@ fun CalendarCard(
                                             .background(
                                                 if (hasEvents) {
                                                     if (isToday) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
-                                                } else androidx.compose.ui.graphics.Color.Transparent,
+                                                } else Color.Transparent,
                                                 CircleShape
                                             )
                                     )
@@ -206,22 +228,7 @@ fun CalendarCard(
                     }
                 }
             }
-
-            if (isAdmin) {
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        editingEvent = null
-                        selectedDate = selectedDate ?: today
-                        showEditor = true
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Add Event")
-                }
-            }
+            Spacer(Modifier.height(72.dp))
         }
     }
 
@@ -261,7 +268,11 @@ fun CalendarCard(
                                     showEditor = true
                                 }) { Icon(Icons.Default.Edit, contentDescription = "Edit event") }
                                 IconButton(onClick = {
-                                    onDeleteEvent(event.id)
+                                    scope.launch {
+                                        runCatching { ServiceLocator.calendarEventRepository.delete(event.id) }
+                                            .onSuccess { loadEvents() }
+                                            .onFailure { Toast.makeText(context, "Failed to delete event: ${it.message}", Toast.LENGTH_LONG).show() }
+                                    }
                                     showDayDialog = false
                                 }) { Icon(Icons.Default.Delete, contentDescription = "Delete event") }
                             }
@@ -315,12 +326,17 @@ fun CalendarCard(
                     onClick = {
                         if (titleText.isNotBlank()) {
                             val existing = editingEvent
-                            if (existing == null) {
-                                onAddEvent(editDate, titleText.trim(), descriptionText.trim())
-                            } else {
-                                onEditEvent(existing.id, editDate, titleText.trim(), descriptionText.trim())
-                            }
                             showEditor = false
+                            scope.launch {
+                                runCatching {
+                                    if (existing == null) {
+                                        ServiceLocator.calendarEventRepository.create(titleText.trim(), descriptionText.trim().ifBlank { null }, editDate.toString())
+                                    } else {
+                                        ServiceLocator.calendarEventRepository.update(existing.id, titleText.trim(), descriptionText.trim().ifBlank { null }, editDate.toString())
+                                    }
+                                }.onSuccess { loadEvents() }
+                                    .onFailure { Toast.makeText(context, "Failed to save event: ${it.message}", Toast.LENGTH_LONG).show() }
+                            }
                         }
                     }
                 ) { Text("Save") }
