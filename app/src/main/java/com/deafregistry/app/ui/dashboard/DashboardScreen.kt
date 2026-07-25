@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.TrendingUp
@@ -81,7 +80,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -96,8 +94,6 @@ import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.GenericViewModelFactory
-import com.deafregistry.app.util.GpsPoint
-import com.deafregistry.app.util.LocationHelper
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -112,6 +108,7 @@ fun DashboardScreen(
     onOpenAppUpdate: () -> Unit,
     onOpenUserAccounts: () -> Unit,
     onOpenCalendar: () -> Unit,
+    onOpenLocationSharing: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -150,9 +147,8 @@ fun DashboardScreen(
 
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
-    var myCoordinates by remember { mutableStateOf<GpsPoint?>(null) }
-    var isCapturingLocation by remember { mutableStateOf(false) }
-    var isSharingLocation by remember { mutableStateOf(false) }
+    // Full Location Sharing UI moved to its own screen so the Dashboard doesn't grow too tall -
+    // this list is only kept here to drive the count badge on the Quick Access tile.
     var teamLocations by remember { mutableStateOf<List<UserLocationDto>>(emptyList()) }
 
     var calendarEvents by remember { mutableStateOf<List<CalendarEventDto>>(emptyList()) }
@@ -211,34 +207,6 @@ fun DashboardScreen(
         }
     }
 
-    fun captureMyLocation() {
-        scope.launch {
-            isCapturingLocation = true
-            myCoordinates = LocationHelper.getCurrentLocation(context)
-            isCapturingLocation = false
-        }
-    }
-    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) captureMyLocation()
-    }
-    fun showMyCoordinates() {
-        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (hasPermission) {
-            captureMyLocation()
-        } else {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
-    fun shareMyLocation() {
-        val coords = myCoordinates ?: return
-        scope.launch {
-            isSharingLocation = true
-            runCatching { ServiceLocator.authRepository.shareLocation(coords.latitude, coords.longitude) }
-                .onSuccess { loadTeamLocations() }
-                .onFailure { Toast.makeText(context, "Failed to share location: ${it.message}", Toast.LENGTH_LONG).show() }
-            isSharingLocation = false
-        }
-    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -351,45 +319,6 @@ fun DashboardScreen(
                     }
 
                     item {
-                        MyLocationCard(
-                            coordinates = myCoordinates,
-                            isCapturing = isCapturingLocation,
-                            isSharing = isSharingLocation,
-                            teamLocations = teamLocations,
-                            onShowCoordinates = { showMyCoordinates() },
-                            onShare = { shareMyLocation() },
-                            onOpenInMaps = { lat, lng, label ->
-                                val mapsUrl = "https://www.google.com/maps/search/?api=1&query=$lat,$lng"
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(mapsUrl)))
-                                }.onFailure {
-                                    runCatching {
-                                        context.startActivity(
-                                            Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label)})"))
-                                        )
-                                    }.onFailure { fallbackError ->
-                                        if (fallbackError is ActivityNotFoundException) {
-                                            Toast.makeText(context, "No app found to open this location", Toast.LENGTH_LONG).show()
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                    }
-
-                    item {
-                        DashboardQuickActionsRow(
-                            onOpenSearch = onOpenSearch,
-                            onOpenReports = onOpenReports,
-                            onOpenMunicipality = onOpenDeafRecords,
-                            onOpenAppUpdate = onOpenAppUpdate,
-                            onOpenCalendar = onOpenCalendar,
-                            hasEventToday = hasEventToday,
-                            isAdmin = state.isAdmin
-                        )
-                    }
-
-                    item {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -420,6 +349,19 @@ fun DashboardScreen(
                         }
                     }
 
+                    item {
+                        DashboardQuickActionsRow(
+                            onOpenSearch = onOpenSearch,
+                            onOpenReports = onOpenReports,
+                            onOpenMunicipality = onOpenDeafRecords,
+                            onOpenAppUpdate = onOpenAppUpdate,
+                            onOpenCalendar = onOpenCalendar,
+                            hasEventToday = hasEventToday,
+                            onOpenLocationSharing = onOpenLocationSharing,
+                            teamLocationCount = teamLocations.size,
+                            isAdmin = state.isAdmin
+                        )
+                    }
 
                     item {
                         FollowUpNeededCard(
@@ -582,94 +524,6 @@ private fun SyncStatusRow(
 }
 
 @Composable
-private fun MyLocationCard(
-    coordinates: GpsPoint?,
-    isCapturing: Boolean,
-    isSharing: Boolean,
-    teamLocations: List<UserLocationDto>,
-    onShowCoordinates: () -> Unit,
-    onShare: () -> Unit,
-    onOpenInMaps: (Double, Double, String) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(Modifier.fillMaxWidth().padding(12.dp)) {
-            Text("My Location", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            coordinates?.let {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Lat: ${it.latitude}, Lng: ${it.longitude}",
-                    style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.Underline),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { onOpenInMaps(it.latitude, it.longitude, "My Location") }
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onShowCoordinates, enabled = !isCapturing) {
-                    if (isCapturing) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Show my coordinates")
-                    }
-                }
-                Button(onClick = onShare, enabled = coordinates != null && !isSharing) {
-                    if (isSharing) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Share")
-                    }
-                }
-            }
-            if (teamLocations.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(8.dp))
-                Text("Team Locations", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                teamLocations.forEach { loc ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenInMaps(loc.sharedLatitude, loc.sharedLongitude, loc.name) }
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                loc.name,
-                                style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                "${loc.role} — shared ${loc.sharedLocationAt}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun DashboardQuickActionsRow(
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
@@ -677,6 +531,8 @@ private fun DashboardQuickActionsRow(
     onOpenAppUpdate: () -> Unit,
     onOpenCalendar: () -> Unit,
     hasEventToday: Boolean,
+    onOpenLocationSharing: () -> Unit,
+    teamLocationCount: Int,
     isAdmin: Boolean
 ) {
     Card(
@@ -722,7 +578,13 @@ private fun DashboardQuickActionsRow(
                     Modifier.weight(1f),
                     showBell = hasEventToday
                 )
-                Box(Modifier.weight(1f)) {}
+                DashboardQuickActionTile(
+                    "Location Sharing",
+                    Icons.Default.LocationOn,
+                    onOpenLocationSharing,
+                    Modifier.weight(1f),
+                    badgeCount = teamLocationCount
+                )
             }
         }
     }
@@ -734,7 +596,8 @@ private fun DashboardQuickActionTile(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    showBell: Boolean = false
+    showBell: Boolean = false,
+    badgeCount: Int? = null
 ) {
     Card(
         modifier = modifier.clickable(onClick = onClick),
@@ -749,6 +612,12 @@ private fun DashboardQuickActionTile(
             if (showBell) {
                 BadgedBox(badge = {
                     Badge { Icon(Icons.Default.Notifications, contentDescription = "Event today", modifier = Modifier.size(10.dp)) }
+                }) {
+                    Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+                }
+            } else if (badgeCount != null && badgeCount > 0) {
+                BadgedBox(badge = {
+                    Badge { Text(badgeCount.toString()) }
                 }) {
                     Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
                 }
