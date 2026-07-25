@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -83,34 +84,33 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
                 onValueChange = viewModel::onEmailChange,
                 label = { Text("Email") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { viewModel.onEmailFocusChanged(it.isFocused) }
             )
-            state.rememberedEmailSuggestion?.let { rememberedEmail ->
-                Spacer(Modifier.height(6.dp))
+            if (state.showEmailSuggestions) {
+                Spacer(Modifier.height(4.dp))
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.selectRememberedAccount() },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                "Use saved account",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                rememberedEmail,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                    Column {
+                        state.rememberedEmails.forEach { rememberedEmail ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    // A plain onClick loses focus before onEmailFocusChanged(false)
+                                    // fires, which would hide this list before the tap registers -
+                                    // selectRememberedEmail() closes it explicitly instead.
+                                    .clickable { viewModel.selectRememberedEmail(rememberedEmail) }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(10.dp))
+                                Text(rememberedEmail, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }

@@ -83,8 +83,9 @@ class SessionManager(context: Context) {
 
     /**
      * Clears the active session only - deliberately NOT a full prefs.clear(), since that would
-     * also wipe the remembered email/password (KEY_REMEMBERED_*), which must survive logout for
-     * "Remember password" to actually remember anything across a logout/login cycle.
+     * also wipe the remembered accounts, which must survive logout for "Remember password" to
+     * actually remember anything across a logout/login cycle - and so a different remembered
+     * account can be selected on the next login.
      */
     fun clear() {
         prefs.edit()
@@ -107,29 +108,48 @@ class SessionManager(context: Context) {
 
     fun isSuperAdmin(): Boolean = _session.value?.role == "super_admin"
 
-    fun saveRememberedCredentials(email: String, password: String) {
+    /**
+     * Remembers this email/password pair (added to the remembered-account set, and marked as the
+     * most recently used one so it's what auto-fills the next time the login form opens).
+     * Overwrites any previously stored password for the same email - this is also how a changed
+     * password gets "refreshed" in storage after a successful login with Remember Password on.
+     * Storage is EncryptedSharedPreferences (AES256-GCM values / AES256-SIV keys), so passwords
+     * are never written to disk in plain text.
+     */
+    fun rememberCredentials(email: String, password: String) {
+        val emails = (prefs.getStringSet(KEY_REMEMBERED_EMAILS, emptySet()) ?: emptySet()).toMutableSet()
+        emails.add(email)
         prefs.edit()
-            .putString(KEY_REMEMBERED_EMAIL, email)
-            .putString(KEY_REMEMBERED_PASSWORD, password)
-            .putBoolean(KEY_REMEMBER_ME, true)
+            .putStringSet(KEY_REMEMBERED_EMAILS, emails)
+            .putString(passwordKey(email), password)
+            .putString(KEY_LAST_REMEMBERED_EMAIL, email)
             .apply()
     }
 
-    fun clearRememberedCredentials() {
-        prefs.edit()
-            .remove(KEY_REMEMBERED_EMAIL)
-            .remove(KEY_REMEMBERED_PASSWORD)
-            .putBoolean(KEY_REMEMBER_ME, false)
-            .apply()
+    /** Removes a single remembered account's stored password (e.g. the user unchecked Remember Password for it). */
+    fun forgetCredentials(email: String) {
+        val emails = (prefs.getStringSet(KEY_REMEMBERED_EMAILS, emptySet()) ?: emptySet()).toMutableSet()
+        emails.remove(email)
+        val editor = prefs.edit()
+            .putStringSet(KEY_REMEMBERED_EMAILS, emails)
+            .remove(passwordKey(email))
+        if (prefs.getString(KEY_LAST_REMEMBERED_EMAIL, null) == email) {
+            editor.remove(KEY_LAST_REMEMBERED_EMAIL)
+        }
+        editor.apply()
     }
 
-    /** Returns the remembered email/password pair, or null if "remember me" isn't enabled. */
-    fun rememberedCredentials(): Pair<String, String>? {
-        if (!prefs.getBoolean(KEY_REMEMBER_ME, false)) return null
-        val email = prefs.getString(KEY_REMEMBERED_EMAIL, null) ?: return null
-        val password = prefs.getString(KEY_REMEMBERED_PASSWORD, null) ?: return null
-        return email to password
-    }
+    /** Every remembered email, for the login screen's "previously remembered accounts" suggestion list. */
+    fun rememberedEmails(): List<String> =
+        (prefs.getStringSet(KEY_REMEMBERED_EMAILS, emptySet()) ?: emptySet()).sorted()
+
+    /** The stored password for a specific remembered email, or null if that email isn't remembered. */
+    fun rememberedPasswordFor(email: String): String? = prefs.getString(passwordKey(email), null)
+
+    /** The most recently remembered email - auto-fills the login form the next time it opens. */
+    fun lastRememberedEmail(): String? = prefs.getString(KEY_LAST_REMEMBERED_EMAIL, null)
+
+    private fun passwordKey(email: String) = "$KEY_REMEMBERED_PASSWORD_PREFIX$email"
 
     companion object {
         private const val KEY_TOKEN = "token"
@@ -139,8 +159,8 @@ class SessionManager(context: Context) {
         private const val KEY_ROLE = "role"
         private const val KEY_TEACHER_ID = "teacher_id"
         private const val KEY_PHOTO_URL = "photo_url"
-        private const val KEY_REMEMBER_ME = "remember_me"
-        private const val KEY_REMEMBERED_EMAIL = "remembered_email"
-        private const val KEY_REMEMBERED_PASSWORD = "remembered_password"
+        private const val KEY_REMEMBERED_EMAILS = "remembered_emails"
+        private const val KEY_LAST_REMEMBERED_EMAIL = "last_remembered_email"
+        private const val KEY_REMEMBERED_PASSWORD_PREFIX = "remembered_password::"
     }
 }

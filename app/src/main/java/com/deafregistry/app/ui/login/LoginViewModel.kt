@@ -17,10 +17,10 @@ data class LoginUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val loggedIn: Boolean = false,
-    /** A previously-remembered email shown as a tappable suggestion - tapping it fills both
-     * the email and password fields. Null once selected or once the user edits either field
-     * by hand. */
-    val rememberedEmailSuggestion: String? = null
+    /** Every previously-remembered email, for the "remembered accounts" suggestion list shown
+     * when the email field gains focus. */
+    val rememberedEmails: List<String> = emptyList(),
+    val showEmailSuggestions: Boolean = false
 )
 
 class LoginViewModel(
@@ -28,34 +28,66 @@ class LoginViewModel(
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    // Held privately (not put in uiState) so the password never shows up in the UI until the
-    // user explicitly taps the remembered-account suggestion.
-    private val rememberedCredentials = sessionManager.rememberedCredentials()
-
-    private val _uiState = MutableStateFlow(
+    private val _uiState = MutableStateFlow(run {
+        val lastEmail = sessionManager.lastRememberedEmail()
+        val lastPassword = lastEmail?.let { sessionManager.rememberedPasswordFor(it) }
         LoginUiState(
-            rememberMe = rememberedCredentials != null,
-            rememberedEmailSuggestion = rememberedCredentials?.first
+            email = lastEmail ?: "",
+            password = lastPassword ?: "",
+            rememberMe = lastEmail != null && lastPassword != null,
+            rememberedEmails = sessionManager.rememberedEmails()
         )
-    )
+    })
     val uiState: StateFlow<LoginUiState> = _uiState
 
-    /** Fills both fields from the remembered credentials - called when the user taps the suggestion. */
-    fun selectRememberedAccount() {
-        val (email, password) = rememberedCredentials ?: return
-        _uiState.value = _uiState.value.copy(email = email, password = password, rememberedEmailSuggestion = null, error = null)
+    /**
+     * Typing/selecting a different email looks up whether THAT specific email has a remembered
+     * password - auto-filling it and checking Remember Password if so, or clearing both if the
+     * email isn't remembered. Matches every other field on the form resetting its error on edit.
+     */
+    fun onEmailChange(value: String) {
+        val rememberedPassword = sessionManager.rememberedPasswordFor(value.trim())
+        _uiState.value = _uiState.value.copy(
+            email = value,
+            password = rememberedPassword ?: "",
+            rememberMe = rememberedPassword != null,
+            error = null
+        )
     }
 
-    fun onEmailChange(value: String) {
-        _uiState.value = _uiState.value.copy(email = value, error = null, rememberedEmailSuggestion = null)
+    fun onEmailFocusChanged(focused: Boolean) {
+        _uiState.value = _uiState.value.copy(showEmailSuggestions = focused && _uiState.value.rememberedEmails.isNotEmpty())
+    }
+
+    /** Selecting a remembered email from the suggestion list - same effect as typing it in full. */
+    fun selectRememberedEmail(email: String) {
+        val rememberedPassword = sessionManager.rememberedPasswordFor(email)
+        _uiState.value = _uiState.value.copy(
+            email = email,
+            password = rememberedPassword ?: "",
+            rememberMe = rememberedPassword != null,
+            showEmailSuggestions = false,
+            error = null
+        )
     }
 
     fun onPasswordChange(value: String) {
-        _uiState.value = _uiState.value.copy(password = value, error = null, rememberedEmailSuggestion = null)
+        _uiState.value = _uiState.value.copy(password = value, error = null)
     }
 
+    /**
+     * Unchecking before login immediately forgets any stored password for the current email -
+     * per spec this doesn't wait for a successful login, it takes effect right away.
+     */
     fun onRememberMeChange(value: Boolean) {
         _uiState.value = _uiState.value.copy(rememberMe = value)
+        if (!value) {
+            val email = _uiState.value.email.trim()
+            if (email.isNotEmpty()) {
+                sessionManager.forgetCredentials(email)
+                _uiState.value = _uiState.value.copy(rememberedEmails = sessionManager.rememberedEmails())
+            }
+        }
     }
 
     fun togglePasswordVisibility() {
@@ -71,13 +103,21 @@ class LoginViewModel(
         _uiState.value = state.copy(isLoading = true, error = null)
         viewModelScope.launch {
             try {
-                authRepository.login(state.email.trim(), state.password)
+                val email = state.email.trim()
+                authRepository.login(email, state.password)
+                // Re-saving on every successful login (not just the first time) is what keeps a
+                // changed password up to date in storage, per the validation requirement that a
+                // stale remembered password gets refreshed after the next successful login.
                 if (state.rememberMe) {
-                    sessionManager.saveRememberedCredentials(state.email.trim(), state.password)
+                    sessionManager.rememberCredentials(email, state.password)
                 } else {
-                    sessionManager.clearRememberedCredentials()
+                    sessionManager.forgetCredentials(email)
                 }
-                _uiState.value = _uiState.value.copy(isLoading = false, loggedIn = true)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    loggedIn = true,
+                    rememberedEmails = sessionManager.rememberedEmails()
+                )
             } catch (e: LoginException) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             } catch (e: Exception) {
