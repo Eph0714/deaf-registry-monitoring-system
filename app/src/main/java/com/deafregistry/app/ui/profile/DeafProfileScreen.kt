@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
@@ -48,7 +47,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -381,7 +379,9 @@ private fun ProfileHeader(name: String, age: Int?, gender: String, photo: String
             model = photoUrl,
             contentDescription = "Profile photo",
             contentScale = ContentScale.Crop,
-            modifier = Modifier.size(160.dp).clip(CircleShape)
+            // dp is defined as 1/160 inch at baseline density, so 320.dp is a true 2x2 inch square
+            // regardless of screen density. Tap to view full-size and download (see PhotoViewerDialog).
+            modifier = Modifier.size(320.dp)
                 .let { if (onPhotoClick != null) it.clickable(onClick = onPhotoClick) else it }
         )
         Spacer(Modifier.height(12.dp))
