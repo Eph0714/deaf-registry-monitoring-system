@@ -358,8 +358,7 @@ fun DashboardScreen(
                             onOpenCalendar = onOpenCalendar,
                             hasEventToday = hasEventToday,
                             onOpenLocationSharing = onOpenLocationSharing,
-                            teamLocationCount = teamLocations.size,
-                            isAdmin = state.isAdmin
+                            teamLocationCount = teamLocations.size
                         )
                     }
 
@@ -532,8 +531,7 @@ private fun DashboardQuickActionsRow(
     onOpenCalendar: () -> Unit,
     hasEventToday: Boolean,
     onOpenLocationSharing: () -> Unit,
-    teamLocationCount: Int,
-    isAdmin: Boolean
+    teamLocationCount: Int
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
@@ -561,11 +559,9 @@ private fun DashboardQuickActionsRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, onOpenMunicipality, Modifier.weight(1f))
-                if (isAdmin) {
-                    DashboardQuickActionTile("App Update", Icons.Default.SystemUpdate, onOpenAppUpdate, Modifier.weight(1f))
-                } else {
-                    Box(Modifier.weight(1f)) {}
-                }
+                // Conductors can open this too now - AppUpdateSettingsScreen already renders
+                // view-only for them (no Save button), so there's nothing unsafe about showing it.
+                DashboardQuickActionTile("App Update", Icons.Default.SystemUpdate, onOpenAppUpdate, Modifier.weight(1f))
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
