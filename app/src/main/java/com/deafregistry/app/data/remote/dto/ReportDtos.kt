@@ -27,6 +27,7 @@ data class RecentVisitDto(
 
 data class NotVisitedDto(
     val id: Int,
+    val uuid: String,
     @SerializedName("full_name") val fullName: String,
     val municipality: String,
     val barangay: String,

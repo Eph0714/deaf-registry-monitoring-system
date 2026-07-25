@@ -39,7 +39,8 @@ data class DashboardUiState(
     val bySkill: List<BySkillDto> = emptyList(),
     val pendingSyncCount: Int = 0,
     val updateInfo: AppVersionDto? = null,
-    val showUpdateDialog: Boolean = false
+    val showUpdateDialog: Boolean = false,
+    val overdueDaysThreshold: Int = 30
 )
 
 class DashboardViewModel(
@@ -79,15 +80,17 @@ class DashboardViewModel(
         if (sessionManager.isAdmin()) {
             viewModelScope.launch {
                 try {
+                    val overdueDays = settingsRepository.cachedOverdueDays().toInt()
                     val recentVisits = reportRepository.recentVisits(5)
-                    val pendingFollowUps = reportRepository.notVisited(settingsRepository.cachedOverdueDays().toInt())
+                    val pendingFollowUps = reportRepository.notVisited(overdueDays)
                     val byStatus = reportRepository.byStatus()
                     val bySkill = reportRepository.bySkill()
                     _uiState.value = _uiState.value.copy(
                         recentVisits = recentVisits,
                         pendingFollowUps = pendingFollowUps,
                         byStatus = byStatus,
-                        bySkill = bySkill
+                        bySkill = bySkill,
+                        overdueDaysThreshold = overdueDays
                     )
                 } catch (_: Exception) {
                     _uiState.value = _uiState.value.copy(

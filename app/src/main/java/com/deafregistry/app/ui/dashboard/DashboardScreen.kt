@@ -86,6 +86,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.deafregistry.app.BuildConfig
+import com.deafregistry.app.data.remote.dto.NotVisitedDto
 import com.deafregistry.app.data.remote.dto.UserLocationDto
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
@@ -105,6 +106,7 @@ fun DashboardScreen(
     onOpenReports: () -> Unit,
     onOpenControlPanel: () -> Unit,
     onOpenAppUpdate: () -> Unit,
+    onOpenProfile: (String) -> Unit,
     onLogout: () -> Unit
 ) {
     val viewModel: DashboardViewModel = viewModel(
@@ -397,11 +399,10 @@ fun DashboardScreen(
 
                     if (state.isAdmin) {
                         item {
-                            DashboardActivityCard(
-                                title = "Follow-Up Needed",
-                                icon = Icons.Default.WarningAmber,
-                                items = state.pendingFollowUps.take(3).map { it.fullName to (it.municipality + "/" + it.barangay) },
-                                subtitle = "Over 30 days without a visit"
+                            FollowUpNeededCard(
+                                items = state.pendingFollowUps.take(3),
+                                overdueDaysThreshold = state.overdueDaysThreshold,
+                                onOpenProfile = onOpenProfile
                             )
                         }
 
@@ -781,6 +782,81 @@ private fun DashboardActivityCard(
             }
         }
     }
+}
+
+/**
+ * Every row here already satisfies the overdue-days threshold (the server-side notVisited query
+ * already filters out anyone under it), so there's nothing left to filter client-side - this just
+ * displays the actual elapsed days per individual (always >= overdueDaysThreshold) and makes each
+ * row clickable through to that individual's profile.
+ */
+@Composable
+private fun FollowUpNeededCard(
+    items: List<NotVisitedDto>,
+    overdueDaysThreshold: Int,
+    onOpenProfile: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.WarningAmber, contentDescription = "Follow-Up Needed", tint = MaterialTheme.colorScheme.primary)
+                Text(
+                    "Follow-Up Needed",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+            Text(
+                "Over $overdueDaysThreshold day${if (overdueDaysThreshold == 1) "" else "s"} without a visit",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            items.forEach { entry ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenProfile(entry.uuid) }
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            entry.fullName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${entry.municipality}/${entry.barangay}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        daysSinceLabel(entry.lastVisit),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun daysSinceLabel(lastVisit: String?): String {
+    if (lastVisit.isNullOrBlank()) return "Never visited"
+    val days = runCatching {
+        java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.parse(lastVisit.take(10)), java.time.LocalDate.now())
+    }.getOrNull() ?: return "—"
+    return "$days day${if (days == 1L) "" else "s"}"
 }
 
 @Composable

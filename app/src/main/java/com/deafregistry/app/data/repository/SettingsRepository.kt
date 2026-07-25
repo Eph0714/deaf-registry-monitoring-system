@@ -5,7 +5,6 @@ import com.deafregistry.app.data.remote.ApiService
 import com.deafregistry.app.data.remote.dto.AppVersionDto
 import com.deafregistry.app.data.remote.dto.LocationShareTtlDto
 import com.deafregistry.app.data.remote.dto.OverdueDaysDto
-import com.deafregistry.app.data.remote.dto.ThemeDto
 import com.deafregistry.app.ui.theme.AppThemeOption
 import com.deafregistry.app.ui.theme.ThemeState
 
@@ -34,15 +33,15 @@ class SettingsRepository(
 
     /** Reads the last-known theme from disk into ThemeState so the very first frame (even the
      * pre-login screen) renders correctly - call once at app startup, before setContent. A
-     * conductor's local override (see setLocalThemeOverride) takes priority if one is set. */
+     * user's local override (see setLocalThemeOverride) takes priority if one is set. */
     fun applyCachedTheme() {
         ThemeState.current = cachedLocalThemeOverride() ?: AppThemeOption.fromKey(prefs.getString(KEY_THEME, null))
     }
 
-    /** Fetches the admin-configured theme from the server and caches it. Safe to call on every
-     * pull/sync. Does NOT touch ThemeState if a conductor has a local override set - otherwise
-     * every sync would silently revert their personal choice back to the global theme. Returns
-     * the effective theme (the override if one is set, otherwise the fetched global value). */
+    /** Fetches the server's default theme (what a user sees before they've ever picked one of
+     * their own) and caches it. Safe to call on every pull/sync. Does NOT touch ThemeState if a
+     * local override is set - otherwise every sync would silently revert a user's personal
+     * choice. Returns the effective theme (the override if one is set, otherwise the default). */
     suspend fun refreshTheme(): AppThemeOption {
         val remote = AppThemeOption.fromKey(api.getTheme().theme)
         prefs.edit().putString(KEY_THEME, remote.key).apply()
@@ -53,17 +52,8 @@ class SettingsRepository(
         return override ?: remote
     }
 
-    /** Admin/Super Admin only - sets the theme for every user of the app, not just this device. */
-    suspend fun updateTheme(option: AppThemeOption): AppThemeOption {
-        val remote = AppThemeOption.fromKey(api.updateTheme(ThemeDto(option.key)).theme)
-        prefs.edit().putString(KEY_THEME, remote.key).apply()
-        ThemeState.current = remote
-        return remote
-    }
-
-    /** Conductor-only: applies a theme choice to just this device, without calling the server
-     * (conductors aren't allowed to change the app-wide theme). Persists across restarts and
-     * takes priority over the global theme until cleared. */
+    /** Applies a theme choice to just this device - never calls the server, so it can't affect
+     * anyone else's app. Persists across restarts and takes priority over the server default. */
     fun setLocalThemeOverride(option: AppThemeOption) {
         prefs.edit().putString(KEY_LOCAL_THEME_OVERRIDE, option.key).apply()
         ThemeState.current = option

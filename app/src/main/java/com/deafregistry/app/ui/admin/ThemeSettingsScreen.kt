@@ -18,11 +18,9 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,31 +29,18 @@ import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.theme.AppThemeOption
 import com.deafregistry.app.ui.theme.ThemeState
-import kotlinx.coroutines.launch
 
 /**
- * Admin/Super Admin sets the theme for every user of the app, not a per-device preference -
- * matches the pattern of every other Control Panel setting (overdue days, app version). Saving
- * applies live for this device immediately via ThemeState; other devices pick it up on their
- * next pull/sync.
- *
- * Conductors can open this screen too, but their choice only ever applies to their own device
- * (SettingsRepository.setLocalThemeOverride) - it never touches the server, so it can't affect
- * anyone else's app.
+ * Every user's theme choice applies only to their own device - saving never touches the server,
+ * so one person's pick can never change what anyone else sees (SettingsRepository.
+ * setLocalThemeOverride). Applies live immediately via ThemeState.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeSettingsScreen(onBack: () -> Unit) {
     val repo = ServiceLocator.settingsRepository
-    val isAdmin = ServiceLocator.sessionManager.isAdmin()
-    val scope = rememberCoroutineScope()
     var selected by remember { mutableStateOf(ThemeState.current) }
     var message by remember { mutableStateOf<String?>(null) }
-    var isSaving by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        runCatching { repo.refreshTheme() }.onSuccess { selected = it }
-    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -63,11 +48,7 @@ fun ThemeSettingsScreen(onBack: () -> Unit) {
     ) { padding: PaddingValues ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             Text(
-                if (isAdmin) {
-                    "Sets the color theme for every user of the app - not just this device."
-                } else {
-                    "Sets the color theme for your device only - it won't change anyone else's app."
-                },
+                "Sets the color theme for your device only - it won't change anyone else's app.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -90,20 +71,9 @@ fun ThemeSettingsScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = {
-                    if (isAdmin) {
-                        isSaving = true
-                        scope.launch {
-                            val result = runCatching { repo.updateTheme(selected) }
-                            isSaving = false
-                            result.onSuccess { message = "Saved for everyone" }
-                            result.onFailure { message = "Failed to save: ${it.message}" }
-                        }
-                    } else {
-                        repo.setLocalThemeOverride(selected)
-                        message = "Saved on this device"
-                    }
+                    repo.setLocalThemeOverride(selected)
+                    message = "Saved on this device"
                 },
-                enabled = !isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Save") }
 

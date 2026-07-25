@@ -55,7 +55,7 @@ fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             add(AdminMenuItem("Backup & Restore", "Local device backup and server database backup", "admin_backup"))
             add(AdminMenuItem("Notification Settings", "Configure overdue-visit alert threshold", "admin_notifications"))
             add(AdminMenuItem("App Update", "Set the latest version so users get prompted to update", "admin_app_update"))
-            add(AdminMenuItem("Theme Color", "Choose the app-wide color theme for every user", "admin_theme"))
+            add(AdminMenuItem("Theme Color", "Choose the color theme for your own device", "admin_theme"))
             add(AdminMenuItem("Location Sharing", "Set how long a shared location stays visible in Team Locations", "admin_location_sharing"))
             add(AdminMenuItem("User Accounts", "Manage app user accounts and roles", "admin_users"))
             add(AdminMenuItem("Pending User Approvals", "Approve or decline new self-service signups", "admin_pending_users", badgeCount = pendingApprovalCount))

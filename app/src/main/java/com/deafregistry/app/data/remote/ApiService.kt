@@ -145,9 +145,6 @@ interface ApiService {
     @GET("settings/theme")
     suspend fun getTheme(): ThemeDto
 
-    @PUT("settings/theme")
-    suspend fun updateTheme(@Body request: ThemeDto): ThemeDto
-
     @GET("settings/location-share-ttl")
     suspend fun getLocationShareTtl(): LocationShareTtlDto
 

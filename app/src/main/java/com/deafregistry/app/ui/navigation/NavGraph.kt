@@ -62,6 +62,7 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
                 onOpenControlPanel = { navController.navigate(Routes.CONTROL_PANEL) },
                 onOpenAppUpdate = { navController.navigate(Routes.ADMIN_APP_UPDATE) },
+                onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }

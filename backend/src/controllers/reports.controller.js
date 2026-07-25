@@ -79,14 +79,14 @@ const recentVisits = asyncHandler(async (req, res) => {
 const notVisited = asyncHandler(async (req, res) => {
   const days = Number(req.query.days) || 30;
   const { rows } = await pool.query(`
-    SELECT d.id, d.full_name, m.name AS municipality, b.name AS barangay,
+    SELECT d.id, d.uuid, d.full_name, m.name AS municipality, b.name AS barangay,
            MAX(v.visit_datetime) AS last_visit
     FROM deaf_individuals d
     JOIN municipalities m ON m.id = d.municipality_id
     JOIN barangays b ON b.id = d.barangay_id
     LEFT JOIN visits v ON v.deaf_individual_id = d.id
     WHERE d.is_deleted = false
-    GROUP BY d.id, d.full_name, m.name, b.name
+    GROUP BY d.id, d.uuid, d.full_name, m.name, b.name
     HAVING MAX(v.visit_datetime) IS NULL OR MAX(v.visit_datetime) < NOW() - make_interval(days => $1)
     ORDER BY last_visit ASC`, [days]);
   res.json(rows);
