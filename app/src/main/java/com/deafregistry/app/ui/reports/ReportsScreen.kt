@@ -42,6 +42,7 @@ import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.FullScreenLoading
 import com.deafregistry.app.ui.common.GenericViewModelFactory
+import com.deafregistry.app.ui.common.SearchStateHolder
 import com.deafregistry.app.util.ExportUtils
 import kotlinx.coroutines.launch
 import android.widget.Toast
@@ -84,10 +85,12 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
     val isAdmin = ServiceLocator.sessionManager.isAdmin()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var selectedCategory by remember { mutableStateOf(CATEGORIES.first()) }
+    var selectedCategory by remember {
+        mutableStateOf(CATEGORIES.firstOrNull { it.key == SearchStateHolder.reportsCategoryKey } ?: CATEGORIES.first())
+    }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var statusChoiceMenuExpanded by remember { mutableStateOf(false) }
-    var selectedStatusChoice by remember { mutableStateOf<String?>(null) }
+    var selectedStatusChoice by remember { mutableStateOf(SearchStateHolder.reportsStatusChoice) }
     var pendingExportFormat by remember { mutableStateOf<String?>(null) }
     var reportHeading by remember { mutableStateOf("Deaf and Mute Registry Municipality Report") }
 
@@ -122,6 +125,8 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
                                         selectedCategory = category
                                         categoryMenuExpanded = false
                                         selectedStatusChoice = null
+                                        SearchStateHolder.reportsCategoryKey = category.key
+                                        SearchStateHolder.reportsStatusChoice = null
                                     }
                                 )
                             }
@@ -147,6 +152,7 @@ fun ReportsScreen(onBack: () -> Unit, onOpenCategoryDetail: (category: String, v
                                         onClick = {
                                             statusChoiceMenuExpanded = false
                                             selectedStatusChoice = choice
+                                            SearchStateHolder.reportsStatusChoice = choice
                                             onOpenCategoryDetail("status", choice, "")
                                         }
                                     )

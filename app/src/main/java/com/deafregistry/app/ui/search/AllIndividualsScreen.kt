@@ -43,6 +43,7 @@ import com.deafregistry.app.data.local.entity.DeafIndividualEntity
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
+import com.deafregistry.app.ui.common.SearchStateHolder
 import com.deafregistry.app.util.ExportUtils
 
 private data class CategoryOption(val key: String, val label: String)
@@ -56,6 +57,10 @@ private val CATEGORIES = listOf(
     CategoryOption("status", "Deaf Status"),
     CategoryOption("lastVisit", "Last Date of Visit")
 )
+
+// Matches the exact casing stored in monitoring_status (see DeafEditorScreen's STATUS_OPTIONS) -
+// the local Room query behind this sub-filter is a case-sensitive exact match.
+private val MONITORING_STATUS_CHOICES = listOf("BS", "RV", "Transferred", "Unlocated")
 
 /**
  * The single landing screen for "Deaf Records": opens showing everyone, name ascending, with a
@@ -73,13 +78,21 @@ fun AllIndividualsScreen(
     onAddNew: () -> Unit,
     initialCategory: String = "all"
 ) {
-    var category by remember { mutableStateOf(CATEGORIES.firstOrNull { it.key == initialCategory } ?: CATEGORIES.first()) }
+    var category by remember {
+        mutableStateOf(
+            CATEGORIES.firstOrNull { it.key == SearchStateHolder.individualsCategoryKey }
+                ?: CATEGORIES.firstOrNull { it.key == initialCategory }
+                ?: CATEGORIES.first()
+        )
+    }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
+    var statusChoiceMenuExpanded by remember { mutableStateOf(false) }
+    var statusChoice by remember { mutableStateOf(SearchStateHolder.individualsStatusChoice) }
     var pendingExportFormat by remember { mutableStateOf<String?>(null) }
     var exportHeading by remember { mutableStateOf(title) }
     val context = LocalContext.current
 
-    val exportRows = currentExportRows(category.key)
+    val exportRows = currentExportRows(category.key, statusChoice.takeIf { category.key == "status" })
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -107,8 +120,48 @@ fun AllIndividualsScreen(
                     CATEGORIES.forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option.label) },
-                            onClick = { category = option; categoryMenuExpanded = false }
+                            onClick = {
+                                category = option
+                                categoryMenuExpanded = false
+                                statusChoice = null
+                                SearchStateHolder.individualsCategoryKey = option.key
+                                SearchStateHolder.individualsStatusChoice = null
+                            }
                         )
+                    }
+                }
+            }
+
+            if (category.key == "status") {
+                ExposedDropdownMenuBox(
+                    expanded = statusChoiceMenuExpanded,
+                    onExpandedChange = { statusChoiceMenuExpanded = it },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    OutlinedTextField(
+                        value = statusChoice ?: "All statuses",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Deaf Status") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusChoiceMenuExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = statusChoiceMenuExpanded, onDismissRequest = { statusChoiceMenuExpanded = false }) {
+                        DropdownMenuItem(text = { Text("All statuses") }, onClick = {
+                            statusChoiceMenuExpanded = false
+                            statusChoice = null
+                            SearchStateHolder.individualsStatusChoice = null
+                        })
+                        MONITORING_STATUS_CHOICES.forEach { choice ->
+                            DropdownMenuItem(
+                                text = { Text(choice) },
+                                onClick = {
+                                    statusChoiceMenuExpanded = false
+                                    statusChoice = choice
+                                    SearchStateHolder.individualsStatusChoice = choice
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -129,7 +182,7 @@ fun AllIndividualsScreen(
             if (category.key == "lastVisit") {
                 LastVisitList(onOpenProfile)
             } else {
-                GroupedIndividualsList(category.key, onOpenProfile)
+                GroupedIndividualsList(category.key, statusChoice.takeIf { category.key == "status" }, onOpenProfile)
             }
         }
     }
@@ -168,13 +221,13 @@ fun AllIndividualsScreen(
 }
 
 @Composable
-private fun currentExportRows(categoryKey: String): List<List<String>> {
+private fun currentExportRows(categoryKey: String, statusFilter: String?): List<List<String>> {
     return if (categoryKey == "lastVisit") {
         val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
         val rows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
         rows.map { toExportRow(it.individual) }
     } else {
-        val flow = remember(categoryKey) { flowForCategory(categoryKey) }
+        val flow = remember(categoryKey, statusFilter) { flowForCategory(categoryKey, statusFilter) }
         val individuals by flow.collectAsState(initial = emptyList())
         individuals.map { toExportRow(it) }
     }
@@ -184,17 +237,18 @@ private fun toExportRow(individual: DeafIndividualEntity): List<String> = listOf
     individual.fullName, individual.barangayName, individual.municipalityName, individual.monitoringStatus
 )
 
-private fun flowForCategory(categoryKey: String) = when (categoryKey) {
-    "municipality" -> ServiceLocator.deafIndividualRepository.observeAllActiveByMunicipality()
-    "barangay" -> ServiceLocator.deafIndividualRepository.observeAllActiveByBarangay()
-    "conductor" -> ServiceLocator.deafIndividualRepository.observeAllActiveByConductor()
-    "status" -> ServiceLocator.deafIndividualRepository.observeAllActiveByStatus()
+private fun flowForCategory(categoryKey: String, statusFilter: String? = null) = when {
+    categoryKey == "status" && statusFilter != null -> ServiceLocator.deafIndividualRepository.observeByCategory(monitoringStatus = statusFilter)
+    categoryKey == "municipality" -> ServiceLocator.deafIndividualRepository.observeAllActiveByMunicipality()
+    categoryKey == "barangay" -> ServiceLocator.deafIndividualRepository.observeAllActiveByBarangay()
+    categoryKey == "conductor" -> ServiceLocator.deafIndividualRepository.observeAllActiveByConductor()
+    categoryKey == "status" -> ServiceLocator.deafIndividualRepository.observeAllActiveByStatus()
     else -> ServiceLocator.deafIndividualRepository.observeAllActive()
 }
 
 @Composable
-private fun GroupedIndividualsList(categoryKey: String, onOpenProfile: (String) -> Unit) {
-    val flow = remember(categoryKey) { flowForCategory(categoryKey) }
+private fun GroupedIndividualsList(categoryKey: String, statusFilter: String?, onOpenProfile: (String) -> Unit) {
+    val flow = remember(categoryKey, statusFilter) { flowForCategory(categoryKey, statusFilter) }
     val individuals by flow.collectAsState(initial = emptyList())
 
     if (individuals.isEmpty()) {
@@ -202,11 +256,13 @@ private fun GroupedIndividualsList(categoryKey: String, onOpenProfile: (String) 
         return
     }
 
-    val groupKeyOf: ((DeafIndividualEntity) -> String)? = when (categoryKey) {
-        "municipality" -> { it -> it.municipalityName }
-        "barangay" -> { it -> "${it.municipalityName} / ${it.barangayName}" }
-        "conductor" -> { it -> it.assignedTeacherName ?: "Unassigned" }
-        "status" -> { it -> it.monitoringStatus }
+    // A specific status choice already fully filters the list - no need to re-group by status too.
+    val groupKeyOf: ((DeafIndividualEntity) -> String)? = when {
+        categoryKey == "status" && statusFilter != null -> null
+        categoryKey == "municipality" -> { it -> it.municipalityName }
+        categoryKey == "barangay" -> { it -> "${it.municipalityName} / ${it.barangayName}" }
+        categoryKey == "conductor" -> { it -> it.assignedTeacherName ?: "Unassigned" }
+        categoryKey == "status" -> { it -> it.monitoringStatus }
         else -> null
     }
 
@@ -259,15 +315,24 @@ private fun GroupHeader(text: String, count: Int) {
 
 @Composable
 private fun IndividualRow(individual: DeafIndividualEntity, onClick: () -> Unit) {
+    // "Elephant" isn't a font Android ships or that we have a licensed file for, so BS records use
+    // the heaviest available weight (Black) as the closest stand-in, plus the app's blue accent.
+    val isBs = individual.monitoringStatus == "BS"
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable(onClick = onClick)
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text(individual.fullName, style = MaterialTheme.typography.titleMedium)
+            Text(
+                individual.fullName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (isBs) FontWeight.Black else FontWeight.Normal,
+                color = if (isBs) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 "${individual.barangayName}, ${individual.municipalityName} • ${individual.monitoringStatus}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = if (isBs) FontWeight.Black else FontWeight.Normal,
+                color = if (isBs) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

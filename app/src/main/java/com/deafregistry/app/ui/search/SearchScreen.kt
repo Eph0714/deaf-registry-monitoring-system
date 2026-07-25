@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.GenericViewModelFactory
+import com.deafregistry.app.ui.common.SearchStateHolder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +40,14 @@ fun SearchScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit) {
     val query by viewModel.query.collectAsState()
     val results by viewModel.results.collectAsState()
 
+    // Restores the last search after coming back to this screen - a fresh SearchViewModel starts
+    // blank, so without this the search would silently reset every time you navigate away and back.
+    LaunchedEffect(Unit) {
+        if (query.isBlank() && SearchStateHolder.searchQuery.isNotBlank()) {
+            viewModel.updateQuery(SearchStateHolder.searchQuery)
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -47,7 +57,10 @@ fun SearchScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit) {
         Column(Modifier.fillMaxSize().padding(padding)) {
             OutlinedTextField(
                 value = query,
-                onValueChange = viewModel::updateQuery,
+                onValueChange = {
+                    viewModel.updateQuery(it)
+                    SearchStateHolder.searchQuery = it
+                },
                 label = { Text("Name, municipality, barangay, conductor, skill, status") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
