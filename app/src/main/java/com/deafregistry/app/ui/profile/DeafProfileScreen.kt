@@ -163,7 +163,9 @@ fun DeafProfileScreen(
                         calculateAge(individual.birthDate),
                         individual.gender,
                         individual.photoUrl ?: individual.localPhotoPath,
-                        onPhotoClick = if (individual.photoUrl != null) { { showPhotoViewer = true } } else null,
+                        onPhotoClick = if (individual.photoUrl != null || individual.localPhotoPath != null) {
+                            { showPhotoViewer = true }
+                        } else null,
                         onDownloadClick = if (individual.photoUrl != null) {
                             { downloadPhoto(individual.photoUrl, individual.fullName) }
                         } else null,
@@ -287,13 +289,14 @@ fun DeafProfileScreen(
         )
     }
 
-    if (showPhotoViewer) {
-        val resolvedPhoto = individual?.photoUrl?.let { resolvePhotoUrl(it, BuildConfig.API_BASE_URL) }
+    if (showPhotoViewer && individual != null) {
+        val resolvedPhoto = individual.photoUrl?.let { resolvePhotoUrl(it, BuildConfig.API_BASE_URL) } ?: individual.localPhotoPath
         if (resolvedPhoto != null) {
             PhotoViewerDialog(
                 photoUrl = resolvedPhoto,
                 fileName = "${individual.fullName.replace(Regex("[^A-Za-z0-9-_ ]"), "").ifBlank { "deaf_record" }}.jpg",
-                onDismiss = { showPhotoViewer = false }
+                onDismiss = { showPhotoViewer = false },
+                allowDownload = individual.photoUrl != null
             )
         }
     }

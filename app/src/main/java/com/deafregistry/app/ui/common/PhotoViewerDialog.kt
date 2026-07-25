@@ -31,9 +31,13 @@ import coil.compose.AsyncImage
 import com.deafregistry.app.util.ExportUtils
 import kotlinx.coroutines.launch
 
-/** Full-screen photo viewer with a Download-to-Downloads-folder action, used for both user and deaf-individual photos. */
+/**
+ * Full-screen photo viewer, used for both user and deaf-individual photos. [allowDownload]
+ * should be false when [photoUrl] is a local, not-yet-synced file path rather than a real network
+ * URL - there's nothing to download over HTTP in that case, so the button is hidden entirely.
+ */
 @Composable
-fun PhotoViewerDialog(photoUrl: String, fileName: String, onDismiss: () -> Unit) {
+fun PhotoViewerDialog(photoUrl: String, fileName: String, onDismiss: () -> Unit, allowDownload: Boolean = true) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isDownloading by remember { mutableStateOf(false) }
@@ -47,22 +51,24 @@ fun PhotoViewerDialog(photoUrl: String, fileName: String, onDismiss: () -> Unit)
                 modifier = Modifier.fillMaxSize()
             )
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp)) {
-                IconButton(
-                    onClick = {
-                        isDownloading = true
-                        scope.launch {
-                            runCatching { ExportUtils.downloadImage(context, photoUrl, fileName) }
-                                .onSuccess { Toast.makeText(context, "Saved to $it", Toast.LENGTH_LONG).show() }
-                                .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
-                            isDownloading = false
+                if (allowDownload) {
+                    IconButton(
+                        onClick = {
+                            isDownloading = true
+                            scope.launch {
+                                runCatching { ExportUtils.downloadImage(context, photoUrl, fileName) }
+                                    .onSuccess { Toast.makeText(context, "Saved to $it", Toast.LENGTH_LONG).show() }
+                                    .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                                isDownloading = false
+                            }
+                        },
+                        enabled = !isDownloading
+                    ) {
+                        if (isDownloading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                        } else {
+                            Icon(Icons.Default.Download, contentDescription = "Download", tint = Color.White)
                         }
-                    },
-                    enabled = !isDownloading
-                ) {
-                    if (isDownloading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
-                    } else {
-                        Icon(Icons.Default.Download, contentDescription = "Download", tint = Color.White)
                     }
                 }
                 IconButton(onClick = onDismiss) {
