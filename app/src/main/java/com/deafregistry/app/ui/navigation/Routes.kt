@@ -13,7 +13,6 @@ object Routes {
     const val SEARCH = "search"
     const val REPORTS = "reports"
     const val REPORT_CATEGORY_DETAIL = "report_category_detail/{category}/{value}/{extra}"
-    const val ADMIN_HOME = "admin_home"
     const val CONTROL_PANEL = "control_panel"
     const val ADMIN_MUNICIPALITIES = "admin_municipalities"
     const val ADMIN_BARANGAYS = "admin_barangays"

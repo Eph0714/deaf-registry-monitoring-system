@@ -8,7 +8,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.deafregistry.app.data.session.SessionManager
-import com.deafregistry.app.ui.admin.AdminHomeScreen
 import com.deafregistry.app.ui.admin.ControlPanelScreen
 import com.deafregistry.app.ui.admin.AdminPendingUsersScreen
 import com.deafregistry.app.ui.admin.AuditLogScreen
@@ -61,7 +60,6 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenAllIndividuals = { title, sort -> navController.navigate(Routes.allIndividuals(title, sort)) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
-                onOpenAdmin = { navController.navigate(Routes.ADMIN_HOME) },
                 onOpenControlPanel = { navController.navigate(Routes.CONTROL_PANEL) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
@@ -204,9 +202,6 @@ fun AppNavGraph(sessionManager: SessionManager) {
             )
         }
 
-        composable(Routes.ADMIN_HOME) {
-            AdminHomeScreen(onBack = { navController.popBackStack() }, onNavigate = { navController.navigate(it) })
-        }
         composable(Routes.CONTROL_PANEL) {
             ControlPanelScreen(onBack = { navController.popBackStack() }, onNavigate = { navController.navigate(it) })
         }

@@ -92,7 +92,6 @@ fun DashboardScreen(
     onOpenAllIndividuals: (title: String, sort: String) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
-    onOpenAdmin: () -> Unit,
     onOpenControlPanel: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -177,7 +176,6 @@ fun DashboardScreen(
                 onNavigateSearch = { closeDrawer(onOpenSearch) },
                 onNavigateDeafRecords = { closeDrawer(onOpenDeafRecords) },
                 onNavigateReports = { closeDrawer(onOpenReports) },
-                onNavigateAdmin = { closeDrawer(onOpenAdmin) },
                 onNavigateControlPanel = { closeDrawer(onOpenControlPanel) },
                 onSync = { closeDrawer(viewModel::sync) },
                 onLogout = {
@@ -198,15 +196,15 @@ fun DashboardScreen(
                 actions = {
                     IconButton(onClick = onOpenSearch) { Icon(Icons.Default.Search, contentDescription = "Search") }
                     if (state.isAdmin) {
-                        IconButton(onClick = onOpenAdmin) {
+                        IconButton(onClick = onOpenControlPanel) {
                             if (state.pendingApprovalCount > 0) {
                                 BadgedBox(badge = {
                                     Badge { Text(state.pendingApprovalCount.toString()) }
                                 }) {
-                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = "Users (${state.pendingApprovalCount} pending approvals)")
+                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel (${state.pendingApprovalCount} pending approvals)")
                                 }
                             } else {
-                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Users")
+                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel")
                             }
                         }
                     }
@@ -280,7 +278,6 @@ fun DashboardScreen(
                         DashboardQuickActionsRow(
                             onOpenSearch = onOpenSearch,
                             onOpenReports = onOpenReports,
-                            onOpenAdmin = onOpenAdmin,
                             onOpenControlPanel = onOpenControlPanel,
                             onOpenMunicipality = onOpenDeafRecords,
                             isAdmin = state.isAdmin
@@ -311,7 +308,7 @@ fun DashboardScreen(
                                     title = "Users",
                                     value = state.totalUsers.toString(),
                                     subtitle = "Access control",
-                                    onClick = onOpenAdmin,
+                                    onClick = onOpenControlPanel,
                                     modifier = Modifier.weight(1f)
                                 )
                             }
@@ -323,7 +320,7 @@ fun DashboardScreen(
                             DashboardActionCard(
                                 title = "User Management",
                                 subtitle = "Manage access, accounts, and active users.",
-                                onClick = onOpenAdmin
+                                onClick = onOpenControlPanel
                             )
                         }
                     }
@@ -457,7 +454,6 @@ private fun SyncStatusRow(
 private fun DashboardQuickActionsRow(
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
-    onOpenAdmin: () -> Unit,
     onOpenControlPanel: () -> Unit,
     onOpenMunicipality: () -> Unit,
     isAdmin: Boolean
@@ -489,17 +485,8 @@ private fun DashboardQuickActionsRow(
             ) {
                 DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, onOpenMunicipality, Modifier.weight(1f))
                 if (isAdmin) {
-                    DashboardQuickActionTile("Users", Icons.Default.AdminPanelSettings, onOpenAdmin, Modifier.weight(1f))
-                } else {
-                    Box(Modifier.weight(1f)) {}
-                }
-            }
-            if (isAdmin) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
                     DashboardQuickActionTile("Control Panel", Icons.Default.Settings, onOpenControlPanel, Modifier.weight(1f))
+                } else {
                     Box(Modifier.weight(1f)) {}
                 }
             }
@@ -714,7 +701,6 @@ private fun AppDrawerContent(
     onNavigateSearch: () -> Unit,
     onNavigateDeafRecords: () -> Unit,
     onNavigateReports: () -> Unit,
-    onNavigateAdmin: () -> Unit,
     onNavigateControlPanel: () -> Unit,
     onSync: () -> Unit,
     onLogout: () -> Unit
@@ -796,13 +782,6 @@ private fun AppDrawerContent(
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
             if (isAdmin) {
-                NavigationDrawerItem(
-                    label = { Text("Users") },
-                    selected = false,
-                    icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
-                    onClick = onNavigateAdmin,
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
                 NavigationDrawerItem(
                     label = { Text("Control Panel") },
                     selected = false,
