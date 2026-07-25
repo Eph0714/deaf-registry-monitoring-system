@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
@@ -23,6 +24,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -225,6 +227,19 @@ fun AllIndividualsScreen(
                 },
                 label = { Text("Search All") },
                 singleLine = true,
+                trailingIcon = {
+                    // An explicit Clear button guarantees the field reaches a true empty state
+                    // in one tap - relying on backspace alone can leave stray input on some
+                    // keyboards, which would otherwise keep filtering as if something was typed.
+                    if (searchText.isNotEmpty()) {
+                        IconButton(onClick = {
+                            searchText = ""
+                            SearchStateHolder.individualsSearchText = ""
+                        }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
@@ -290,18 +305,19 @@ fun AllIndividualsScreen(
 
 @Composable
 private fun currentExportRows(categoryKey: String, statusFilter: String?, skillFilter: String?, searchText: String): List<List<String>> {
+    val query = searchText.trim()
     return if (categoryKey == "lastVisit") {
         val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
         val rows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
-        val filtered = if (searchText.isNotBlank()) {
-            rows.filter { matchesSearch(it.individual, searchText) }
+        val filtered = if (query.isNotEmpty()) {
+            rows.filter { matchesSearch(it.individual, query) }
         } else rows
         filtered.map { toExportRow(it.individual) }
     } else {
         val flow = remember(categoryKey, statusFilter, skillFilter) { flowForCategory(categoryKey, statusFilter, skillFilter) }
         val individuals by flow.collectAsState(initial = emptyList())
-        val filtered = if (searchText.isNotBlank()) {
-            individuals.filter { matchesSearch(it, searchText) }
+        val filtered = if (query.isNotEmpty()) {
+            individuals.filter { matchesSearch(it, query) }
         } else individuals
         filtered.map { toExportRow(it) }
     }
@@ -341,8 +357,9 @@ private fun GroupedIndividualsList(
 ) {
     val flow = remember(categoryKey, statusFilter, skillFilter) { flowForCategory(categoryKey, statusFilter, skillFilter) }
     val rawIndividuals by flow.collectAsState(initial = emptyList())
-    val individuals = if (searchText.isNotBlank()) {
-        rawIndividuals.filter { matchesSearch(it, searchText) }
+    val query = searchText.trim()
+    val individuals = if (query.isNotEmpty()) {
+        rawIndividuals.filter { matchesSearch(it, query) }
     } else rawIndividuals
     val lastVisitByUuid = rememberLastVisitByUuid()
 
@@ -391,8 +408,9 @@ private fun rememberLastVisitByUuid(): Map<String, String?> {
 private fun LastVisitList(searchText: String, onOpenProfile: (String) -> Unit) {
     val flow = remember { ServiceLocator.deafIndividualRepository.observeAllActiveWithLastVisit() }
     val rawRows by flow.collectAsState(initial = emptyList<DeafIndividualWithLastVisit>())
-    val rows = if (searchText.isNotBlank()) {
-        rawRows.filter { matchesSearch(it.individual, searchText) }
+    val query = searchText.trim()
+    val rows = if (query.isNotEmpty()) {
+        rawRows.filter { matchesSearch(it.individual, query) }
     } else rawRows
 
     if (rows.isEmpty()) {
