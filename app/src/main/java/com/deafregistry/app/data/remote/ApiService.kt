@@ -259,12 +259,6 @@ interface ApiService {
     @GET("chat/sessions/active")
     suspend fun getActiveChatSession(): Response<ChatSessionDto>
 
-    @POST("chat/sessions")
-    suspend fun createChatSession(@Body request: ChatSessionRequest): ChatSessionDto
-
-    @PUT("chat/sessions/{id}")
-    suspend fun updateChatSession(@Path("id") id: Int, @Body request: ChatSessionRequest): ChatSessionDto
-
     @POST("chat/sessions/{id}/open")
     suspend fun openChatSession(@Path("id") id: Int): ChatSessionDto
 

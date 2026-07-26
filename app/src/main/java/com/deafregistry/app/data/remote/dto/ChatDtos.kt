@@ -16,14 +16,6 @@ data class ChatSessionDto(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
-data class ChatSessionRequest(
-    val session_name: String,
-    val description: String?,
-    val start_datetime: String,
-    val end_datetime: String,
-    val retention_policy: String
-)
-
 data class ChatMessageDto(
     val id: Int,
     @SerializedName("session_id") val sessionId: Int,

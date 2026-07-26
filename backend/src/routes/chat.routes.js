@@ -8,8 +8,6 @@ const router = express.Router();
 router.get('/sessions', requireAuth, requireAdmin, ctrl.listSessions);
 router.get('/sessions/active', requireAuth, ctrl.getActiveSession);
 router.get('/sessions/:id', requireAuth, ctrl.getSession);
-router.post('/sessions', requireAuth, requireAdmin, ctrl.createSession);
-router.put('/sessions/:id', requireAuth, requireAdmin, ctrl.updateSession);
 router.post('/sessions/:id/open', requireAuth, requireAdmin, ctrl.openSession);
 router.post('/sessions/:id/close', requireAuth, requireAdmin, ctrl.closeSession);
 router.delete('/sessions/:id', requireAuth, requireAdmin, ctrl.deleteSession);

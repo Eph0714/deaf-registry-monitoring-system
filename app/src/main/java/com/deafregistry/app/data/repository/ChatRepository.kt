@@ -6,7 +6,6 @@ import com.deafregistry.app.data.remote.dto.ChatParticipantDto
 import com.deafregistry.app.data.remote.dto.ChatRecurringScheduleDto
 import com.deafregistry.app.data.remote.dto.ChatRecurringScheduleRequest
 import com.deafregistry.app.data.remote.dto.ChatSessionDto
-import com.deafregistry.app.data.remote.dto.ChatSessionRequest
 import com.deafregistry.app.data.remote.dto.MarkChatNotificationsReadRequest
 import com.deafregistry.app.data.remote.dto.SendChatMessageRequest
 
@@ -18,12 +17,6 @@ class ChatRepository(private val api: ApiService) {
     // The single "current" room the Chat menu shows - null when nothing is scheduled/open/closed
     // right now (see chat.controller.js::getActiveSession for the exact fallback order).
     suspend fun activeSession(): ChatSessionDto? = api.getActiveChatSession().body()
-
-    suspend fun createSession(name: String, description: String?, start: String, end: String, retentionPolicy: String): ChatSessionDto =
-        api.createChatSession(ChatSessionRequest(name, description, start, end, retentionPolicy))
-
-    suspend fun updateSession(id: Int, name: String, description: String?, start: String, end: String, retentionPolicy: String): ChatSessionDto =
-        api.updateChatSession(id, ChatSessionRequest(name, description, start, end, retentionPolicy))
 
     suspend fun openSession(id: Int): ChatSessionDto = api.openChatSession(id)
     suspend fun closeSession(id: Int): ChatSessionDto = api.closeChatSession(id)

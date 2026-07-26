@@ -62,48 +62,6 @@ const getSession = asyncHandler(async (req, res) => {
   res.json(rows[0]);
 });
 
-const createSession = asyncHandler(async (req, res) => {
-  const { session_name, description, start_datetime, end_datetime, retention_policy } = req.body;
-  if (!session_name || !start_datetime || !end_datetime) {
-    return res.status(400).json({ message: 'session_name, start_datetime and end_datetime are required' });
-  }
-  if (new Date(end_datetime) <= new Date(start_datetime)) {
-    return res.status(400).json({ message: 'end_datetime must be after start_datetime' });
-  }
-  const policy = ['immediate', '24h', '7d'].includes(retention_policy) ? retention_policy : 'immediate';
-  const { rows } = await pool.query(
-    `INSERT INTO chat_sessions (session_name, description, start_datetime, end_datetime, retention_policy, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [session_name, description || null, start_datetime, end_datetime, policy, req.user.id]
-  );
-  await logAudit(req.user.id, 'CHAT_SESSION_CREATED', 'chat_session', rows[0].id, { session_name });
-  res.status(201).json(rows[0]);
-});
-
-const updateSession = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { session_name, description, start_datetime, end_datetime, retention_policy } = req.body;
-  const { rows: existingRows } = await pool.query('SELECT status FROM chat_sessions WHERE id = $1', [id]);
-  if (!existingRows.length) return res.status(404).json({ message: 'Chat session not found' });
-  if (existingRows[0].status === 'expired') {
-    return res.status(400).json({ message: 'An expired chat session can no longer be edited' });
-  }
-  if (!session_name || !start_datetime || !end_datetime) {
-    return res.status(400).json({ message: 'session_name, start_datetime and end_datetime are required' });
-  }
-  if (new Date(end_datetime) <= new Date(start_datetime)) {
-    return res.status(400).json({ message: 'end_datetime must be after start_datetime' });
-  }
-  const policy = ['immediate', '24h', '7d'].includes(retention_policy) ? retention_policy : 'immediate';
-  const { rows } = await pool.query(
-    `UPDATE chat_sessions SET session_name = $1, description = $2, start_datetime = $3, end_datetime = $4, retention_policy = $5
-     WHERE id = $6 RETURNING *`,
-    [session_name, description || null, start_datetime, end_datetime, policy, id]
-  );
-  await logAudit(req.user.id, 'CHAT_SESSION_EDITED', 'chat_session', id, { session_name });
-  res.json(rows[0]);
-});
-
 const openSession = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const result = await pool.query(
@@ -392,7 +350,7 @@ const markNotificationsRead = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  listSessions, getActiveSession, getSession, createSession, updateSession,
+  listSessions, getActiveSession, getSession,
   openSession, closeSession, deleteSession, clearMessages,
   listRecurringSchedules, createRecurringSchedule, updateRecurringSchedule, deleteRecurringSchedule,
   getMessages, sendMessage, deleteMessage,
