@@ -11,7 +11,7 @@ async function isTargetSuperAdmin(id) {
 
 const list = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT u.id, u.name, u.email, u.role, u.teacher_id, u.is_active, u.updated_at, t.name AS teacher_name
+    `SELECT u.id, u.name, u.email, u.username, u.role, u.teacher_id, u.is_active, u.updated_at, t.name AS teacher_name
      FROM users u LEFT JOIN teachers t ON t.id = u.teacher_id
      ORDER BY u.name ASC`
   );
@@ -19,26 +19,32 @@ const list = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  const { name, email, password, role, teacher_id } = req.body;
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'name, email and password are required' });
+  const { name, email, username, password, role, teacher_id } = req.body;
+  if (!name || !email || !username || !password) {
+    return res.status(400).json({ message: 'name, email, username and password are required' });
   }
   if (role === 'super_admin' && req.user.role !== 'super_admin') {
     return res.status(403).json({ message: 'Only a Super Administrator can create a Super Admin account' });
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const { rows } = await pool.query(
-    'INSERT INTO users (name, email, password_hash, role, teacher_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-    [name, email, passwordHash, role || 'conductor', teacher_id || null]
+    'INSERT INTO users (name, email, username, password_hash, role, teacher_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+    [name, email, username, passwordHash, role || 'conductor', teacher_id || null]
   );
   const insertId = rows[0].id;
-  await logAudit(req.user.id, 'CREATE', 'user', insertId, { name, email, role });
-  res.status(201).json({ id: insertId, name, email, role: role || 'conductor', teacher_id: teacher_id || null });
+  await logAudit(req.user.id, 'CREATE', 'user', insertId, { name, email, username, role });
+  res.status(201).json({ id: insertId, name, email, username, role: role || 'conductor', teacher_id: teacher_id || null });
 });
 
+// Username and password updates are only meaningful for another user's account here since a user
+// editing their own username still goes through this same endpoint - both are gated behind the
+// same Super Admin-vs-Super-Admin-target guard the rest of this file already uses.
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, role, teacher_id, is_active } = req.body;
+  const { name, username, role, teacher_id, is_active } = req.body;
+  if (!username) {
+    return res.status(400).json({ message: 'username is required' });
+  }
   if (role === 'super_admin' && req.user.role !== 'super_admin') {
     return res.status(403).json({ message: 'Only a Super Administrator can grant Super Admin access' });
   }
@@ -46,11 +52,11 @@ const update = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Only a Super Administrator can modify a Super Admin account' });
   }
   await pool.query(
-    'UPDATE users SET name = $1, role = $2, teacher_id = $3, is_active = $4 WHERE id = $5',
-    [name, role, teacher_id || null, is_active === undefined ? true : !!is_active, id]
+    'UPDATE users SET name = $1, username = $2, role = $3, teacher_id = $4, is_active = $5 WHERE id = $6',
+    [name, username, role, teacher_id || null, is_active === undefined ? true : !!is_active, id]
   );
-  await logAudit(req.user.id, 'UPDATE', 'user', id, { name, role, teacher_id, is_active });
-  res.json({ id: Number(id), name, role, teacher_id, is_active });
+  await logAudit(req.user.id, 'UPDATE', 'user', id, { name, username, role, teacher_id, is_active });
+  res.json({ id: Number(id), name, username, role, teacher_id, is_active });
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
@@ -117,7 +123,7 @@ const listLocations = asyncHandler(async (req, res) => {
 
 const listPendingSignups = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, name, email, contact_number, location, created_at
+    `SELECT id, name, email, username, contact_number, location, created_at
      FROM users WHERE approval_status = 'pending' ORDER BY created_at ASC`
   );
   res.json(rows);
@@ -150,7 +156,52 @@ const rejectSignup = asyncHandler(async (req, res) => {
   res.json({ id: Number(id), deleted: true });
 });
 
+const listPasswordResetRequests = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, username, note, status, requested_at
+     FROM password_reset_requests WHERE status = 'pending' ORDER BY requested_at ASC`
+  );
+  res.json(rows);
+});
+
+// Resolves a Forgot Password request. If new_password is provided, it's applied to whichever
+// account currently has that username (same Super Admin guard as resetPassword, since this is
+// still "an admin resetting another user's password" under the hood) and the request is marked
+// resolved either way; omitting new_password just dismisses the request without changing anything
+// (e.g. the username didn't match a real account, or the admin handled it another way).
+const resolvePasswordResetRequest = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { new_password } = req.body;
+  const { rows: requestRows } = await pool.query(
+    `SELECT id, username FROM password_reset_requests WHERE id = $1 AND status = 'pending'`,
+    [id]
+  );
+  if (!requestRows.length) return res.status(404).json({ message: 'Request not found' });
+  const { username } = requestRows[0];
+
+  if (new_password) {
+    const { rows: userRows } = await pool.query('SELECT id, role FROM users WHERE username = $1', [username]);
+    if (!userRows.length) {
+      return res.status(404).json({ message: `No account found with username "${username}"` });
+    }
+    const targetUser = userRows[0];
+    if (targetUser.role === 'super_admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Only a Super Administrator can reset a Super Admin account\'s password' });
+    }
+    const passwordHash = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, targetUser.id]);
+    await logAudit(req.user.id, 'RESET_PASSWORD', 'user', targetUser.id, { via: 'forgot_password_request' });
+  }
+
+  await pool.query(
+    `UPDATE password_reset_requests SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, resolved_by = $1 WHERE id = $2`,
+    [req.user.id, id]
+  );
+  res.json({ id: Number(id), status: 'resolved' });
+});
+
 module.exports = {
   list, create, update, resetPassword, remove, permanentlyDelete,
-  listPendingSignups, approveSignup, rejectSignup, listLocations
+  listPendingSignups, approveSignup, rejectSignup, listLocations,
+  listPasswordResetRequests, resolvePasswordResetRequest
 };

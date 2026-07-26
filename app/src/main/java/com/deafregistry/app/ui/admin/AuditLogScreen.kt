@@ -113,7 +113,7 @@ private fun AuditLogRow(log: AuditLogDto) {
                 fontWeight = FontWeight.Bold
             )
             Text(
-                log.userName?.let { "$it (${log.userEmail})" } ?: "Unknown user",
+                log.userName?.let { "$it (${log.userUsername ?: log.userEmail})" } ?: "Unknown user",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

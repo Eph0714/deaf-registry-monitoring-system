@@ -24,6 +24,9 @@ interface ApiService {
     @POST("auth/logout")
     suspend fun logout(): ResponseBody
 
+    @POST("auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): MessageResponse
+
     @Multipart
     @POST("auth/photo")
     suspend fun uploadUserPhoto(@Part photo: MultipartBody.Part): PhotoUploadResponse
@@ -101,6 +104,13 @@ interface ApiService {
 
     @POST("users/{id}/reject-signup")
     suspend fun rejectSignup(@Path("id") id: Int): ResponseBody
+
+    // Password reset requests (admin) - the Forgot Password queue
+    @GET("users/password-reset-requests")
+    suspend fun getPasswordResetRequests(): List<PasswordResetRequestDto>
+
+    @POST("users/password-reset-requests/{id}/resolve")
+    suspend fun resolvePasswordResetRequest(@Path("id") id: Int, @Body request: ResolvePasswordResetRequest): ResponseBody
 
     // Deaf individuals
     @GET("deaf-individuals")

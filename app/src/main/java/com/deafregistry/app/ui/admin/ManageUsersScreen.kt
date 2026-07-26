@@ -73,6 +73,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
     var showAddDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
     var newEmail by remember { mutableStateOf("") }
+    var newUsername by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var newRole by remember { mutableStateOf("conductor") }
     var roleMenuExpanded by remember { mutableStateOf(false) }
@@ -81,6 +82,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
 
     var editingUser by remember { mutableStateOf<UserDto?>(null) }
     var editName by remember { mutableStateOf("") }
+    var editUsername by remember { mutableStateOf("") }
     var editRole by remember { mutableStateOf("conductor") }
     var editTeacherId by remember { mutableStateOf<Int?>(null) }
     var editActive by remember { mutableStateOf(true) }
@@ -104,7 +106,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                newName = ""; newEmail = ""; newPassword = ""; newRole = "conductor"; newPasswordVisible = false; showAddDialog = true
+                newName = ""; newEmail = ""; newUsername = ""; newPassword = ""; newRole = "conductor"; newPasswordVisible = false; showAddDialog = true
             }) { Icon(Icons.Default.Add, contentDescription = "Add") }
         }
     ) { padding: PaddingValues ->
@@ -145,7 +147,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                         Column(Modifier.weight(1f)) {
                             Text(user.name, style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "${user.email} • ${user.role}" + (user.teacherName?.let { " • $it" } ?: "") +
+                                "${user.username ?: user.email} • ${user.role}" + (user.teacherName?.let { " • $it" } ?: "") +
                                     if (user.isActive == false) " • Deleted" else "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (user.isActive == false) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
@@ -157,6 +159,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                                 TextButton(onClick = {
                                     editingUser = user
                                     editName = user.name
+                                    editUsername = user.username ?: ""
                                     editRole = user.role
                                     editTeacherId = user.teacherId
                                     editActive = true
@@ -170,6 +173,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                                 IconButton(onClick = {
                                     editingUser = user
                                     editName = user.name
+                                    editUsername = user.username ?: ""
                                     editRole = user.role
                                     editTeacherId = user.teacherId
                                     editActive = user.isActive != false
@@ -198,6 +202,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                 Column {
                     OutlinedTextField(value = newName, onValueChange = { newName = it }, label = { Text("Name") })
                     OutlinedTextField(value = newEmail, onValueChange = { newEmail = it }, label = { Text("Email") })
+                    OutlinedTextField(value = newUsername, onValueChange = { newUsername = it }, label = { Text("Username") })
                     OutlinedTextField(
                         value = newPassword,
                         onValueChange = { newPassword = it },
@@ -235,7 +240,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     showAddDialog = false
                     scope.launch {
-                        runCatching { repo.create(newName.trim(), newEmail.trim(), newPassword, newRole, null) }
+                        runCatching { repo.create(newName.trim(), newEmail.trim(), newUsername.trim(), newPassword, newRole, null) }
                             .onFailure { error = it.message }
                         reload()
                     }
@@ -252,6 +257,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
             text = {
                 Column {
                     OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Name") })
+                    OutlinedTextField(value = editUsername, onValueChange = { editUsername = it }, label = { Text("Username") })
                     Text(user.email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     ExposedDropdownMenuBox(expanded = editRoleMenuExpanded, onExpandedChange = { editRoleMenuExpanded = it }) {
@@ -298,7 +304,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                     val target = user
                     editingUser = null
                     scope.launch {
-                        runCatching { repo.update(target.id, editName.trim(), editRole, editTeacherId, editActive) }
+                        runCatching { repo.update(target.id, editName.trim(), editUsername.trim(), editRole, editTeacherId, editActive) }
                             .onFailure { error = it.message }
                         if (editNewPassword.isNotBlank()) {
                             runCatching { repo.resetPassword(target.id, editNewPassword) }

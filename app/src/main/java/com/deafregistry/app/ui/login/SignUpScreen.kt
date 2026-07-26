@@ -79,6 +79,14 @@ fun SignUpScreen(onBack: () -> Unit) {
                 )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
+                    value = state.username,
+                    onValueChange = viewModel::onUsernameChange,
+                    label = { Text("Username") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
                     value = state.contactNumber,
                     onValueChange = viewModel::onContactNumberChange,
                     label = { Text("Contact Number") },

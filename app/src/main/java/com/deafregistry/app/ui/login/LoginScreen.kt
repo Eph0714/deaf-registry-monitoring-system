@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -40,14 +43,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.deafregistry.app.BuildConfig
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.GenericViewModelFactory
+import com.deafregistry.app.util.BiometricUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,17 +62,19 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
         factory = GenericViewModelFactory { LoginViewModel(ServiceLocator.authRepository, ServiceLocator.sessionManager) }
     )
     val state by viewModel.uiState.collectAsState()
-    val emailFocusRequester = remember { FocusRequester() }
+    val usernameFocusRequester = remember { FocusRequester() }
+    val context = LocalContext.current
+    val biometricHardwareAvailable = remember { BiometricUtil.isAvailable(context) }
 
     LaunchedEffect(state.loggedIn) {
         if (state.loggedIn) onLoggedIn()
     }
 
-    // Sets focus to the Email field whenever the Login screen appears - both on a normal app
+    // Sets focus to the Username field whenever the Login screen appears - both on a normal app
     // launch and, more importantly, right after an explicit Logout, so the next person at the
-    // device lands straight on the Email field instead of the previous user's leftover state.
+    // device lands straight on the Username field instead of the previous user's leftover state.
     LaunchedEffect(Unit) {
-        emailFocusRequester.requestFocus()
+        usernameFocusRequester.requestFocus()
     }
 
     Scaffold { padding: PaddingValues ->
@@ -91,16 +99,16 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
             Spacer(Modifier.height(32.dp))
 
             OutlinedTextField(
-                value = state.email,
-                onValueChange = viewModel::onEmailChange,
-                label = { Text("Email") },
+                value = state.username,
+                onValueChange = viewModel::onUsernameChange,
+                label = { Text("Username") },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(emailFocusRequester)
-                    .onFocusChanged { viewModel.onEmailFocusChanged(it.isFocused) }
+                    .focusRequester(usernameFocusRequester)
+                    .onFocusChanged { viewModel.onUsernameFocusChanged(it.isFocused) }
             )
-            if (state.showEmailSuggestions) {
+            if (state.showUsernameSuggestions) {
                 Spacer(Modifier.height(4.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -108,20 +116,20 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column {
-                        state.rememberedEmails.forEach { rememberedEmail ->
+                        state.rememberedUsernames.forEach { rememberedUsername ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    // A plain onClick loses focus before onEmailFocusChanged(false)
+                                    // A plain onClick loses focus before onUsernameFocusChanged(false)
                                     // fires, which would hide this list before the tap registers -
-                                    // selectRememberedEmail() closes it explicitly instead.
-                                    .clickable { viewModel.selectRememberedEmail(rememberedEmail) }
+                                    // selectRememberedUsername() closes it explicitly instead.
+                                    .clickable { viewModel.selectRememberedUsername(rememberedUsername) }
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 Spacer(Modifier.width(10.dp))
-                                Text(rememberedEmail, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text(rememberedUsername, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -153,12 +161,34 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
                 Text("Remember password", style = MaterialTheme.typography.bodyMedium)
             }
 
+            if (biometricHardwareAvailable) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = state.biometricEnabled,
+                        onCheckedChange = viewModel::onBiometricEnabledChange,
+                        enabled = state.rememberMe
+                    )
+                    Text(
+                        "Enable Biometric Login",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (state.rememberMe) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = viewModel::openForgotPasswordDialog) { Text("Forgot Password?") }
+            }
+
             state.error?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
             Button(onClick = viewModel::login, enabled = !state.isLoading, modifier = Modifier.fillMaxWidth()) {
                 if (state.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.height(20.dp), color = MaterialTheme.colorScheme.onPrimary)
@@ -166,6 +196,30 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
                     Text("Log In")
                 }
             }
+
+            if (biometricHardwareAvailable && state.biometricAvailableForUsername) {
+                Spacer(Modifier.height(8.dp))
+                val activity = context as? FragmentActivity
+                OutlinedButton(
+                    onClick = {
+                        val username = state.username.trim()
+                        activity?.let {
+                            BiometricUtil.authenticate(
+                                activity = it,
+                                onSuccess = { viewModel.loginWithBiometric(username) },
+                                onError = { }
+                            )
+                        }
+                    },
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Fingerprint, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Login with Biometrics")
+                }
+            }
+
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onSignUp) { Text("Don't have an account? Sign Up") }
         }
@@ -188,5 +242,59 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
             )
         }
         }
+    }
+
+    if (state.showForgotPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissForgotPasswordDialog,
+            title = { Text("Forgot Password") },
+            text = {
+                if (state.forgotPasswordResult != null) {
+                    Text(state.forgotPasswordResult!!)
+                } else {
+                    Column {
+                        Text(
+                            "This app can't email you a reset link directly - submit your username below and an administrator will review your request and reset your password.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = state.forgotPasswordUsername,
+                            onValueChange = viewModel::onForgotPasswordUsernameChange,
+                            label = { Text("Username") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = state.forgotPasswordNote,
+                            onValueChange = viewModel::onForgotPasswordNoteChange,
+                            label = { Text("Note (optional)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (state.forgotPasswordSubmitting) {
+                            Spacer(Modifier.height(12.dp))
+                            CircularProgressIndicator(modifier = Modifier.height(20.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (state.forgotPasswordResult != null) {
+                    TextButton(onClick = viewModel::dismissForgotPasswordDialog) { Text("Close") }
+                } else {
+                    TextButton(
+                        enabled = !state.forgotPasswordSubmitting && state.forgotPasswordUsername.isNotBlank(),
+                        onClick = viewModel::submitForgotPassword
+                    ) { Text("Submit") }
+                }
+            },
+            dismissButton = {
+                if (state.forgotPasswordResult == null) {
+                    TextButton(onClick = viewModel::dismissForgotPasswordDialog) { Text("Cancel") }
+                }
+            }
+        )
     }
 }

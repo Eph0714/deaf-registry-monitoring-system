@@ -32,7 +32,7 @@ const auditLogs = asyncHandler(async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
   const { rows } = await pool.query(
     `SELECT al.id, al.action, al.entity_type, al.entity_id, al.details, al.created_at,
-            u.name AS user_name, u.email AS user_email
+            u.name AS user_name, u.email AS user_email, u.username AS user_username
      FROM audit_logs al
      LEFT JOIN users u ON u.id = al.user_id
      ORDER BY al.created_at DESC

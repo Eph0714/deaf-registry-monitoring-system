@@ -43,7 +43,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ViewProfileDialog(
     sessionName: String,
-    sessionEmail: String,
+    sessionUsername: String,
     sessionRole: String,
     photoUrl: String?,
     onDismiss: () -> Unit
@@ -105,7 +105,7 @@ fun ViewProfileDialog(
                 Spacer(Modifier.height(16.dp))
 
                 ProfileInfoRow("Full Name", profile?.name ?: sessionName)
-                ProfileInfoRow("Username", profile?.email ?: sessionEmail)
+                ProfileInfoRow("Username", profile?.username ?: sessionUsername)
                 ProfileInfoRow("User Role", roleLabel(profile?.role ?: sessionRole))
                 ProfileInfoRow(
                     "Last Login",

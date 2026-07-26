@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 data class SignUpUiState(
     val name: String = "",
     val email: String = "",
+    val username: String = "",
     val password: String = "",
     val confirmPassword: String = "",
     val contactNumber: String = "",
@@ -26,6 +27,7 @@ class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() 
 
     fun onNameChange(value: String) { _uiState.value = _uiState.value.copy(name = value, error = null) }
     fun onEmailChange(value: String) { _uiState.value = _uiState.value.copy(email = value, error = null) }
+    fun onUsernameChange(value: String) { _uiState.value = _uiState.value.copy(username = value, error = null) }
     fun onPasswordChange(value: String) { _uiState.value = _uiState.value.copy(password = value, error = null) }
     fun onConfirmPasswordChange(value: String) { _uiState.value = _uiState.value.copy(confirmPassword = value, error = null) }
     fun onContactNumberChange(value: String) { _uiState.value = _uiState.value.copy(contactNumber = value, error = null) }
@@ -33,10 +35,10 @@ class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() 
 
     fun signup() {
         val state = _uiState.value
-        if (state.name.isBlank() || state.email.isBlank() || state.password.isBlank() ||
+        if (state.name.isBlank() || state.email.isBlank() || state.username.isBlank() || state.password.isBlank() ||
             state.contactNumber.isBlank() || state.location.isBlank()
         ) {
-            _uiState.value = state.copy(error = "Name, email, password, contact number and location are required")
+            _uiState.value = state.copy(error = "Name, email, username, password, contact number and location are required")
             return
         }
         if (state.password.length < 8) {
@@ -51,7 +53,7 @@ class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() 
         viewModelScope.launch {
             try {
                 val message = authRepository.signup(
-                    state.name.trim(), state.email.trim(), state.password,
+                    state.name.trim(), state.email.trim(), state.username.trim(), state.password,
                     state.contactNumber.trim(), state.location.trim()
                 )
                 _uiState.value = _uiState.value.copy(isLoading = false, successMessage = message)

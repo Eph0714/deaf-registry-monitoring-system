@@ -135,7 +135,7 @@ fun DashboardScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val session by ServiceLocator.sessionManager.session.collectAsState()
-    val userEmail = session?.email ?: ""
+    val username = session?.username ?: ""
     val photoUrl = session?.photoUrl?.let {
         if (it.startsWith("/uploads")) BuildConfig.API_BASE_URL.removeSuffix("/api/") + it else it
     }
@@ -222,7 +222,7 @@ fun DashboardScreen(
         drawerContent = {
             AppDrawerContent(
                 userName = state.userName,
-                userEmail = userEmail,
+                username = username,
                 photoUrl = photoUrl,
                 isOnline = state.isOnline,
                 pendingSyncCount = state.pendingSyncCount,
@@ -480,7 +480,7 @@ fun DashboardScreen(
     if (showViewProfileDialog) {
         ViewProfileDialog(
             sessionName = state.userName,
-            sessionEmail = userEmail,
+            sessionUsername = username,
             sessionRole = session?.role ?: "conductor",
             photoUrl = photoUrl,
             onDismiss = { showViewProfileDialog = false }
@@ -919,7 +919,7 @@ private fun DashboardInsightCard(
 @Composable
 private fun AppDrawerContent(
     userName: String,
-    userEmail: String,
+    username: String,
     photoUrl: String?,
     isOnline: Boolean,
     pendingSyncCount: Int,
@@ -970,7 +970,7 @@ private fun AppDrawerContent(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    userEmail,
+                    username,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                 )

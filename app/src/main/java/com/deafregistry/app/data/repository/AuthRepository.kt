@@ -2,6 +2,7 @@ package com.deafregistry.app.data.repository
 
 import com.deafregistry.app.data.remote.ApiService
 import com.deafregistry.app.data.remote.dto.ChangePasswordRequest
+import com.deafregistry.app.data.remote.dto.ForgotPasswordRequest
 import com.deafregistry.app.data.remote.dto.LoginErrorBody
 import com.deafregistry.app.data.remote.dto.LoginRequest
 import com.deafregistry.app.data.remote.dto.ShareLocationRequest
@@ -25,8 +26,8 @@ class AuthRepository(
     private val api: ApiService,
     private val sessionManager: SessionManager
 ) {
-    suspend fun login(email: String, password: String) {
-        val request = LoginRequest(email, password)
+    suspend fun login(username: String, password: String) {
+        val request = LoginRequest(username, password)
         try {
             val response = api.login(request)
             sessionManager.save(response.token, response.user)
@@ -48,8 +49,22 @@ class AuthRepository(
         }
     }
 
-    suspend fun signup(name: String, email: String, password: String, contactNumber: String?, location: String?): String {
-        val response = api.signup(SignupRequest(name, email, password, contactNumber, location))
+    suspend fun signup(
+        name: String,
+        email: String,
+        username: String,
+        password: String,
+        contactNumber: String?,
+        location: String?
+    ): String {
+        val response = api.signup(SignupRequest(name, email, username, password, contactNumber, location))
+        return response.message
+    }
+
+    /** Submits a Forgot Password request to the admin queue - this app has no working email
+     * delivery for arbitrary users, so an admin/super-admin resolves it manually instead. */
+    suspend fun forgotPassword(username: String, note: String?): String {
+        val response = api.forgotPassword(ForgotPasswordRequest(username, note))
         return response.message
     }
 
@@ -80,6 +95,7 @@ class AuthRepository(
                 id = session.userId,
                 name = fresh.name,
                 email = fresh.email,
+                username = fresh.username,
                 role = fresh.role,
                 teacherId = fresh.teacherId,
                 photoUrl = fresh.photoUrl

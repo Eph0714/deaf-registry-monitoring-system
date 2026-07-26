@@ -13,8 +13,8 @@ android {
         applicationId = "com.deafregistry.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 31
-        versionName = "1.30"
+        versionCode = 32
+        versionName = "1.31"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -99,6 +99,9 @@ dependencies {
 
     // Security (encrypted session storage)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Biometric login
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // Image loading (profile photos)
     implementation("io.coil-kt:coil-compose:2.7.0")

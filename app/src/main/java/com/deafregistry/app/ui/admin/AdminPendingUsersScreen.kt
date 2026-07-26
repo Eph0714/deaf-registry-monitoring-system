@@ -62,7 +62,7 @@ fun AdminPendingUsersScreen(onBack: () -> Unit) {
                             Column(Modifier.weight(1f)) {
                                 Text(signup.name, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    signup.email,
+                                    signup.username ?: signup.email,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

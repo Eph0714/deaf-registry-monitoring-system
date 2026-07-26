@@ -19,6 +19,7 @@ async function main() {
 
   await ensureColumns(client);
   await ensureRoleAllowsSuperAdmin(client);
+  await ensureUsernames(client);
 
   console.log('Migration complete: schema applied to', process.env.DB_NAME);
   await client.end();
@@ -55,7 +56,8 @@ async function ensureColumns(client) {
     { table: 'users', column: 'shared_latitude', definition: 'DOUBLE PRECISION NULL' },
     { table: 'users', column: 'shared_longitude', definition: 'DOUBLE PRECISION NULL' },
     { table: 'users', column: 'shared_location_at', definition: 'TIMESTAMP NULL' },
-    { table: 'users', column: 'last_login_at', definition: 'TIMESTAMP NULL' }
+    { table: 'users', column: 'last_login_at', definition: 'TIMESTAMP NULL' },
+    { table: 'users', column: 'username', definition: 'VARCHAR(50) NULL' }
   ];
 
   for (const { table, column, definition } of columnsToAdd) {
@@ -80,6 +82,41 @@ async function ensureRoleAllowsSuperAdmin(client) {
   await client.query(
     "ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','conductor','super_admin'))"
   );
+}
+
+/**
+ * Backfills username for any pre-existing row that doesn't have one yet (every account created
+ * before this column existed), derived from the local part of its email, deduped against every
+ * other username already taken (including ones just assigned earlier in this same loop) by
+ * appending the row's id when there's a collision. Then adds a UNIQUE constraint - safe to re-run,
+ * and wrapped so a constraint failure (e.g. a leftover duplicate) logs instead of aborting the
+ * whole migration, since every other step here already succeeded by this point.
+ */
+async function ensureUsernames(client) {
+  const { rows: taken } = await client.query('SELECT username FROM users WHERE username IS NOT NULL');
+  const usedUsernames = new Set(taken.map((r) => r.username));
+
+  const { rows: missing } = await client.query('SELECT id, email FROM users WHERE username IS NULL');
+  for (const { id, email } of missing) {
+    let candidate = (email.split('@')[0] || `user${id}`).toLowerCase().replace(/[^a-z0-9._-]/g, '');
+    if (!candidate) candidate = `user${id}`;
+    let username = candidate;
+    let suffix = 1;
+    while (usedUsernames.has(username)) {
+      username = `${candidate}${id}${suffix > 1 ? suffix : ''}`;
+      suffix += 1;
+    }
+    usedUsernames.add(username);
+    await client.query('UPDATE users SET username = $1 WHERE id = $2', [username, id]);
+    console.log(`Backfilled username for user ${id}: ${username}`);
+  }
+
+  try {
+    await client.query('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_unique');
+    await client.query('ALTER TABLE users ADD CONSTRAINT users_username_unique UNIQUE (username)');
+  } catch (err) {
+    console.error('Could not add users_username_unique constraint (check for duplicate usernames):', err.message);
+  }
 }
 
 main().catch((err) => {
