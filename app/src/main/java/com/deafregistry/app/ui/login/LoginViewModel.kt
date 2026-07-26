@@ -22,8 +22,12 @@ data class LoginUiState(
      * when the username field gains focus. */
     val rememberedUsernames: List<String> = emptyList(),
     val showUsernameSuggestions: Boolean = false,
-    /** True when the currently-filled-in username has Biometric Login enabled AND the device
-     * actually supports it - the Login screen uses this to decide whether to show the shortcut. */
+    /** True only when the username AND password fields currently, exactly match a remembered
+     * account that has Biometric Login enabled - the Login screen uses this to decide whether to
+     * show the shortcut. Deliberately re-checked on every keystroke in either field (see
+     * computeBiometricAvailability): biometric is a shortcut for re-submitting what's already
+     * shown on screen, not a way to log in with blank/edited-away fields, so clearing or changing
+     * either field immediately hides the button again. */
     val biometricAvailableForUsername: Boolean = false,
     val showForgotPasswordDialog: Boolean = false,
     val forgotPasswordUsername: String = "",
@@ -53,7 +57,7 @@ class LoginViewModel(
                 rememberMe = lastUsername != null && lastPassword != null,
                 biometricEnabled = lastUsername != null && sessionManager.canUseBiometricFor(lastUsername),
                 rememberedUsernames = sessionManager.rememberedUsernames(),
-                biometricAvailableForUsername = lastUsername != null && sessionManager.canUseBiometricFor(lastUsername)
+                biometricAvailableForUsername = computeBiometricAvailability(sessionManager, lastUsername ?: "", lastPassword ?: "")
             )
         }
     })
@@ -68,12 +72,13 @@ class LoginViewModel(
     fun onUsernameChange(value: String) {
         val trimmed = value.trim()
         val rememberedPassword = sessionManager.rememberedPasswordFor(trimmed)
+        val newPassword = rememberedPassword ?: ""
         _uiState.value = _uiState.value.copy(
             username = value,
-            password = rememberedPassword ?: "",
+            password = newPassword,
             rememberMe = rememberedPassword != null,
             biometricEnabled = rememberedPassword != null && sessionManager.canUseBiometricFor(trimmed),
-            biometricAvailableForUsername = sessionManager.canUseBiometricFor(trimmed),
+            biometricAvailableForUsername = computeBiometricAvailability(sessionManager, trimmed, newPassword),
             error = null
         )
     }
@@ -85,19 +90,24 @@ class LoginViewModel(
     /** Selecting a remembered username from the suggestion list - same effect as typing it in full. */
     fun selectRememberedUsername(username: String) {
         val rememberedPassword = sessionManager.rememberedPasswordFor(username)
+        val newPassword = rememberedPassword ?: ""
         _uiState.value = _uiState.value.copy(
             username = username,
-            password = rememberedPassword ?: "",
+            password = newPassword,
             rememberMe = rememberedPassword != null,
             biometricEnabled = sessionManager.canUseBiometricFor(username),
-            biometricAvailableForUsername = sessionManager.canUseBiometricFor(username),
+            biometricAvailableForUsername = computeBiometricAvailability(sessionManager, username, newPassword),
             showUsernameSuggestions = false,
             error = null
         )
     }
 
     fun onPasswordChange(value: String) {
-        _uiState.value = _uiState.value.copy(password = value, error = null)
+        _uiState.value = _uiState.value.copy(
+            password = value,
+            biometricAvailableForUsername = computeBiometricAvailability(sessionManager, _uiState.value.username.trim(), value),
+            error = null
+        )
     }
 
     /**
@@ -115,6 +125,9 @@ class LoginViewModel(
                 _uiState.value = _uiState.value.copy(rememberedUsernames = sessionManager.rememberedUsernames())
             }
         }
+        _uiState.value = _uiState.value.copy(
+            biometricAvailableForUsername = computeBiometricAvailability(sessionManager, _uiState.value.username.trim(), _uiState.value.password)
+        )
     }
 
     /** Only meaningful while Remember Password is checked - the actual on/off toggle is persisted
@@ -161,8 +174,11 @@ class LoginViewModel(
         }
     }
 
-    /** Called after a successful BiometricPrompt auth - fills in the remembered password for
-     * [username] (already validated by the Login screen to have biometric enabled) and submits. */
+    /** Called after a successful BiometricPrompt auth - the Login screen only ever offers this
+     * button when the visible fields already exactly match a biometric-enabled remembered
+     * account (see biometricAvailableForUsername), so re-reading the stored password here (rather
+     * than trusting whatever's currently in state) just confirms that hasn't changed underneath
+     * it and submits. */
     fun loginWithBiometric(username: String) {
         val password = sessionManager.rememberedPasswordFor(username) ?: return
         _uiState.value = _uiState.value.copy(username = username, password = password, rememberMe = true)
@@ -202,4 +218,14 @@ class LoginViewModel(
             )
         }
     }
+}
+
+/** True only when [username]/[password] are both non-blank, the username has Biometric Login
+ * enabled, and [password] is exactly the password currently remembered for it - i.e. the visible
+ * fields genuinely show the enrolled account, not just a username match with an empty or edited
+ * password field. */
+private fun computeBiometricAvailability(sessionManager: SessionManager, username: String, password: String): Boolean {
+    if (username.isBlank() || password.isBlank()) return false
+    if (!sessionManager.canUseBiometricFor(username)) return false
+    return sessionManager.rememberedPasswordFor(username) == password
 }
