@@ -57,6 +57,28 @@ class RemarkRepository(
         remarkDao.upsertAll(entities)
     }
 
+    /**
+     * Pulls every remark across the whole roster in one call - refreshForVisit() alone was never
+     * actually called anywhere in the app, so a remark only ever existed locally on whichever
+     * device created it: it never synced to any other device, and was permanently lost if that
+     * device's local data was ever wiped (e.g. a Room schema-version bump). Mirrors
+     * VisitRepository.refreshAll() exactly - called from SyncManager.pull()/sync() after the visits
+     * refresh, since it needs local visit serverId->uuid mappings already up to date.
+     */
+    suspend fun refreshAll() {
+        val remote = api.getAllRemarks()
+        val uuidByVisitServerId = visitDao.getServerIdUuidPairs().associate { it.serverId to it.uuid }
+        val dirtyUuids = remarkDao.getDirty().map { it.uuid }.toSet()
+        val entities = remote.mapNotNull { dto ->
+            if (dto.uuid in dirtyUuids) return@mapNotNull null
+            val visitUuid = uuidByVisitServerId[dto.visitId] ?: return@mapNotNull null
+            toEntity(dto, visitUuid)
+        }
+        remarkDao.upsertAll(entities)
+        val protectedUuids = entities.map { it.uuid } + dirtyUuids
+        remarkDao.clearSyncedExcept(protectedUuids)
+    }
+
     private fun toEntity(dto: RemarkDto, visitUuid: String) = RemarkEntity(
         uuid = dto.uuid,
         serverId = dto.id,

@@ -26,4 +26,9 @@ interface RemarkDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<RemarkEntity>)
+
+    // Reconciles a remark deleted on another device - upsertAll alone only ever adds/updates,
+    // never removes. Mirrors VisitDao.clearSyncedExcept exactly.
+    @Query("DELETE FROM remarks WHERE serverId IS NOT NULL AND uuid NOT IN (:protectedUuids)")
+    suspend fun clearSyncedExcept(protectedUuids: List<String>)
 }

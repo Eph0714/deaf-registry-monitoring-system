@@ -8,6 +8,7 @@ const router = express.Router();
 router.get('/', requireAuth, visitsCtrl.listAll);
 router.put('/:id', requireAuth, visitsCtrl.update);
 router.delete('/:id', requireAuth, visitsCtrl.remove);
+router.get('/remarks', requireAuth, remarksCtrl.listAll);
 router.get('/:visitId/remarks', requireAuth, remarksCtrl.listForVisit);
 router.post('/:visitId/remarks', requireAuth, remarksCtrl.create);
 router.put('/:visitId/remarks/:id', requireAuth, remarksCtrl.update);

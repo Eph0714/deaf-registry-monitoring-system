@@ -191,6 +191,12 @@ interface ApiService {
     suspend fun deleteVisit(@Path("id") id: Int): Response<Unit>
 
     // Remarks
+    // Every remark across the whole roster in one call - used by Sync/pull so a remark added on
+    // one device shows up on another (see getRemarks below, which only ever fetches one visit's
+    // remarks and was never actually called anywhere in the app).
+    @GET("visits/remarks")
+    suspend fun getAllRemarks(): List<RemarkDto>
+
     @GET("visits/{visitId}/remarks")
     suspend fun getRemarks(@Path("visitId") visitId: Int): List<RemarkDto>
 

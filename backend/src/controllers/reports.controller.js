@@ -72,6 +72,7 @@ const recentVisits = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`
     SELECT v.id, v.visit_datetime, v.conductor_name, d.full_name, d.id AS deaf_individual_id, d.uuid
     FROM visits v JOIN deaf_individuals d ON d.id = v.deaf_individual_id
+    WHERE d.is_deleted = false
     ORDER BY v.visit_datetime DESC LIMIT $1`, [limit]);
   res.json(rows);
 });

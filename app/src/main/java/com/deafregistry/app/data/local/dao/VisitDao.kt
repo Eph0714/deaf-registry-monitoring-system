@@ -47,4 +47,9 @@ interface VisitDao {
 
     @Query("DELETE FROM visits WHERE deafIndividualUuid = :deafUuid AND serverId IS NOT NULL AND uuid NOT IN (:protectedUuids)")
     suspend fun clearSyncedExceptForDeaf(deafUuid: String, protectedUuids: List<String>)
+
+    // Maps a visit's server id back to its local uuid FK - remarks are keyed locally by visitUuid
+    // but the server only knows visit_id, same need ServerIdUuid already solves for individuals.
+    @Query("SELECT serverId, uuid FROM visits WHERE serverId IS NOT NULL")
+    suspend fun getServerIdUuidPairs(): List<ServerIdUuid>
 }
