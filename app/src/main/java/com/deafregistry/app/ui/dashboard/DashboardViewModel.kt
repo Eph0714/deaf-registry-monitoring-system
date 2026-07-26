@@ -160,6 +160,15 @@ class DashboardViewModel(
         }
     }
 
+    /**
+     * Report cards (including "Latest Visits") and counts must only refresh *after* the push+pull
+     * sync actually completes, not alongside it - they were previously fired as separate top-level
+     * calls outside the launch{} running syncManager.sync(), so they ran concurrently with (often
+     * finishing well before) the real sync, showing stale data from before whatever was just
+     * edited/deleted had even been pushed to the server yet. Sequencing them inside the same
+     * coroutine after sync() returns (success or failure) is what actually makes "tap Sync" mean
+     * "now showing the post-sync state."
+     */
     fun sync() {
         _uiState.value = _uiState.value.copy(isSyncing = true, syncError = null)
         viewModelScope.launch {
@@ -170,11 +179,11 @@ class DashboardViewModel(
                 _uiState.value = _uiState.value.copy(isSyncing = false, syncError = "Sync failed: ${com.deafregistry.app.util.friendlyMessage(e)}")
             }
             refreshPendingSyncCount()
+            refreshUserCounts()
+            refreshReportCards()
+            refreshUnreadChatCount()
+            checkForUpdate()
         }
-        refreshUserCounts()
-        refreshReportCards()
-        refreshUnreadChatCount()
-        checkForUpdate()
     }
 
     /** Unread = messages in the currently-open chat session that arrived after this device last

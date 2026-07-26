@@ -68,6 +68,8 @@ class VisitRepository(
         val dirtyUuids = visitDao.getDirty().map { it.uuid }.toSet()
         val entities = remote.filter { it.uuid !in dirtyUuids }.map { toEntity(it, deafUuid) }
         visitDao.upsertAll(entities)
+        val protectedUuids = entities.map { it.uuid } + dirtyUuids
+        visitDao.clearSyncedExceptForDeaf(deafUuid, protectedUuids)
     }
 
     /**
@@ -89,6 +91,13 @@ class VisitRepository(
             toEntity(dto, deafUuid)
         }
         visitDao.upsertAll(entities)
+        // Reconciles a visit edited or deleted on another device - upsertAll only ever adds/updates,
+        // so without this, a visit deleted elsewhere (or an edit that landed on a device whose local
+        // uuid mapping couldn't be resolved above) would keep showing stale locally forever, "not
+        // updating even after sync." Protects both what was just upserted and anything still dirty
+        // (not yet pushed) here on this device - only ever touches previously-synced rows.
+        val protectedUuids = entities.map { it.uuid } + dirtyUuids
+        visitDao.clearSyncedExcept(protectedUuids)
     }
 
     private fun toEntity(dto: VisitDto, deafUuid: String) = VisitEntity(

@@ -36,4 +36,15 @@ interface VisitDao {
 
     @Query("DELETE FROM visits WHERE uuid = :uuid")
     suspend fun hardDelete(uuid: String)
+
+    // Reconciles a visit deleted on another device - upsertAll alone only ever adds/updates, never
+    // removes, so without this a visit deleted elsewhere would linger locally forever, "not
+    // updating even after sync." Excludes dirty (not-yet-pushed) and never-synced rows via the
+    // caller-supplied protected list, and only ever touches rows that came from the server in the
+    // first place (serverId IS NOT NULL) - mirrors DeafIndividualDao.clearSyncedExcept exactly.
+    @Query("DELETE FROM visits WHERE serverId IS NOT NULL AND uuid NOT IN (:protectedUuids)")
+    suspend fun clearSyncedExcept(protectedUuids: List<String>)
+
+    @Query("DELETE FROM visits WHERE deafIndividualUuid = :deafUuid AND serverId IS NOT NULL AND uuid NOT IN (:protectedUuids)")
+    suspend fun clearSyncedExceptForDeaf(deafUuid: String, protectedUuids: List<String>)
 }
