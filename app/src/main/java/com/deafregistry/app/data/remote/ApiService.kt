@@ -184,6 +184,12 @@ interface ApiService {
     @POST("deaf-individuals/{deafId}/visits")
     suspend fun createVisit(@Path("deafId") deafId: Int, @Body request: VisitRequest): CreateResponse
 
+    @PUT("visits/{id}")
+    suspend fun updateVisit(@Path("id") id: Int, @Body request: VisitRequest): VisitDto
+
+    @DELETE("visits/{id}")
+    suspend fun deleteVisit(@Path("id") id: Int): Response<Unit>
+
     // Remarks
     @GET("visits/{visitId}/remarks")
     suspend fun getRemarks(@Path("visitId") visitId: Int): List<RemarkDto>

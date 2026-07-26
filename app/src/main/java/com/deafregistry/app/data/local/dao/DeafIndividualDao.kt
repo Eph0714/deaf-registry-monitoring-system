@@ -106,8 +106,8 @@ interface DeafIndividualDao {
         LEFT JOIN (
             SELECT v.deafIndividualUuid, v.visitDateTime AS lastVisit
             FROM visits v
-            WHERE v.visitDateTime = (
-                SELECT MAX(v2.visitDateTime) FROM visits v2 WHERE v2.deafIndividualUuid = v.deafIndividualUuid
+            WHERE v.isDeleted = 0 AND v.visitDateTime = (
+                SELECT MAX(v2.visitDateTime) FROM visits v2 WHERE v2.deafIndividualUuid = v.deafIndividualUuid AND v2.isDeleted = 0
             )
         ) lv ON lv.deafIndividualUuid = d.uuid
         WHERE d.isDeleted = 0
@@ -158,8 +158,8 @@ interface DeafIndividualDao {
         LEFT JOIN (
             SELECT v.deafIndividualUuid, v.visitDateTime AS lastVisit, v.conductorName
             FROM visits v
-            WHERE v.visitDateTime = (
-                SELECT MAX(v2.visitDateTime) FROM visits v2 WHERE v2.deafIndividualUuid = v.deafIndividualUuid
+            WHERE v.isDeleted = 0 AND v.visitDateTime = (
+                SELECT MAX(v2.visitDateTime) FROM visits v2 WHERE v2.deafIndividualUuid = v.deafIndividualUuid AND v2.isDeleted = 0
             )
         ) lv ON lv.deafIndividualUuid = d.uuid
         WHERE d.isDeleted = 0

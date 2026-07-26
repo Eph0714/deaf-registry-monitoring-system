@@ -49,6 +49,20 @@ class VisitRepository(
         return uuid
     }
 
+    suspend fun editVisit(uuid: String, visitDateTime: String, conductorName: String?) {
+        val existing = visitDao.getByUuid(uuid) ?: return
+        visitDao.upsert(existing.copy(visitDateTime = visitDateTime, conductorName = conductorName, isDirty = true))
+    }
+
+    suspend fun deleteVisit(uuid: String) {
+        val existing = visitDao.getByUuid(uuid) ?: return
+        if (existing.serverId == null) {
+            visitDao.hardDelete(uuid)
+        } else {
+            visitDao.upsert(existing.copy(isDeleted = true, isDirty = true))
+        }
+    }
+
     suspend fun refreshForDeaf(deafUuid: String, deafServerId: Int) {
         val remote = api.getVisits(deafServerId)
         val dirtyUuids = visitDao.getDirty().map { it.uuid }.toSet()
@@ -93,6 +107,16 @@ class VisitRepository(
     suspend fun pushDirty() {
         for (item in visitDao.getDirty()) {
             try {
+                if (item.isDeleted) {
+                    item.serverId?.let {
+                        // Response<Unit> doesn't throw on a non-2xx by itself - without this check,
+                        // a failed server-side delete would still get hard-deleted locally.
+                        val response = api.deleteVisit(it)
+                        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+                    }
+                    visitDao.hardDelete(item.uuid)
+                    continue
+                }
                 val deaf = deafDao.getById(item.deafIndividualUuid) ?: continue
                 val deafServerId = deaf.serverId ?: continue // parent must be synced first
                 val request = VisitRequest(
@@ -103,8 +127,13 @@ class VisitRepository(
                     conductor_name = item.conductorName,
                     visit_datetime = item.visitDateTime
                 )
-                val response = api.createVisit(deafServerId, request)
-                visitDao.upsert(item.copy(serverId = response.id, isDirty = false))
+                if (item.serverId == null) {
+                    val response = api.createVisit(deafServerId, request)
+                    visitDao.upsert(item.copy(serverId = response.id, isDirty = false))
+                } else {
+                    val response = api.updateVisit(item.serverId, request)
+                    visitDao.upsert(item.copy(visitDateTime = response.visitDateTime, isDirty = false))
+                }
             } catch (e: Exception) {
                 // retry next sync
             }

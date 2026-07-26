@@ -26,7 +26,7 @@ import com.deafregistry.app.data.local.entity.VisitEntity
         VisitEntity::class,
         RemarkEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

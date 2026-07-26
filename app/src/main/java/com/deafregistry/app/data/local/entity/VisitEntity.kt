@@ -14,5 +14,6 @@ data class VisitEntity(
     val conductorId: Int?,
     val conductorName: String?,
     val updatedAt: String,
-    val isDirty: Boolean = false
+    val isDirty: Boolean = false,
+    val isDeleted: Boolean = false
 )

@@ -472,12 +472,20 @@ private fun VisitCard(visit: VisitEntity, viewModel: DeafProfileViewModel) {
     var editingUuid by remember { mutableStateOf<String?>(null) }
     var editText by remember { mutableStateOf("") }
     var deletingUuid by remember { mutableStateOf<String?>(null) }
+    var showEditVisit by remember { mutableStateOf(false) }
+    var showDeleteVisit by remember { mutableStateOf(false) }
     val remarks by viewModel.remarksFor(visit.uuid).collectAsState(initial = emptyList())
 
     Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Column(Modifier.padding(16.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(visit.visitDateTime, style = MaterialTheme.typography.bodyMedium)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(visit.visitDateTime, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                IconButton(onClick = { showEditVisit = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit visit", modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = { showDeleteVisit = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete visit", modifier = Modifier.size(18.dp))
+                }
                 TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide" else "Details") }
             }
             Text("Conductor: ${visit.conductorName ?: "—"}", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -557,4 +565,108 @@ private fun VisitCard(visit: VisitEntity, viewModel: DeafProfileViewModel) {
             dismissButton = { TextButton(onClick = { deletingUuid = null }) { Text("Cancel") } }
         )
     }
+
+    if (showEditVisit) {
+        EditVisitDialog(
+            visit = visit,
+            onDismiss = { showEditVisit = false },
+            onConfirm = { dateIso, publisher ->
+                showEditVisit = false
+                viewModel.editVisit(visit.uuid, dateIso, publisher)
+            }
+        )
+    }
+
+    if (showDeleteVisit) {
+        AlertDialog(
+            onDismissRequest = { showDeleteVisit = false },
+            title = { Text("Delete this visit?") },
+            text = { Text("This removes the visit and its remarks. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteVisit = false
+                    viewModel.deleteVisit(visit.uuid)
+                }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteVisit = false }) { Text("Cancel") } }
+        )
+    }
+}
+
+@Composable
+private fun EditVisitDialog(
+    visit: VisitEntity,
+    onDismiss: () -> Unit,
+    onConfirm: (dateIso: String, publisher: String) -> Unit
+) {
+    val context = LocalContext.current
+    // parseServerDateTime handles both this device's own ISO "T"-separated writes (a visit created
+    // locally before its first sync) and the space-separated raw Postgres TIMESTAMP text a pulled
+    // visit comes back as - a plain LocalDateTime.parse() would throw on the latter.
+    val initial = com.deafregistry.app.ui.chat.parseServerDateTime(visit.visitDateTime) ?: java.time.LocalDateTime.now()
+    var publisher by remember { mutableStateOf(visit.conductorName ?: "") }
+    var selectedDate by remember { mutableStateOf(initial.toLocalDate()) }
+    var selectedTime by remember { mutableStateOf(initial.toLocalTime()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Visit") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = selectedDate.toString(),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Date") },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            android.app.DatePickerDialog(
+                                context,
+                                { _, year, month, day -> selectedDate = java.time.LocalDate.of(year, month + 1, day) },
+                                selectedDate.year, selectedDate.monthValue - 1, selectedDate.dayOfMonth
+                            ).show()
+                        }) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Pick date")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = selectedTime.format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a")),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Time") },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, hour, minute -> selectedTime = java.time.LocalTime.of(hour, minute) },
+                                selectedTime.hour, selectedTime.minute, false
+                            ).show()
+                        }) {
+                            Icon(Icons.Default.Schedule, contentDescription = "Pick time")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = publisher,
+                    onValueChange = { publisher = it },
+                    label = { Text("Who visited (Publisher)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val dateIso = java.time.LocalDateTime.of(selectedDate, selectedTime)
+                    .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                onConfirm(dateIso, publisher.trim())
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }

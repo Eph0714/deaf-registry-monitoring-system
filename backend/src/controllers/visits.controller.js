@@ -42,11 +42,28 @@ const create = asyncHandler(async (req, res) => {
   res.status(201).json({ id: insertId, uuid, visit_datetime: datetime });
 });
 
+const update = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { latitude, longitude, conductor_id, conductor_name, visit_datetime } = req.body;
+  if (!visit_datetime) {
+    return res.status(400).json({ message: 'visit_datetime is required' });
+  }
+  const { rows } = await pool.query(
+    `UPDATE visits SET visit_datetime = $1, latitude = $2, longitude = $3, conductor_id = $4, conductor_name = $5
+     WHERE id = $6 RETURNING *`,
+    [visit_datetime, latitude || null, longitude || null, conductor_id || null, conductor_name || null, id]
+  );
+  if (!rows.length) return res.status(404).json({ message: 'Visit not found' });
+  await logAudit(req.user.id, 'UPDATE', 'visit', id, null);
+  res.json(rows[0]);
+});
+
 const remove = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  await pool.query('DELETE FROM visits WHERE id = $1', [id]);
+  const result = await pool.query('DELETE FROM visits WHERE id = $1', [id]);
+  if (!result.rowCount) return res.status(404).json({ message: 'Visit not found' });
   await logAudit(req.user.id, 'DELETE', 'visit', id, null);
   res.status(204).send();
 });
 
-module.exports = { listAll, listForDeaf, create, remove };
+module.exports = { listAll, listForDeaf, create, update, remove };

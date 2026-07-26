@@ -94,6 +94,20 @@ class DeafProfileViewModel(
         }
     }
 
+    fun editVisit(visitUuid: String, visitDateTime: String, publisherName: String) {
+        viewModelScope.launch {
+            visitRepository.editVisit(visitUuid, visitDateTime, publisherName.ifBlank { null })
+            _message.value = "Visit updated"
+        }
+    }
+
+    fun deleteVisit(visitUuid: String) {
+        viewModelScope.launch {
+            visitRepository.deleteVisit(visitUuid)
+            _message.value = "Visit deleted"
+        }
+    }
+
     fun addRemark(visitUuid: String, text: String) {
         if (text.isBlank()) return
         viewModelScope.launch {
