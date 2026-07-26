@@ -144,9 +144,10 @@ class DashboardViewModel(
 
     /**
      * Hides the dialog but keeps nagging - re-shows it a few minutes later, and keeps doing so
-     * for the rest of the session, since dismissing (even via "Update Now", which just opens a
-     * browser and can't confirm the install actually happened) doesn't mean the device is
-     * actually on the new version yet. Only a real app restart on the new build stops this.
+     * for the rest of the session, since dismissing (even via "Update Now", which launches the
+     * system package installer but can't confirm the user actually completed that install) doesn't
+     * mean the device is actually on the new version yet. Only a real app restart on the new build
+     * stops this.
      */
     fun dismissUpdatePrompt() {
         _uiState.value = _uiState.value.copy(showUpdateDialog = false)

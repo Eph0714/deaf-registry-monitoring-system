@@ -1,8 +1,6 @@
 package com.deafregistry.app.ui.dashboard
 
 import android.Manifest
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
@@ -56,6 +54,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -95,7 +94,9 @@ import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
 import com.deafregistry.app.ui.common.GenericViewModelFactory
+import com.deafregistry.app.util.AppUpdateInstaller
 import com.deafregistry.app.util.ImageUtils
+import com.deafregistry.app.util.UpdateInstallResult
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -534,10 +535,14 @@ fun DashboardScreen(
         )
     }
 
+    var isDownloadingUpdate by remember { mutableStateOf(false) }
+    var updateDownloadProgress by remember { mutableStateOf(0) }
+    var updateDownloadError by remember { mutableStateOf<String?>(null) }
+
     val visibleUpdateInfo = if (state.showUpdateDialog) state.updateInfo else null
     visibleUpdateInfo?.let { info ->
         AlertDialog(
-            onDismissRequest = { viewModel.dismissUpdatePrompt() },
+            onDismissRequest = { if (!isDownloadingUpdate) viewModel.dismissUpdatePrompt() },
             title = { Text("Update Available") },
             text = {
                 Column {
@@ -546,22 +551,44 @@ fun DashboardScreen(
                         Spacer(Modifier.height(8.dp))
                         Text(info.releaseNotes, style = MaterialTheme.typography.bodySmall)
                     }
+                    if (isDownloadingUpdate) {
+                        Spacer(Modifier.height(12.dp))
+                        LinearProgressIndicator(progress = { updateDownloadProgress / 100f }, modifier = Modifier.fillMaxWidth())
+                        Text("Downloading update... $updateDownloadProgress%", style = MaterialTheme.typography.bodySmall)
+                    }
+                    updateDownloadError?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.dismissUpdatePrompt()
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(info.apkUrl)))
-                    }.onFailure {
-                        if (it is ActivityNotFoundException) {
-                            Toast.makeText(context, "No app found to open this link", Toast.LENGTH_LONG).show()
+                TextButton(
+                    enabled = !isDownloadingUpdate,
+                    onClick = {
+                        val apkUrl = info.apkUrl ?: return@TextButton
+                        updateDownloadError = null
+                        isDownloadingUpdate = true
+                        scope.launch {
+                            val result = runCatching {
+                                AppUpdateInstaller.downloadAndInstall(context, apkUrl) { progress -> updateDownloadProgress = progress }
+                            }
+                            isDownloadingUpdate = false
+                            result
+                                .onSuccess {
+                                    when (it) {
+                                        UpdateInstallResult.INSTALLER_LAUNCHED -> viewModel.dismissUpdatePrompt()
+                                        UpdateInstallResult.PERMISSION_REQUESTED ->
+                                            Toast.makeText(context, "Allow installs from this app in Settings, then tap Update Now again", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                                .onFailure { updateDownloadError = "Download failed: ${com.deafregistry.app.util.friendlyMessage(it)}" }
                         }
                     }
-                }) { Text("Update Now") }
+                ) { Text("Update Now") }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissUpdatePrompt() }) { Text("Later") }
+                TextButton(enabled = !isDownloadingUpdate, onClick = { viewModel.dismissUpdatePrompt() }) { Text("Later") }
             }
         )
     }
