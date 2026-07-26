@@ -157,7 +157,11 @@ function validateRecurringSchedule(body) {
   }
   if (!TIME_RE.test(String(start_time || ''))) return 'start_time must be in HH:MM format';
   if (!TIME_RE.test(String(end_time || ''))) return 'end_time must be in HH:MM format';
-  if (String(end_time) <= String(start_time)) return 'end_time must be after start_time';
+  // Unlike a one-off session (which has a full date+time on both ends and so can already span
+  // midnight), a recurring schedule only stores a bare TIME - end_time <= start_time is treated as
+  // "ends the next day" (e.g. 10:00 PM - 2:00 AM) rather than rejected, so overnight groups aren't
+  // stuck with the old same-day-only restriction. Only a truly zero-length window is invalid.
+  if (String(end_time) === String(start_time)) return 'start_time and end_time cannot be the same';
   if (retention_policy && !['immediate', '24h', '7d'].includes(retention_policy)) return 'invalid retention_policy';
   return null;
 }

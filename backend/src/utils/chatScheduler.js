@@ -36,8 +36,15 @@ async function notifyParticipants(sessionId, message) {
 // Schedules) instead of re-creating the same one-off session every time. Runs every scheduler tick
 // (once/minute, same cadence as the other jobs here) rather than only at midnight, so a schedule
 // created or a server restart mid-day still catches up rather than skipping that day entirely -
-// last_generated_date guards against generating the same day's session twice, and the end_time
-// cutoff stops it from generating a session that's already fully in the past for today.
+// last_generated_date guards against generating the same day's session twice.
+//
+// end_time <= start_time means the schedule spans past midnight (e.g. 10 PM - 2 AM) rather than
+// being invalid (see chat.controller.js::validateRecurringSchedule) - OVERNIGHT_END below adds a
+// day to end_time's date in that case, everywhere end_datetime is computed or compared, so both
+// the generation cutoff and the stored session correctly reflect a real multi-hour window instead
+// of one that (read as same-day times) would already look like it ended in the past.
+const OVERNIGHT_END = `(${LOCAL_NOW}::date + end_time + CASE WHEN end_time <= start_time THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`;
+
 async function generateScheduledSessions() {
   const { rows } = await pool.query(
     `SELECT id, session_name, description, start_time, end_time, retention_policy, created_by
@@ -45,12 +52,16 @@ async function generateScheduledSessions() {
      WHERE is_active = true
        AND EXTRACT(DOW FROM ${LOCAL_NOW})::int = ANY(days_of_week)
        AND (last_generated_date IS NULL OR last_generated_date <> ${LOCAL_NOW}::date)
-       AND ${LOCAL_NOW}::time < end_time`
+       AND ${OVERNIGHT_END} > ${LOCAL_NOW}`
   );
   for (const schedule of rows) {
     const { rows: sessionRows } = await pool.query(
       `INSERT INTO chat_sessions (session_name, description, start_datetime, end_datetime, retention_policy, created_by, recurring_schedule_id)
-       VALUES ($1, $2, ${LOCAL_NOW}::date + $3::time, ${LOCAL_NOW}::date + $4::time, $5, $6, $7)
+       VALUES (
+         $1, $2, ${LOCAL_NOW}::date + $3::time,
+         ${LOCAL_NOW}::date + $4::time + CASE WHEN $4::time <= $3::time THEN INTERVAL '1 day' ELSE INTERVAL '0' END,
+         $5, $6, $7
+       )
        RETURNING id`,
       [schedule.session_name, schedule.description, schedule.start_time, schedule.end_time, schedule.retention_policy, schedule.created_by, schedule.id]
     );

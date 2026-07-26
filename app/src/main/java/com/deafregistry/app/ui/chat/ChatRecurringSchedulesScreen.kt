@@ -123,7 +123,9 @@ fun ChatRecurringSchedulesScreen(onBack: () -> Unit) {
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                "${formatTime(schedule.startTime)} → ${formatTime(schedule.endTime)} • Retention: ${schedule.retentionPolicy}",
+                                "${formatTime(schedule.startTime)} → ${formatTime(schedule.endTime)}" +
+                                    (if (schedule.endTime <= schedule.startTime) " (next day)" else "") +
+                                    " • Retention: ${schedule.retentionPolicy}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -251,8 +253,15 @@ private fun RecurringScheduleEditorDialog(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                if (attemptedSave && !endTime.isAfter(startTime)) {
-                    Text("End time must be after start time", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                if (endTime == startTime) {
+                    if (attemptedSave) {
+                        Text("Start and end time cannot be the same", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                } else if (!endTime.isAfter(startTime)) {
+                    // Not an error - a recurring schedule only stores a bare time-of-day, so an end
+                    // time earlier than the start time means the session runs past midnight into
+                    // the next calendar day (e.g. 10:00 PM - 2:00 AM), not that it's invalid.
+                    Text("Ends the next day", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -276,7 +285,7 @@ private fun RecurringScheduleEditorDialog(
         confirmButton = {
             TextButton(onClick = {
                 attemptedSave = true
-                if (name.isNotBlank() && selectedDays.isNotEmpty() && endTime.isAfter(startTime)) {
+                if (name.isNotBlank() && selectedDays.isNotEmpty() && endTime != startTime) {
                     val startStr = startTime.format(DateTimeFormatter.ofPattern("HH:mm"))
                     val endStr = endTime.format(DateTimeFormatter.ofPattern("HH:mm"))
                     onSave(name.trim(), description.trim().ifBlank { null }, selectedDays.sorted(), startStr, endStr, retention)
