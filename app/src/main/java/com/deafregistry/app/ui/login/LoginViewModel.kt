@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.deafregistry.app.data.repository.AuthRepository
 import com.deafregistry.app.data.repository.LoginException
 import com.deafregistry.app.data.session.SessionManager
+import com.deafregistry.app.util.friendlyMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -22,13 +23,6 @@ data class LoginUiState(
      * when the username field gains focus. */
     val rememberedUsernames: List<String> = emptyList(),
     val showUsernameSuggestions: Boolean = false,
-    /** True only when the username AND password fields currently, exactly match a remembered
-     * account that has Biometric Login enabled - the Login screen uses this to decide whether to
-     * show the shortcut. Deliberately re-checked on every keystroke in either field (see
-     * computeBiometricAvailability): biometric is a shortcut for re-submitting what's already
-     * shown on screen, not a way to log in with blank/edited-away fields, so clearing or changing
-     * either field immediately hides the button again. */
-    val biometricAvailableForUsername: Boolean = false,
     val showForgotPasswordDialog: Boolean = false,
     val forgotPasswordUsername: String = "",
     val forgotPasswordNote: String = "",
@@ -56,8 +50,7 @@ class LoginViewModel(
                 password = lastPassword ?: "",
                 rememberMe = lastUsername != null && lastPassword != null,
                 biometricEnabled = lastUsername != null && sessionManager.canUseBiometricFor(lastUsername),
-                rememberedUsernames = sessionManager.rememberedUsernames(),
-                biometricAvailableForUsername = computeBiometricAvailability(sessionManager, lastUsername ?: "", lastPassword ?: "")
+                rememberedUsernames = sessionManager.rememberedUsernames()
             )
         }
     })
@@ -72,13 +65,11 @@ class LoginViewModel(
     fun onUsernameChange(value: String) {
         val trimmed = value.trim()
         val rememberedPassword = sessionManager.rememberedPasswordFor(trimmed)
-        val newPassword = rememberedPassword ?: ""
         _uiState.value = _uiState.value.copy(
             username = value,
-            password = newPassword,
+            password = rememberedPassword ?: "",
             rememberMe = rememberedPassword != null,
             biometricEnabled = rememberedPassword != null && sessionManager.canUseBiometricFor(trimmed),
-            biometricAvailableForUsername = computeBiometricAvailability(sessionManager, trimmed, newPassword),
             error = null
         )
     }
@@ -90,24 +81,18 @@ class LoginViewModel(
     /** Selecting a remembered username from the suggestion list - same effect as typing it in full. */
     fun selectRememberedUsername(username: String) {
         val rememberedPassword = sessionManager.rememberedPasswordFor(username)
-        val newPassword = rememberedPassword ?: ""
         _uiState.value = _uiState.value.copy(
             username = username,
-            password = newPassword,
+            password = rememberedPassword ?: "",
             rememberMe = rememberedPassword != null,
             biometricEnabled = sessionManager.canUseBiometricFor(username),
-            biometricAvailableForUsername = computeBiometricAvailability(sessionManager, username, newPassword),
             showUsernameSuggestions = false,
             error = null
         )
     }
 
     fun onPasswordChange(value: String) {
-        _uiState.value = _uiState.value.copy(
-            password = value,
-            biometricAvailableForUsername = computeBiometricAvailability(sessionManager, _uiState.value.username.trim(), value),
-            error = null
-        )
+        _uiState.value = _uiState.value.copy(password = value, error = null)
     }
 
     /**
@@ -125,9 +110,6 @@ class LoginViewModel(
                 _uiState.value = _uiState.value.copy(rememberedUsernames = sessionManager.rememberedUsernames())
             }
         }
-        _uiState.value = _uiState.value.copy(
-            biometricAvailableForUsername = computeBiometricAvailability(sessionManager, _uiState.value.username.trim(), _uiState.value.password)
-        )
     }
 
     /** Only meaningful while Remember Password is checked - the actual on/off toggle is persisted
@@ -169,16 +151,34 @@ class LoginViewModel(
             } catch (e: LoginException) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "Login failed: ${com.deafregistry.app.util.friendlyMessage(e)}")
+                _uiState.value = _uiState.value.copy(isLoading = false, error = "Login failed: ${friendlyMessage(e)}")
             }
         }
     }
 
-    /** Called after a successful BiometricPrompt auth - the Login screen only ever offers this
-     * button when the visible fields already exactly match a biometric-enabled remembered
-     * account (see biometricAvailableForUsername), so re-reading the stored password here (rather
-     * than trusting whatever's currently in state) just confirms that hasn't changed underneath
-     * it and submits. */
+    /** The account a tap on "Login with Biometrics" should use - prefers the currently-typed
+     * username if it has biometric enabled, otherwise falls back to any other remembered account
+     * that does (this app is mainly used on a single device per conductor, so in practice there's
+     * usually at most one). Returns null when no account has ever had Biometric Login enabled on
+     * this device - the button is always shown regardless (see LoginScreen), but a real fingerprint
+     * scan only means anything if it's actually linked to a saved account already. */
+    fun biometricLoginUsername(): String? {
+        val typed = _uiState.value.username.trim()
+        if (typed.isNotBlank() && sessionManager.canUseBiometricFor(typed)) return typed
+        return sessionManager.rememberedUsernames().firstOrNull { sessionManager.canUseBiometricFor(it) }
+    }
+
+    /** Called when "Login with Biometrics" is tapped but biometricLoginUsername() found nothing to
+     * log into - shown instead of ever opening the system fingerprint/face prompt for nothing. */
+    fun onBiometricNotEnrolled() {
+        _uiState.value = _uiState.value.copy(
+            error = "Biometric login isn't set up on this device yet. Log in normally with \"Remember Password\" and \"Enable Biometric Login\" checked to set it up."
+        )
+    }
+
+    /** Called after a successful BiometricPrompt auth for [username] (already validated by
+     * biometricLoginUsername() to have a remembered password) - fills the form from the stored
+     * credentials and submits. */
     fun loginWithBiometric(username: String) {
         val password = sessionManager.rememberedPasswordFor(username) ?: return
         _uiState.value = _uiState.value.copy(username = username, password = password, rememberMe = true)
@@ -214,18 +214,8 @@ class LoginViewModel(
             val result = runCatching { authRepository.forgotPassword(username, _uiState.value.forgotPasswordNote.trim().ifBlank { null }) }
             _uiState.value = _uiState.value.copy(
                 forgotPasswordSubmitting = false,
-                forgotPasswordResult = result.getOrElse { "Request failed: ${com.deafregistry.app.util.friendlyMessage(it)}" }
+                forgotPasswordResult = result.getOrElse { "Request failed: ${friendlyMessage(it)}" }
             )
         }
     }
-}
-
-/** True only when [username]/[password] are both non-blank, the username has Biometric Login
- * enabled, and [password] is exactly the password currently remembered for it - i.e. the visible
- * fields genuinely show the enrolled account, not just a username match with an empty or edited
- * password field. */
-private fun computeBiometricAvailability(sessionManager: SessionManager, username: String, password: String): Boolean {
-    if (username.isBlank() || password.isBlank()) return false
-    if (!sessionManager.canUseBiometricFor(username)) return false
-    return sessionManager.rememberedPasswordFor(username) == password
 }

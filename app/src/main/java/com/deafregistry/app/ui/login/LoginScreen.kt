@@ -1,6 +1,5 @@
 package com.deafregistry.app.ui.login
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Fingerprint
@@ -20,10 +18,10 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,10 +42,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.deafregistry.app.BuildConfig
@@ -98,40 +96,35 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
             )
             Spacer(Modifier.height(32.dp))
 
-            OutlinedTextField(
-                value = state.username,
-                onValueChange = viewModel::onUsernameChange,
-                label = { Text("Username") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(usernameFocusRequester)
-                    .onFocusChanged { viewModel.onUsernameFocusChanged(it.isFocused) }
-            )
-            if (state.showUsernameSuggestions) {
-                Spacer(Modifier.height(4.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            // The remembered-accounts suggestion list is a real dropdown (Popup-based, floats in
+            // its own layer) rather than an inline Card, so opening it never pushes the Password
+            // field (or anything else below) down the screen.
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = state.username,
+                    onValueChange = viewModel::onUsernameChange,
+                    label = { Text("Username") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(usernameFocusRequester)
+                        .onFocusChanged { viewModel.onUsernameFocusChanged(it.isFocused) }
+                )
+                DropdownMenu(
+                    expanded = state.showUsernameSuggestions,
+                    onDismissRequest = { viewModel.onUsernameFocusChanged(false) },
+                    // Non-focusable so opening it doesn't steal focus away from the Username field -
+                    // this list is driven by that field's own focus state, so a focus-stealing
+                    // popup would immediately close itself the moment it opens.
+                    properties = PopupProperties(focusable = false),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column {
-                        state.rememberedUsernames.forEach { rememberedUsername ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    // A plain onClick loses focus before onUsernameFocusChanged(false)
-                                    // fires, which would hide this list before the tap registers -
-                                    // selectRememberedUsername() closes it explicitly instead.
-                                    .clickable { viewModel.selectRememberedUsername(rememberedUsername) }
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.width(10.dp))
-                                Text(rememberedUsername, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
+                    state.rememberedUsernames.forEach { rememberedUsername ->
+                        DropdownMenuItem(
+                            text = { Text(rememberedUsername) },
+                            leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
+                            onClick = { viewModel.selectRememberedUsername(rememberedUsername) }
+                        )
                     }
                 }
             }
@@ -197,18 +190,26 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
                 }
             }
 
-            if (biometricHardwareAvailable && state.biometricAvailableForUsername) {
+            // Always shown when the device itself supports biometric/PIN auth, regardless of
+            // what's typed in the fields above - whether tapping it can actually succeed depends
+            // on whether ANY account has Biometric Login enabled on this device (checked at tap
+            // time by biometricLoginUsername()), not on the current field contents.
+            if (biometricHardwareAvailable) {
                 Spacer(Modifier.height(8.dp))
                 val activity = context as? FragmentActivity
                 OutlinedButton(
                     onClick = {
-                        val username = state.username.trim()
-                        activity?.let {
-                            BiometricUtil.authenticate(
-                                activity = it,
-                                onSuccess = { viewModel.loginWithBiometric(username) },
-                                onError = { }
-                            )
+                        val target = viewModel.biometricLoginUsername()
+                        if (target == null) {
+                            viewModel.onBiometricNotEnrolled()
+                        } else {
+                            activity?.let {
+                                BiometricUtil.authenticate(
+                                    activity = it,
+                                    onSuccess = { viewModel.loginWithBiometric(target) },
+                                    onError = { }
+                                )
+                            }
                         }
                     },
                     enabled = !state.isLoading,
