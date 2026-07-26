@@ -3,6 +3,17 @@ const { logAudit } = require('../utils/audit');
 
 const RETENTION_INTERVALS = { immediate: null, '24h': '24 hours', '7d': '7 days' };
 
+// chat_sessions.start_datetime/end_datetime are TIMESTAMP WITHOUT TIME ZONE, filled in by the
+// Android app from the device's own local clock (native DatePickerDialog/TimePickerDialog, no
+// timezone info attached) - so a literal value like "08:57:04" means 8:57 AM in whatever timezone
+// the admin's phone is set to, which for this project is always Philippine time (this app only
+// serves Nueva Vizcaya). Comparing that literal value against Postgres's NOW() (an absolute UTC
+// instant) is wrong: NOW() only reads "08:57:04" 8 hours after the admin's actual intended moment,
+// so sessions would silently fail to open until up to 8 hours after their real scheduled start.
+// LOCAL_NOW converts NOW() to the same naive Philippine-local wall-clock reading the client used,
+// so both sides of every start_datetime/end_datetime comparison are in the same frame.
+const LOCAL_NOW = `(NOW() AT TIME ZONE 'Asia/Manila')`;
+
 async function notifyUsers(userIds, sessionId, message) {
   if (!userIds.length) return;
   const values = userIds.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`).join(', ');
@@ -25,7 +36,7 @@ async function notifyParticipants(sessionId, message) {
 // "Open" at the right moment.
 async function autoOpenSessions() {
   const { rows } = await pool.query(
-    `UPDATE chat_sessions SET status = 'open' WHERE status = 'scheduled' AND start_datetime <= NOW() RETURNING id, session_name`
+    `UPDATE chat_sessions SET status = 'open' WHERE status = 'scheduled' AND start_datetime <= ${LOCAL_NOW} RETURNING id, session_name`
   );
   for (const session of rows) {
     await logAudit(null, 'CHAT_SESSION_OPENED', 'chat_session', session.id, { auto: true });
@@ -40,7 +51,7 @@ async function sendFiveMinuteWarnings() {
     `UPDATE chat_sessions
      SET five_min_warning_sent = true
      WHERE status = 'open' AND five_min_warning_sent = false
-       AND end_datetime > NOW() AND end_datetime <= NOW() + INTERVAL '5 minutes'
+       AND end_datetime > ${LOCAL_NOW} AND end_datetime <= ${LOCAL_NOW} + INTERVAL '5 minutes'
      RETURNING id, session_name`
   );
   for (const session of rows) {
@@ -55,7 +66,7 @@ async function sendFiveMinuteWarnings() {
 async function expireSessions() {
   const { rows } = await pool.query(
     `SELECT id, session_name, retention_policy FROM chat_sessions
-     WHERE status IN ('open', 'closed') AND end_datetime <= NOW()`
+     WHERE status IN ('open', 'closed') AND end_datetime <= ${LOCAL_NOW}`
   );
   for (const session of rows) {
     const interval = RETENTION_INTERVALS[session.retention_policy];
