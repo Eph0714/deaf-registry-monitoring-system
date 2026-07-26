@@ -8,10 +8,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EventRepeat
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.deafregistry.app.data.remote.dto.ChatSessionDto
+import com.deafregistry.app.data.remote.dto.ChatStatusDto
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
 import com.deafregistry.app.ui.common.EmptyState
@@ -43,16 +48,18 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatSessionManageScreen(onBack: () -> Unit, onOpenRecurringSchedules: () -> Unit) {
+fun ChatSessionManageScreen(onBack: () -> Unit, onOpenRecurringSchedules: () -> Unit, onOpenSingleSchedules: () -> Unit) {
     val repo = ServiceLocator.chatRepository
     val scope = rememberCoroutineScope()
     var sessions by remember { mutableStateOf(listOf<ChatSessionDto>()) }
+    var status by remember { mutableStateOf<ChatStatusDto?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var clearTarget by remember { mutableStateOf<ChatSessionDto?>(null) }
     var deleteTarget by remember { mutableStateOf<ChatSessionDto?>(null) }
 
     suspend fun reload() {
         runCatching { sessions = repo.listSessions() }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
+        runCatching { status = repo.chatStatus() }
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -64,6 +71,9 @@ fun ChatSessionManageScreen(onBack: () -> Unit, onOpenRecurringSchedules: () -> 
                 title = "Manage Chat Sessions",
                 onBack = onBack,
                 actions = {
+                    IconButton(onClick = onOpenSingleSchedules) {
+                        Icon(Icons.Default.Today, contentDescription = "Single-Time Schedules")
+                    }
                     IconButton(onClick = onOpenRecurringSchedules) {
                         Icon(Icons.Default.EventRepeat, contentDescription = "Recurring Schedules")
                     }
@@ -72,9 +82,13 @@ fun ChatSessionManageScreen(onBack: () -> Unit, onOpenRecurringSchedules: () -> 
         }
     ) { padding: PaddingValues ->
         if (sessions.isEmpty() && error == null) {
-            EmptyState("No chat sessions yet. Set up a Recurring Schedule (top-right icon) to have sessions created automatically.")
+            Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+                status?.let { ChatStatusCard(it) }
+                EmptyState("No chat sessions yet. Set up a Recurring or Single-Time Schedule (top-right icons) to have sessions created automatically.")
+            }
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+                status?.let { item { ChatStatusCard(it) } }
                 error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
                 items(sessions, key = { it.id }) { session ->
                     Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
@@ -152,5 +166,46 @@ fun ChatSessionManageScreen(onBack: () -> Unit, onOpenRecurringSchedules: () -> 
             },
             dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Cancel") } }
         )
+    }
+}
+
+private fun formatTime(raw: String): String = runCatching {
+    java.time.LocalTime.parse(raw.take(5)).format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"))
+}.getOrDefault(raw)
+
+/** Today's Chat Status widget: open/closed, which schedule type is currently in effect (if any),
+ * its start/end time, and the next upcoming session - backed by the shared GET /api/chat/status
+ * computation ChatRoomScreen's closed-state messaging also uses (see chat.controller.js::getChatStatus). */
+@Composable
+private fun ChatStatusCard(status: ChatStatusDto) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                if (status.isOpen) "🟢 Chat Open" else "🔴 Chat Closed",
+                style = MaterialTheme.typography.titleMedium
+            )
+            status.activeSchedule?.let { active ->
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Schedule Type: ${if (active.type == "single") "Single-Time" else "Recurring"}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "${formatClockTime(active.startDatetime)} – ${formatClockTime(active.endDatetime)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            status.nextSchedule?.let { next ->
+                Text(
+                    "Next Scheduled Chat Session: ${next.dayLabel} ${formatTime(next.startTime)} – ${formatTime(next.endTime)}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            } ?: Text("No upcoming chat sessions scheduled.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

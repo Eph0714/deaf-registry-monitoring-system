@@ -79,6 +79,10 @@ import java.time.LocalDateTime
 
 private val EMOJI_OPTIONS = listOf("😀", "😂", "😍", "👍", "🙏", "😢", "🎉", "❤️", "👏", "🤔")
 
+private fun formatTime(raw: String): String = runCatching {
+    java.time.LocalTime.parse(raw.take(5)).format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"))
+}.getOrDefault(raw)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatRoomScreen(onBack: () -> Unit, onManageSessions: () -> Unit) {
@@ -144,7 +148,13 @@ fun ChatRoomScreen(onBack: () -> Unit, onManageSessions: () -> Unit) {
             if (state.loading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else if (session == null) {
-                EmptyState("No chat session is currently scheduled.")
+                val next = state.nextSchedule
+                val message = if (next != null) {
+                    "Chat is currently unavailable.\n\nNext available schedule:\n${next.dayLabel}\n${formatTime(next.startTime)} – ${formatTime(next.endTime)}"
+                } else {
+                    "Chat is currently unavailable.\n\nNo upcoming chat sessions scheduled."
+                }
+                EmptyState(message)
             } else {
                 ChatHeader(
                     sessionName = session.sessionName,

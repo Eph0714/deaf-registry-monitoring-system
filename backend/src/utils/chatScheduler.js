@@ -31,29 +31,53 @@ async function notifyParticipants(sessionId, message) {
   await notifyUsers(rows.map((r) => r.user_id), sessionId, message);
 }
 
-// Turns each active recurring schedule into a real chat_sessions row on the days it's due, so an
-// admin/super_admin sets a recurring schedule up once (Control Panel > Chat Sessions > Recurring
-// Schedules) instead of re-creating the same one-off session every time. Runs every scheduler tick
-// (once/minute, same cadence as the other jobs here) rather than only at midnight, so a schedule
-// created or a server restart mid-day still catches up rather than skipping that day entirely.
-//
-// Gated on "does a session for this schedule already exist for today" (a live NOT EXISTS check
-// against chat_sessions), not last_generated_date - that flag alone made the guard non-self-healing:
-// once set for today, it stayed set even if the session it refers to got deleted (e.g. an admin
-// deletes a generated session via Manage Chat Sessions, whether by mistake or to force a redo),
-// permanently blocking regeneration for the rest of that day even though "no session is currently
-// scheduled" was then literally true. last_generated_date is still stamped for display purposes,
-// it just no longer gates whether a new session gets created.
+// Both schedule types turn into a real chat_sessions row on the days they're due, gated on "does a
+// session already exist for this schedule today" (a live NOT EXISTS check against chat_sessions,
+// not a one-way date flag) - self-healing if an admin deletes a generated session mid-day, and
+// catches up if the scheduler tick was missed (server restart, schedule created mid-day) instead
+// of only ever generating right at midnight.
 //
 // end_time <= start_time means the schedule spans past midnight (e.g. 10 PM - 2 AM) rather than
-// being invalid (see chat.controller.js::validateRecurringSchedule) - overnightEnd() below adds a
-// day to end_time's date in that case, everywhere end_datetime is computed or compared, so both
-// the generation cutoff and the stored session correctly reflect a real multi-hour window instead
-// of one that (read as same-day times) would already look like it ended in the past.
+// being invalid (see validateSingleSchedule/validateRecurringSchedule in chat.controller.js) -
+// overnightEnd() below adds a day to end_time's date in that case, everywhere end_datetime is
+// computed or compared, so both the generation cutoff and the stored session correctly reflect a
+// real multi-hour window instead of one that (read as same-day times) would already look expired.
 const overnightEnd = (alias) =>
   `(${LOCAL_NOW}::date + ${alias}.end_time + CASE WHEN ${alias}.end_time <= ${alias}.start_time THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`;
 
-async function generateScheduledSessions() {
+// Single-time schedules take priority over recurring ones for the one date they're active on
+// (spec: Single-Time > Recurring > Chat Closed) - generateSingleTimeSessions() runs first each
+// tick, then generateRecurringSessions() explicitly skips any day that already has an active
+// single-time schedule, regardless of whether that schedule's own session has been generated yet.
+async function generateSingleTimeSessions() {
+  const { rows } = await pool.query(
+    `SELECT id, session_name, remarks, start_time, end_time, retention_policy, created_by
+     FROM chat_single_schedules
+     WHERE is_active = true AND status = 'scheduled' AND schedule_date = ${LOCAL_NOW}::date
+       AND ${overnightEnd('chat_single_schedules')} > ${LOCAL_NOW}
+       AND NOT EXISTS (
+         SELECT 1 FROM chat_sessions cs
+         WHERE cs.single_schedule_id = chat_single_schedules.id AND cs.start_datetime::date = ${LOCAL_NOW}::date
+       )`
+  );
+  for (const schedule of rows) {
+    const { rows: sessionRows } = await pool.query(
+      `INSERT INTO chat_sessions (session_name, description, start_datetime, end_datetime, retention_policy, created_by, single_schedule_id)
+       VALUES (
+         $1, $2, ${LOCAL_NOW}::date + $3::time,
+         ${LOCAL_NOW}::date + $4::time + CASE WHEN $4::time <= $3::time THEN INTERVAL '1 day' ELSE INTERVAL '0' END,
+         $5, $6, $7
+       )
+       RETURNING id`,
+      [schedule.session_name, schedule.remarks, schedule.start_time, schedule.end_time, schedule.retention_policy, schedule.created_by, schedule.id]
+    );
+    const sessionId = sessionRows[0].id;
+    await logAudit(schedule.created_by, 'CHAT_SESSION_CREATED', 'chat_session', sessionId, { session_name: schedule.session_name, auto: true, single: true });
+    await notifyAllActiveUsers(sessionId, `Chat session "${schedule.session_name}" is scheduled for today.`);
+  }
+}
+
+async function generateRecurringSessions() {
   const { rows } = await pool.query(
     `SELECT rs.id, rs.session_name, rs.description, rs.start_time, rs.end_time, rs.retention_policy, rs.created_by
      FROM chat_recurring_schedules rs
@@ -63,6 +87,10 @@ async function generateScheduledSessions() {
        AND NOT EXISTS (
          SELECT 1 FROM chat_sessions cs
          WHERE cs.recurring_schedule_id = rs.id AND cs.start_datetime::date = ${LOCAL_NOW}::date
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM chat_single_schedules ss
+         WHERE ss.schedule_date = ${LOCAL_NOW}::date AND ss.is_active = true
        )`
   );
   for (const schedule of rows) {
@@ -83,6 +111,21 @@ async function generateScheduledSessions() {
     const sessionId = sessionRows[0].id;
     await logAudit(schedule.created_by, 'CHAT_SESSION_CREATED', 'chat_session', sessionId, { session_name: schedule.session_name, auto: true, recurring: true });
     await notifyAllActiveUsers(sessionId, `Chat session "${schedule.session_name}" is scheduled for today.`);
+  }
+}
+
+// Archives any single-time schedule whose date has passed - not deleted, just marked 'completed'
+// so it stays in chat_single_schedules for audit history. Nothing needs to "reactivate" the
+// recurring schedule for that weekday: the exclusion in generateRecurringSessions() above is
+// scoped to today's date each tick, so it naturally stops applying once the date has passed.
+async function completeExpiredSingleSchedules() {
+  const { rows } = await pool.query(
+    `UPDATE chat_single_schedules SET status = 'completed'
+     WHERE status = 'scheduled' AND schedule_date < ${LOCAL_NOW}::date
+     RETURNING id, session_name, created_by`
+  );
+  for (const schedule of rows) {
+    await logAudit(schedule.created_by, 'CHAT_SINGLE_SCHEDULE_EXPIRED', 'chat_single_schedule', schedule.id, { session_name: schedule.session_name, auto: true });
   }
 }
 
@@ -162,11 +205,13 @@ async function purgeExpiredMessages() {
 
 async function runChatScheduler() {
   try {
-    await generateScheduledSessions();
+    await generateSingleTimeSessions();
+    await generateRecurringSessions();
     await autoOpenSessions();
     await sendFiveMinuteWarnings();
     await expireSessions();
     await purgeExpiredMessages();
+    await completeExpiredSingleSchedules();
   } catch (err) {
     console.error('Chat scheduler run failed:', err.message);
   }

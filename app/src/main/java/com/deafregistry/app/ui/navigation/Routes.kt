@@ -11,6 +11,7 @@ object Routes {
     const val CHAT = "chat"
     const val ADMIN_CHAT_SESSIONS = "admin_chat_sessions"
     const val CHAT_RECURRING_SCHEDULES = "chat_recurring_schedules"
+    const val CHAT_SINGLE_SCHEDULES = "chat_single_schedules"
     const val MUNICIPALITY_STATISTICS = "municipality_statistics"
     const val DEAF_PROFILE = "deaf/{uuid}"
     const val DEAF_EDITOR = "deaf_editor?uuid={uuid}&municipalityId={municipalityId}"

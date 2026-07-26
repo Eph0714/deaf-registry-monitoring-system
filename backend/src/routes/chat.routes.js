@@ -19,6 +19,15 @@ router.post('/recurring', requireAuth, requireAdmin, ctrl.createRecurringSchedul
 router.put('/recurring/:id', requireAuth, requireAdmin, ctrl.updateRecurringSchedule);
 router.delete('/recurring/:id', requireAuth, requireAdmin, ctrl.deleteRecurringSchedule);
 
+// Single-time schedules
+router.get('/single', requireAuth, requireAdmin, ctrl.listSingleSchedules);
+router.post('/single', requireAuth, requireAdmin, ctrl.createSingleSchedule);
+router.put('/single/:id', requireAuth, requireAdmin, ctrl.updateSingleSchedule);
+router.delete('/single/:id', requireAuth, requireAdmin, ctrl.deleteSingleSchedule);
+
+// Status (admin dashboard + user-facing chat availability) - not admin-gated, every user needs it
+router.get('/status', requireAuth, ctrl.getChatStatus);
+
 // Messages
 router.get('/sessions/:id/messages', requireAuth, ctrl.getMessages);
 router.post('/sessions/:id/messages', requireAuth, ctrl.sendMessage);

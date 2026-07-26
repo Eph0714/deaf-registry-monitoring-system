@@ -77,3 +77,53 @@ data class ChatRecurringScheduleRequest(
     val retention_policy: String,
     val is_active: Boolean = true
 )
+
+data class ChatSingleScheduleDto(
+    val id: Int,
+    @SerializedName("session_name") val sessionName: String,
+    @SerializedName("schedule_date") val scheduleDate: String,
+    @SerializedName("start_time") val startTime: String,
+    @SerializedName("end_time") val endTime: String,
+    val remarks: String?,
+    @SerializedName("retention_policy") val retentionPolicy: String,
+    @SerializedName("is_active") val isActive: Boolean,
+    val status: String,
+    @SerializedName("created_by_name") val createdByName: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class ChatSingleScheduleRequest(
+    val session_name: String,
+    val schedule_date: String,
+    val start_time: String,
+    val end_time: String,
+    val remarks: String?,
+    val retention_policy: String,
+    val is_active: Boolean = true,
+    // Set only when the client's own conflict check found an active recurring schedule on this
+    // date and the admin resolved the dialog - lets the backend log the right audit action
+    // (override accepted vs. kept-recurring) instead of a plain create/edit. Null when no conflict.
+    val conflicted_recurring_schedule_id: Int? = null
+)
+
+data class ChatActiveScheduleDto(
+    val type: String,
+    @SerializedName("session_name") val sessionName: String,
+    @SerializedName("start_datetime") val startDatetime: String,
+    @SerializedName("end_datetime") val endDatetime: String
+)
+
+data class ChatNextScheduleDto(
+    val date: String,
+    @SerializedName("day_label") val dayLabel: String,
+    @SerializedName("start_time") val startTime: String,
+    @SerializedName("end_time") val endTime: String,
+    @SerializedName("session_name") val sessionName: String,
+    val type: String
+)
+
+data class ChatStatusDto(
+    @SerializedName("isOpen") val isOpen: Boolean,
+    @SerializedName("activeSchedule") val activeSchedule: ChatActiveScheduleDto?,
+    @SerializedName("nextSchedule") val nextSchedule: ChatNextScheduleDto?
+)

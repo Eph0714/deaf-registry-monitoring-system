@@ -6,6 +6,9 @@ import com.deafregistry.app.data.remote.dto.ChatParticipantDto
 import com.deafregistry.app.data.remote.dto.ChatRecurringScheduleDto
 import com.deafregistry.app.data.remote.dto.ChatRecurringScheduleRequest
 import com.deafregistry.app.data.remote.dto.ChatSessionDto
+import com.deafregistry.app.data.remote.dto.ChatSingleScheduleDto
+import com.deafregistry.app.data.remote.dto.ChatSingleScheduleRequest
+import com.deafregistry.app.data.remote.dto.ChatStatusDto
 import com.deafregistry.app.data.remote.dto.MarkChatNotificationsReadRequest
 import com.deafregistry.app.data.remote.dto.SendChatMessageRequest
 
@@ -38,6 +41,30 @@ class ChatRepository(private val api: ApiService) {
         api.updateChatRecurringSchedule(id, ChatRecurringScheduleRequest(name, description, daysOfWeek, startTime, endTime, retentionPolicy, isActive))
 
     suspend fun deleteRecurringSchedule(id: Int) = api.deleteChatRecurringSchedule(id)
+
+    // Single-time schedules
+    suspend fun listSingleSchedules(): List<ChatSingleScheduleDto> = api.getChatSingleSchedules()
+
+    suspend fun createSingleSchedule(
+        name: String, scheduleDate: String, startTime: String, endTime: String, remarks: String?,
+        retentionPolicy: String, isActive: Boolean, conflictedRecurringScheduleId: Int?
+    ): ChatSingleScheduleDto =
+        api.createChatSingleSchedule(
+            ChatSingleScheduleRequest(name, scheduleDate, startTime, endTime, remarks, retentionPolicy, isActive, conflictedRecurringScheduleId)
+        )
+
+    suspend fun updateSingleSchedule(
+        id: Int, name: String, scheduleDate: String, startTime: String, endTime: String, remarks: String?,
+        retentionPolicy: String, isActive: Boolean, conflictedRecurringScheduleId: Int?
+    ): ChatSingleScheduleDto =
+        api.updateChatSingleSchedule(
+            id, ChatSingleScheduleRequest(name, scheduleDate, startTime, endTime, remarks, retentionPolicy, isActive, conflictedRecurringScheduleId)
+        )
+
+    suspend fun deleteSingleSchedule(id: Int) = api.deleteChatSingleSchedule(id)
+
+    // Status (admin dashboard + user-facing chat availability)
+    suspend fun chatStatus(): ChatStatusDto = api.getChatStatus()
 
     // Messages
     suspend fun getMessages(sessionId: Int, afterId: Int? = null): List<ChatMessageDto> =

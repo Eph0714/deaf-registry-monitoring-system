@@ -3,6 +3,7 @@ package com.deafregistry.app.ui.chat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deafregistry.app.data.remote.dto.ChatMessageDto
+import com.deafregistry.app.data.remote.dto.ChatNextScheduleDto
 import com.deafregistry.app.data.remote.dto.ChatParticipantDto
 import com.deafregistry.app.data.remote.dto.ChatSessionDto
 import com.deafregistry.app.data.repository.ChatRepository
@@ -37,7 +38,10 @@ data class ChatRoomUiState(
     val searchQuery: String = "",
     val searchDate: String = "",
     val searchResults: List<ChatMessageDto>? = null,
-    val searching: Boolean = false
+    val searching: Boolean = false,
+    // Only populated while there's no active session - "chat unavailable, next available: ..." (see
+    // chat.controller.js::getChatStatus, the same computation the admin dashboard card uses).
+    val nextSchedule: ChatNextScheduleDto? = null
 )
 
 /**
@@ -66,6 +70,11 @@ class ChatRoomViewModel(
     private var fiveMinWarnedSessionId: Int? = null
     private var sessionEndedNotifiedId: Int? = null
 
+    // Guards against re-fetching "next available schedule" on every 4-second poll tick while the
+    // room stays closed - only needs refreshing once per closed-period, reset the moment a session
+    // becomes active again.
+    private var nextScheduleFetchedThisClosedPeriod = false
+
     init {
         val session = sessionManager.session.value
         _uiState.value = _uiState.value.copy(isAdmin = sessionManager.isAdmin(), currentUserId = session?.userId ?: -1)
@@ -92,12 +101,18 @@ class ChatRoomViewModel(
         notifySessionEndedIfNeeded(previousSession, activeSession)
 
         if (activeSession == null) {
+            if (!nextScheduleFetchedThisClosedPeriod) {
+                nextScheduleFetchedThisClosedPeriod = true
+                val next = runCatching { chatRepository.chatStatus() }.getOrNull()?.nextSchedule
+                _uiState.value = _uiState.value.copy(nextSchedule = next)
+            }
             _uiState.value = _uiState.value.copy(loading = false, session = null, messages = emptyList(), error = null)
             lastMessageId = null
             joinedSessionId = null
             previousStatus = null
             return
         }
+        nextScheduleFetchedThisClosedPeriod = false
 
         if (joinedSessionId != activeSession.id) {
             lastMessageId = null

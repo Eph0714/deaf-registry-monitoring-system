@@ -2,6 +2,12 @@ const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
 
+// Same definition as chatScheduler.js::LOCAL_NOW - see that file's comment for why naive
+// Philippine-local wall-clock time (not an absolute UTC instant) is the right frame here. Needed
+// here too for the single-vs-recurring priority read-back in getChatStatus().
+const LOCAL_NOW = `(NOW() AT TIME ZONE 'Asia/Manila')`;
+const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 // Strips control characters (keeps newline/tab) before a message is stored - defense in depth
 // per the security spec, even though the Android client only ever renders messages as plain
 // Compose Text (no HTML/WebView involved, so there's no injection surface on the client itself).
@@ -171,6 +177,166 @@ const deleteRecurringSchedule = asyncHandler(async (req, res) => {
   if (!result.rowCount) return res.status(404).json({ message: 'Recurring schedule not found' });
   await logAudit(req.user.id, 'CHAT_RECURRING_SCHEDULE_DELETED', 'chat_recurring_schedule', id, null);
   res.status(204).send();
+});
+
+// ---- Single-time schedules ---------------------------------------------------
+// A one-off exception for a single calendar date - at most one per date (DB-enforced UNIQUE on
+// schedule_date), and when active it outranks whatever a recurring schedule would otherwise
+// generate for that date (see chatScheduler.js::generateSingleTimeSessions/generateRecurringSessions).
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function validateSingleSchedule(body) {
+  const { session_name, schedule_date, start_time, end_time, retention_policy } = body;
+  if (!session_name || !String(session_name).trim()) return 'session_name is required';
+  if (!DATE_RE.test(String(schedule_date || ''))) return 'schedule_date must be in YYYY-MM-DD format';
+  if (!TIME_RE.test(String(start_time || ''))) return 'start_time must be in HH:MM format';
+  if (!TIME_RE.test(String(end_time || ''))) return 'end_time must be in HH:MM format';
+  // Same overnight-allowed rule as recurring schedules - end_time <= start_time means "ends the
+  // next day," only a truly zero-length window is rejected.
+  if (String(end_time) === String(start_time)) return 'start_time and end_time cannot be the same';
+  if (retention_policy && !['immediate', '24h', '7d'].includes(retention_policy)) return 'invalid retention_policy';
+  return null;
+}
+
+// The client resolves the "recurring schedule already exists for this day" conflict dialog itself
+// (it already has the recurring list loaded) and tells us the outcome via conflicted_recurring_
+// schedule_id + is_active, so the audit log can distinguish a plain create/edit from an override
+// decision without the server re-deriving the same conflict check redundantly.
+async function logSingleScheduleAudit(req, action, id, sessionName, conflictedRecurringId) {
+  const details = { session_name: sessionName, device: req.headers['user-agent'] || null, ip: req.ip };
+  if (conflictedRecurringId) details.recurring_schedule_id = conflictedRecurringId;
+  await logAudit(req.user.id, action, 'chat_single_schedule', id, details);
+}
+
+const listSingleSchedules = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT ss.*, u.name AS created_by_name FROM chat_single_schedules ss
+     LEFT JOIN users u ON u.id = ss.created_by
+     ORDER BY ss.schedule_date DESC`
+  );
+  res.json(rows);
+});
+
+const createSingleSchedule = asyncHandler(async (req, res) => {
+  const error = validateSingleSchedule(req.body);
+  if (error) return res.status(400).json({ message: error });
+  const { session_name, schedule_date, start_time, end_time, remarks, retention_policy, is_active, conflicted_recurring_schedule_id } = req.body;
+  const policy = ['immediate', '24h', '7d'].includes(retention_policy) ? retention_policy : 'immediate';
+  let rows;
+  try {
+    ({ rows } = await pool.query(
+      `INSERT INTO chat_single_schedules (session_name, schedule_date, start_time, end_time, remarks, retention_policy, is_active, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [session_name, schedule_date, start_time, end_time, remarks || null, policy, is_active !== false, req.user.id]
+    ));
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ message: 'A single-time schedule already exists for this date' });
+    throw err;
+  }
+  const created = rows[0];
+  const action = conflicted_recurring_schedule_id
+    ? (created.is_active ? 'CHAT_SINGLE_SCHEDULE_OVERRIDE_ACCEPTED' : 'CHAT_SINGLE_SCHEDULE_OVERRIDE_KEPT_RECURRING')
+    : 'CHAT_SINGLE_SCHEDULE_CREATED';
+  await logSingleScheduleAudit(req, action, created.id, session_name, conflicted_recurring_schedule_id);
+  res.status(201).json(created);
+});
+
+const updateSingleSchedule = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const error = validateSingleSchedule(req.body);
+  if (error) return res.status(400).json({ message: error });
+  const { session_name, schedule_date, start_time, end_time, remarks, retention_policy, is_active, conflicted_recurring_schedule_id } = req.body;
+  const policy = ['immediate', '24h', '7d'].includes(retention_policy) ? retention_policy : 'immediate';
+  let rows;
+  try {
+    ({ rows } = await pool.query(
+      `UPDATE chat_single_schedules
+       SET session_name = $1, schedule_date = $2, start_time = $3, end_time = $4, remarks = $5,
+           retention_policy = $6, is_active = $7
+       WHERE id = $8 RETURNING *`,
+      [session_name, schedule_date, start_time, end_time, remarks || null, policy, is_active !== false, id]
+    ));
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ message: 'A single-time schedule already exists for this date' });
+    throw err;
+  }
+  if (!rows.length) return res.status(404).json({ message: 'Single-time schedule not found' });
+  const updated = rows[0];
+  const action = conflicted_recurring_schedule_id
+    ? (updated.is_active ? 'CHAT_SINGLE_SCHEDULE_OVERRIDE_ACCEPTED' : 'CHAT_SINGLE_SCHEDULE_OVERRIDE_KEPT_RECURRING')
+    : 'CHAT_SINGLE_SCHEDULE_EDITED';
+  await logSingleScheduleAudit(req, action, id, session_name, conflicted_recurring_schedule_id);
+  res.json(updated);
+});
+
+const deleteSingleSchedule = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await pool.query('DELETE FROM chat_single_schedules WHERE id = $1', [id]);
+  if (!result.rowCount) return res.status(404).json({ message: 'Single-time schedule not found' });
+  await logSingleScheduleAudit(req, 'CHAT_SINGLE_SCHEDULE_DELETED', id, null, null);
+  res.status(204).send();
+});
+
+// ---- Chat status (admin dashboard + user-facing "chat unavailable") ---------
+// One shared computation reused by both Manage Chat Sessions' status header and ChatRoomScreen's
+// closed-state messaging, so "what's active / what's next" only exists in one place.
+
+const overnightEndAt = (alias, dateExpr) =>
+  `(${dateExpr}::date + ${alias}.end_time + CASE WHEN ${alias}.end_time <= ${alias}.start_time THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`;
+
+// Walks forward from today (inclusive) up to 7 days, applying the same single-beats-recurring
+// priority as the scheduler, and returns the first day that still has time left in its window.
+async function computeNextSchedule() {
+  for (let offset = 0; offset <= 7; offset++) {
+    const dateExpr = `(${LOCAL_NOW}::date + INTERVAL '${offset} days')`;
+    const stillUpcoming = (alias) => `(${dateExpr}::date > ${LOCAL_NOW}::date OR ${overnightEndAt(alias, dateExpr)} > ${LOCAL_NOW})`;
+
+    const { rows: singleRows } = await pool.query(
+      `SELECT session_name, schedule_date, start_time, end_time FROM chat_single_schedules
+       WHERE is_active = true AND status = 'scheduled' AND schedule_date = ${dateExpr}::date
+         AND ${stillUpcoming('chat_single_schedules')}
+       LIMIT 1`
+    );
+    if (singleRows.length) {
+      const s = singleRows[0];
+      const dow = new Date(`${s.schedule_date}T00:00:00Z`).getUTCDay();
+      return { date: s.schedule_date, day_label: DAY_LABELS[dow], start_time: s.start_time, end_time: s.end_time, session_name: s.session_name, type: 'single' };
+    }
+
+    const { rows: recurringRows } = await pool.query(
+      `SELECT rs.session_name, rs.start_time, rs.end_time, ${dateExpr}::date AS d
+       FROM chat_recurring_schedules rs
+       WHERE rs.is_active = true
+         AND EXTRACT(DOW FROM ${dateExpr})::int = ANY(rs.days_of_week)
+         AND ${stillUpcoming('rs')}
+         AND NOT EXISTS (SELECT 1 FROM chat_single_schedules ss WHERE ss.schedule_date = ${dateExpr}::date AND ss.is_active = true)
+       LIMIT 1`
+    );
+    if (recurringRows.length) {
+      const r = recurringRows[0];
+      const dow = new Date(`${r.d}T00:00:00Z`).getUTCDay();
+      return { date: r.d, day_label: DAY_LABELS[dow], start_time: r.start_time, end_time: r.end_time, session_name: r.session_name, type: 'recurring' };
+    }
+  }
+  return null;
+}
+
+const getChatStatus = asyncHandler(async (req, res) => {
+  const { rows: openRows } = await pool.query(
+    `SELECT session_name, start_datetime, end_datetime, recurring_schedule_id, single_schedule_id
+     FROM chat_sessions WHERE status = 'open' ORDER BY start_datetime DESC LIMIT 1`
+  );
+  const activeSchedule = openRows.length
+    ? {
+        type: openRows[0].single_schedule_id ? 'single' : 'recurring',
+        session_name: openRows[0].session_name,
+        start_datetime: openRows[0].start_datetime,
+        end_datetime: openRows[0].end_datetime
+      }
+    : null;
+  const nextSchedule = await computeNextSchedule();
+  res.json({ isOpen: openRows.length > 0, activeSchedule, nextSchedule });
 });
 
 // ---- Messages ---------------------------------------------------------------
@@ -353,6 +519,8 @@ module.exports = {
   listSessions, getActiveSession, getSession,
   openSession, closeSession, deleteSession, clearMessages,
   listRecurringSchedules, createRecurringSchedule, updateRecurringSchedule, deleteRecurringSchedule,
+  listSingleSchedules, createSingleSchedule, updateSingleSchedule, deleteSingleSchedule,
+  getChatStatus,
   getMessages, sendMessage, deleteMessage,
   pinMessage: setMessagePinned(true), unpinMessage: setMessagePinned(false),
   searchMessages,

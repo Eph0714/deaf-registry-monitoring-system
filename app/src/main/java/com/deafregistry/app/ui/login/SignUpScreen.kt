@@ -74,7 +74,7 @@ fun SignUpScreen(onBack: () -> Unit) {
                 Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back to Log In") }
             } else {
                 Text(
-                    "Request access to the Deaf and Mute Registry app. An administrator will review your request and approve your account.",
+                    "Request access to the Deaf Contact Record app. An administrator will review your request and approve your account.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

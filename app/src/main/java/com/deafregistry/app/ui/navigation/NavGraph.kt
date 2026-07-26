@@ -27,6 +27,7 @@ import com.deafregistry.app.ui.calendar.CalendarScreen
 import com.deafregistry.app.ui.chat.ChatRoomScreen
 import com.deafregistry.app.ui.chat.ChatSessionManageScreen
 import com.deafregistry.app.ui.chat.ChatRecurringSchedulesScreen
+import com.deafregistry.app.ui.chat.ChatSingleSchedulesScreen
 import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.location.LocationSharingScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
@@ -110,11 +111,15 @@ fun AppNavGraph(sessionManager: SessionManager) {
         composable(Routes.ADMIN_CHAT_SESSIONS) {
             ChatSessionManageScreen(
                 onBack = { navController.popBackStack() },
-                onOpenRecurringSchedules = { navController.navigate(Routes.CHAT_RECURRING_SCHEDULES) }
+                onOpenRecurringSchedules = { navController.navigate(Routes.CHAT_RECURRING_SCHEDULES) },
+                onOpenSingleSchedules = { navController.navigate(Routes.CHAT_SINGLE_SCHEDULES) }
             )
         }
         composable(Routes.CHAT_RECURRING_SCHEDULES) {
             ChatRecurringSchedulesScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.CHAT_SINGLE_SCHEDULES) {
+            ChatSingleSchedulesScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.MUNICIPALITY_DIRECTORY) {

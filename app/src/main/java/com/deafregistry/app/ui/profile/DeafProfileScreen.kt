@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
@@ -330,7 +332,20 @@ private fun AddVisitDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Visit") },
         text = {
-            Column {
+            // Remarks is deliberately the first field, not the last - it's the one field the
+            // keyboard is most likely to cover (multi-line, so it grows the dialog most), and this
+            // dialog otherwise has no scroll handling of its own (AlertDialog's window doesn't
+            // reliably pan/resize for the IME the way the main screen's imePadding()-based fixes
+            // do). Putting it at the top + making the column scrollable guarantees it's reachable.
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedTextField(
+                    value = remarks,
+                    onValueChange = { remarks = it },
+                    label = { Text("Remarks") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = selectedDate.toString(),
                     onValueChange = {},
@@ -374,14 +389,6 @@ private fun AddVisitDialog(
                     onValueChange = { publisher = it },
                     label = { Text("Who visited (Publisher)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = remarks,
-                    onValueChange = { remarks = it },
-                    label = { Text("Remarks") },
-                    minLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -556,7 +563,20 @@ private fun EditVisitDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit Visit") },
         text = {
-            Column {
+            // Remarks is deliberately the first field, not the last - it's the one field the
+            // keyboard is most likely to cover (multi-line, so it grows the dialog most), and this
+            // dialog otherwise has no scroll handling of its own (AlertDialog's window doesn't
+            // reliably pan/resize for the IME the way the main screen's imePadding()-based fixes
+            // do). Putting it at the top + making the column scrollable guarantees it's reachable.
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedTextField(
+                    value = remarks,
+                    onValueChange = { remarks = it },
+                    label = { Text("Remarks") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = selectedDate.toString(),
                     onValueChange = {},
@@ -600,14 +620,6 @@ private fun EditVisitDialog(
                     onValueChange = { publisher = it },
                     label = { Text("Who visited (Publisher)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = remarks,
-                    onValueChange = { remarks = it },
-                    label = { Text("Remarks") },
-                    minLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

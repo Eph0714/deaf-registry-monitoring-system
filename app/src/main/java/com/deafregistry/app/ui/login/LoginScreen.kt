@@ -97,7 +97,7 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Deaf and Mute Registry", style = MaterialTheme.typography.headlineMedium)
+            Text("Deaf Contact Record", style = MaterialTheme.typography.headlineMedium)
             Text(
                 "Sign in to manage the registry",
                 style = MaterialTheme.typography.bodyMedium,

@@ -528,7 +528,13 @@ fun DashboardScreen(
         AlertDialog(
             onDismissRequest = { showAboutDialog = false },
             title = { Text("About") },
-            text = { Text("Created to praise Jehovah and support Matthew 24:14") },
+            text = {
+                Column {
+                    Text("Deaf Contact Record", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Created to praise Jehovah and support Matthew 24:14")
+                }
+            },
             confirmButton = {
                 TextButton(onClick = { showAboutDialog = false }) { Text("OK") }
             }
