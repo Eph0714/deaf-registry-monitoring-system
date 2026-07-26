@@ -113,6 +113,20 @@ class SettingsRepository(
         }
     }
 
+    /** The highest chat_messages.id ChatBackgroundWorker has already fired a "new message"
+     * notification for - deliberately separate from lastSeenChatMessageId (which only advances
+     * when the user actually opens Chat Room and drives the unread-count badge): a background
+     * notification informs the user a message arrived, but doesn't mean they've read it, so the
+     * badge must keep counting it as unread until they actually open the chat. Without this
+     * separate cursor, the same unseen message(s) would re-notify on every ~15-minute worker run. */
+    fun lastNotifiedChatMessageId(): Int = prefs.getInt(KEY_LAST_NOTIFIED_CHAT_MESSAGE_ID, 0)
+
+    fun setLastNotifiedChatMessageId(id: Int) {
+        if (id > lastNotifiedChatMessageId()) {
+            prefs.edit().putInt(KEY_LAST_NOTIFIED_CHAT_MESSAGE_ID, id).apply()
+        }
+    }
+
     companion object {
         private const val DEFAULT_OVERDUE_DAYS = 30
         private const val KEY_OVERDUE_DAYS = "overdue_days"
@@ -124,5 +138,6 @@ class SettingsRepository(
         private const val KEY_LAST_NOTIFIED_CHAT_SESSION_ID = "last_notified_chat_session_id"
         private const val KEY_LAST_NOTIFIED_CHAT_STATUS = "last_notified_chat_status"
         private const val KEY_LAST_SEEN_CHAT_MESSAGE_ID = "last_seen_chat_message_id"
+        private const val KEY_LAST_NOTIFIED_CHAT_MESSAGE_ID = "last_notified_chat_message_id"
     }
 }

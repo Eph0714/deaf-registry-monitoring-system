@@ -7,16 +7,17 @@ import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.util.NotificationHelper
 
 /**
- * Best-effort background check for the two chat milestones that still make sense on a coarse
- * schedule: "a new session opened" and "a session ended". WorkManager's PeriodicWorkRequest has a
- * hard 15-minute minimum interval, so this can't catch the "5 minutes remaining" warning reliably
- * (a 5-minute window can fall entirely between two 15-minute checks) - that one only fires from
- * ChatRoomViewModel's foreground poll loop while the Chat screen is actually open. This worker is
- * what covers a user who isn't currently looking at the app.
+ * Best-effort background check for chat milestones that still make sense on a coarse schedule:
+ * "a new session opened", "a session ended", and "new message(s) received" - so a user gets
+ * notified even when the Chat Room screen isn't open (matching the always-on, no-screen-required
+ * pattern the app already uses for overdue-visit notifications via VisitDueWorker). WorkManager's
+ * PeriodicWorkRequest has a hard 15-minute minimum interval, so this can't catch the "5 minutes
+ * remaining" warning reliably (a 5-minute window can fall entirely between two 15-minute checks) -
+ * that one only fires from ChatRoomViewModel's foreground poll loop while Chat is actually open.
  */
 class ChatBackgroundWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        if (ServiceLocator.sessionManager.session.value == null) return Result.success()
+        val currentUserId = ServiceLocator.sessionManager.session.value?.userId ?: return Result.success()
         if (!ServiceLocator.settingsRepository.chatNotificationsEnabled()) return Result.success()
 
         val session = runCatching { ServiceLocator.chatRepository.activeSession() }.getOrNull()
@@ -36,6 +37,23 @@ class ChatBackgroundWorker(context: Context, params: WorkerParameters) : Corouti
                 text = "A chat session has ended.",
                 channelId = NotificationHelper.CHAT_CHANNEL_ID
             )
+        }
+
+        if (session != null && session.status == "open") {
+            val settings = ServiceLocator.settingsRepository
+            val alreadyInformedUpTo = maxOf(settings.lastSeenChatMessageId(), settings.lastNotifiedChatMessageId())
+            val newMessages = runCatching { ServiceLocator.chatRepository.getMessages(session.id, alreadyInformedUpTo) }.getOrNull()
+            val fromOthers = newMessages?.filter { it.userId != currentUserId }
+            if (!fromOthers.isNullOrEmpty()) {
+                val last = fromOthers.last()
+                NotificationHelper.notify(
+                    applicationContext, id = 4003,
+                    title = session.sessionName,
+                    text = "${last.userName}: ${last.message}".take(200),
+                    channelId = NotificationHelper.CHAT_CHANNEL_ID
+                )
+                settings.setLastNotifiedChatMessageId(newMessages.last().id)
+            }
         }
 
         ServiceLocator.settingsRepository.setLastNotifiedChatSession(session?.id, session?.status)
