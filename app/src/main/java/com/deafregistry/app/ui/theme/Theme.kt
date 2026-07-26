@@ -35,7 +35,7 @@ object ThemeState {
     var current: AppThemeOption by mutableStateOf(AppThemeOption.LIGHT_BLUE)
 }
 
-private val BannerBlue = Color(0xFF1877F2)
+private val BannerBlue = Color(0xFF3B5998)
 private val BannerBlueVariant = Color(0xFF0D47A1)
 private val SecondaryTeal = Color(0xFF00ACC1)
 
