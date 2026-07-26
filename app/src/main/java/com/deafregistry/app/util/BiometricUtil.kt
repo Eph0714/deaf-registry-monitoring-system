@@ -1,6 +1,9 @@
 package com.deafregistry.app.util
 
 import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -40,5 +43,20 @@ object BiometricUtil {
             .setAllowedAuthenticators(ALLOWED_AUTHENTICATORS)
             .build()
         prompt.authenticate(promptInfo)
+    }
+
+    /** Opens the device's own biometric/PIN enrollment screen - this app can never enroll a
+     * fingerprint itself (Android doesn't expose raw fingerprint data to apps at all, only a
+     * yes/no match against whatever's already enrolled at the OS level), so this is the closest
+     * thing to a "register your fingerprint" action available from within the app. */
+    fun openEnrollSettings(context: Context) {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Intent(Settings.ACTION_BIOMETRIC_ENROLL).putExtra(
+                Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED, ALLOWED_AUTHENTICATORS
+            )
+        } else {
+            Intent(Settings.ACTION_SECURITY_SETTINGS)
+        }
+        runCatching { context.startActivity(intent) }
     }
 }

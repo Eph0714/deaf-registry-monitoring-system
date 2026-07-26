@@ -20,6 +20,7 @@ import com.deafregistry.app.ui.admin.ManageTeachersScreen
 import com.deafregistry.app.ui.admin.ManageUsersScreen
 import com.deafregistry.app.ui.admin.AppUpdateSettingsScreen
 import com.deafregistry.app.ui.admin.ThemeSettingsScreen
+import com.deafregistry.app.ui.admin.BiometricLoginSettingsScreen
 import com.deafregistry.app.ui.admin.NotificationSettingsScreen
 import com.deafregistry.app.ui.admin.LocationSharingSettingsScreen
 import com.deafregistry.app.ui.calendar.CalendarScreen
@@ -227,6 +228,9 @@ fun AppNavGraph(sessionManager: SessionManager) {
         }
         composable(Routes.ADMIN_THEME) {
             ThemeSettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.BIOMETRIC_SETTINGS) {
+            BiometricLoginSettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.ADMIN_LOCATION_SHARING) {
             LocationSharingSettingsScreen(onBack = { navController.popBackStack() })
