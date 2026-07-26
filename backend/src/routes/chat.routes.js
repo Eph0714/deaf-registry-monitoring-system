@@ -15,6 +15,12 @@ router.post('/sessions/:id/close', requireAuth, requireAdmin, ctrl.closeSession)
 router.delete('/sessions/:id', requireAuth, requireAdmin, ctrl.deleteSession);
 router.post('/sessions/:id/clear-messages', requireAuth, requireAdmin, ctrl.clearMessages);
 
+// Recurring schedules
+router.get('/recurring', requireAuth, requireAdmin, ctrl.listRecurringSchedules);
+router.post('/recurring', requireAuth, requireAdmin, ctrl.createRecurringSchedule);
+router.put('/recurring/:id', requireAuth, requireAdmin, ctrl.updateRecurringSchedule);
+router.delete('/recurring/:id', requireAuth, requireAdmin, ctrl.deleteRecurringSchedule);
+
 // Messages
 router.get('/sessions/:id/messages', requireAuth, ctrl.getMessages);
 router.post('/sessions/:id/messages', requireAuth, ctrl.sendMessage);

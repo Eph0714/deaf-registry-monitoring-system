@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.EventRepeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -52,7 +53,7 @@ private val RETENTION_OPTIONS = listOf("immediate" to "Immediate", "24h" to "24 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatSessionManageScreen(onBack: () -> Unit) {
+fun ChatSessionManageScreen(onBack: () -> Unit, onOpenRecurringSchedules: () -> Unit) {
     val repo = ServiceLocator.chatRepository
     val scope = rememberCoroutineScope()
     var sessions by remember { mutableStateOf(listOf<ChatSessionDto>()) }
@@ -70,7 +71,17 @@ fun ChatSessionManageScreen(onBack: () -> Unit) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { AppTopBar(title = "Manage Chat Sessions", onBack = onBack) },
+        topBar = {
+            AppTopBar(
+                title = "Manage Chat Sessions",
+                onBack = onBack,
+                actions = {
+                    IconButton(onClick = onOpenRecurringSchedules) {
+                        Icon(Icons.Default.EventRepeat, contentDescription = "Recurring Schedules")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { editingSession = null; showEditor = true }) {
                 Icon(Icons.Default.Add, contentDescription = "New Chat Session")

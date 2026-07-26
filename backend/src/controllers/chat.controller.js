@@ -141,6 +141,76 @@ const clearMessages = asyncHandler(async (req, res) => {
   res.json({ deleted: result.rowCount });
 });
 
+// ---- Recurring schedules ----------------------------------------------------
+// A template chatScheduler.js::generateScheduledSessions() turns into a real chat_sessions row
+// each day it's due, so an admin/super_admin sets a schedule up once instead of re-creating the
+// same session every time.
+
+const VALID_DAYS = [0, 1, 2, 3, 4, 5, 6];
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/;
+
+function validateRecurringSchedule(body) {
+  const { session_name, days_of_week, start_time, end_time, retention_policy } = body;
+  if (!session_name || !String(session_name).trim()) return 'session_name is required';
+  if (!Array.isArray(days_of_week) || !days_of_week.length || !days_of_week.every((d) => VALID_DAYS.includes(d))) {
+    return 'days_of_week must be a non-empty array of integers 0-6 (0=Sunday)';
+  }
+  if (!TIME_RE.test(String(start_time || ''))) return 'start_time must be in HH:MM format';
+  if (!TIME_RE.test(String(end_time || ''))) return 'end_time must be in HH:MM format';
+  if (String(end_time) <= String(start_time)) return 'end_time must be after start_time';
+  if (retention_policy && !['immediate', '24h', '7d'].includes(retention_policy)) return 'invalid retention_policy';
+  return null;
+}
+
+const listRecurringSchedules = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT rs.*, u.name AS created_by_name FROM chat_recurring_schedules rs
+     LEFT JOIN users u ON u.id = rs.created_by
+     ORDER BY rs.start_time ASC`
+  );
+  res.json(rows);
+});
+
+const createRecurringSchedule = asyncHandler(async (req, res) => {
+  const error = validateRecurringSchedule(req.body);
+  if (error) return res.status(400).json({ message: error });
+  const { session_name, description, days_of_week, start_time, end_time, retention_policy } = req.body;
+  const policy = ['immediate', '24h', '7d'].includes(retention_policy) ? retention_policy : 'immediate';
+  const { rows } = await pool.query(
+    `INSERT INTO chat_recurring_schedules (session_name, description, days_of_week, start_time, end_time, retention_policy, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [session_name, description || null, days_of_week, start_time, end_time, policy, req.user.id]
+  );
+  await logAudit(req.user.id, 'CHAT_RECURRING_SCHEDULE_CREATED', 'chat_recurring_schedule', rows[0].id, { session_name });
+  res.status(201).json(rows[0]);
+});
+
+const updateRecurringSchedule = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const error = validateRecurringSchedule(req.body);
+  if (error) return res.status(400).json({ message: error });
+  const { session_name, description, days_of_week, start_time, end_time, retention_policy, is_active } = req.body;
+  const policy = ['immediate', '24h', '7d'].includes(retention_policy) ? retention_policy : 'immediate';
+  const { rows } = await pool.query(
+    `UPDATE chat_recurring_schedules
+     SET session_name = $1, description = $2, days_of_week = $3, start_time = $4, end_time = $5,
+         retention_policy = $6, is_active = $7
+     WHERE id = $8 RETURNING *`,
+    [session_name, description || null, days_of_week, start_time, end_time, policy, is_active !== false, id]
+  );
+  if (!rows.length) return res.status(404).json({ message: 'Recurring schedule not found' });
+  await logAudit(req.user.id, 'CHAT_RECURRING_SCHEDULE_EDITED', 'chat_recurring_schedule', id, { session_name });
+  res.json(rows[0]);
+});
+
+const deleteRecurringSchedule = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await pool.query('DELETE FROM chat_recurring_schedules WHERE id = $1', [id]);
+  if (!result.rowCount) return res.status(404).json({ message: 'Recurring schedule not found' });
+  await logAudit(req.user.id, 'CHAT_RECURRING_SCHEDULE_DELETED', 'chat_recurring_schedule', id, null);
+  res.status(204).send();
+});
+
 // ---- Messages ---------------------------------------------------------------
 
 const getMessages = asyncHandler(async (req, res) => {
@@ -320,6 +390,7 @@ const markNotificationsRead = asyncHandler(async (req, res) => {
 module.exports = {
   listSessions, getActiveSession, getSession, createSession, updateSession,
   openSession, closeSession, deleteSession, clearMessages,
+  listRecurringSchedules, createRecurringSchedule, updateRecurringSchedule, deleteRecurringSchedule,
   getMessages, sendMessage, deleteMessage,
   pinMessage: setMessagePinned(true), unpinMessage: setMessagePinned(false),
   searchMessages,

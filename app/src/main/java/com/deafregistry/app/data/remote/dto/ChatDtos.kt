@@ -62,3 +62,26 @@ data class ChatNotificationDto(
 )
 
 data class MarkChatNotificationsReadRequest(val ids: List<Int>? = null)
+
+data class ChatRecurringScheduleDto(
+    val id: Int,
+    @SerializedName("session_name") val sessionName: String,
+    val description: String?,
+    @SerializedName("days_of_week") val daysOfWeek: List<Int>,
+    @SerializedName("start_time") val startTime: String,
+    @SerializedName("end_time") val endTime: String,
+    @SerializedName("retention_policy") val retentionPolicy: String,
+    @SerializedName("is_active") val isActive: Boolean,
+    @SerializedName("created_by_name") val createdByName: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class ChatRecurringScheduleRequest(
+    val session_name: String,
+    val description: String?,
+    val days_of_week: List<Int>,
+    val start_time: String,
+    val end_time: String,
+    val retention_policy: String,
+    val is_active: Boolean = true
+)

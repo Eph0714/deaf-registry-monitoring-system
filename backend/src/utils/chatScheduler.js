@@ -31,6 +31,39 @@ async function notifyParticipants(sessionId, message) {
   await notifyUsers(rows.map((r) => r.user_id), sessionId, message);
 }
 
+// Turns each active recurring schedule into a real chat_sessions row on the days it's due, so an
+// admin/super_admin sets a recurring schedule up once (Control Panel > Chat Sessions > Recurring
+// Schedules) instead of re-creating the same one-off session every time. Runs every scheduler tick
+// (once/minute, same cadence as the other jobs here) rather than only at midnight, so a schedule
+// created or a server restart mid-day still catches up rather than skipping that day entirely -
+// last_generated_date guards against generating the same day's session twice, and the end_time
+// cutoff stops it from generating a session that's already fully in the past for today.
+async function generateScheduledSessions() {
+  const { rows } = await pool.query(
+    `SELECT id, session_name, description, start_time, end_time, retention_policy, created_by
+     FROM chat_recurring_schedules
+     WHERE is_active = true
+       AND EXTRACT(DOW FROM ${LOCAL_NOW})::int = ANY(days_of_week)
+       AND (last_generated_date IS NULL OR last_generated_date <> ${LOCAL_NOW}::date)
+       AND ${LOCAL_NOW}::time < end_time`
+  );
+  for (const schedule of rows) {
+    const { rows: sessionRows } = await pool.query(
+      `INSERT INTO chat_sessions (session_name, description, start_datetime, end_datetime, retention_policy, created_by, recurring_schedule_id)
+       VALUES ($1, $2, ${LOCAL_NOW}::date + $3::time, ${LOCAL_NOW}::date + $4::time, $5, $6, $7)
+       RETURNING id`,
+      [schedule.session_name, schedule.description, schedule.start_time, schedule.end_time, schedule.retention_policy, schedule.created_by, schedule.id]
+    );
+    await pool.query(
+      `UPDATE chat_recurring_schedules SET last_generated_date = ${LOCAL_NOW}::date WHERE id = $1`,
+      [schedule.id]
+    );
+    const sessionId = sessionRows[0].id;
+    await logAudit(schedule.created_by, 'CHAT_SESSION_CREATED', 'chat_session', sessionId, { session_name: schedule.session_name, auto: true, recurring: true });
+    await notifyAllActiveUsers(sessionId, `Chat session "${schedule.session_name}" is scheduled for today.`);
+  }
+}
+
 // Promotes any 'scheduled' session whose start time has arrived to 'open', so the chat becomes
 // available exactly per its configured schedule without requiring an admin to be online to click
 // "Open" at the right moment.
@@ -107,6 +140,7 @@ async function purgeExpiredMessages() {
 
 async function runChatScheduler() {
   try {
+    await generateScheduledSessions();
     await autoOpenSessions();
     await sendFiveMinuteWarnings();
     await expireSessions();

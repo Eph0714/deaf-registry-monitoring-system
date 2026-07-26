@@ -277,6 +277,19 @@ interface ApiService {
     @POST("chat/sessions/{id}/clear-messages")
     suspend fun clearChatMessages(@Path("id") id: Int): ResponseBody
 
+    // Chat - recurring schedules
+    @GET("chat/recurring")
+    suspend fun getChatRecurringSchedules(): List<ChatRecurringScheduleDto>
+
+    @POST("chat/recurring")
+    suspend fun createChatRecurringSchedule(@Body request: ChatRecurringScheduleRequest): ChatRecurringScheduleDto
+
+    @PUT("chat/recurring/{id}")
+    suspend fun updateChatRecurringSchedule(@Path("id") id: Int, @Body request: ChatRecurringScheduleRequest): ChatRecurringScheduleDto
+
+    @DELETE("chat/recurring/{id}")
+    suspend fun deleteChatRecurringSchedule(@Path("id") id: Int): Response<Unit>
+
     // Chat - messages
     @GET("chat/sessions/{id}/messages")
     suspend fun getChatMessages(@Path("id") id: Int, @Query("after_id") afterId: Int? = null, @Query("limit") limit: Int = 200): List<ChatMessageDto>

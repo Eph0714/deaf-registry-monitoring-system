@@ -3,6 +3,8 @@ package com.deafregistry.app.data.repository
 import com.deafregistry.app.data.remote.ApiService
 import com.deafregistry.app.data.remote.dto.ChatMessageDto
 import com.deafregistry.app.data.remote.dto.ChatParticipantDto
+import com.deafregistry.app.data.remote.dto.ChatRecurringScheduleDto
+import com.deafregistry.app.data.remote.dto.ChatRecurringScheduleRequest
 import com.deafregistry.app.data.remote.dto.ChatSessionDto
 import com.deafregistry.app.data.remote.dto.ChatSessionRequest
 import com.deafregistry.app.data.remote.dto.MarkChatNotificationsReadRequest
@@ -27,6 +29,22 @@ class ChatRepository(private val api: ApiService) {
     suspend fun closeSession(id: Int): ChatSessionDto = api.closeChatSession(id)
     suspend fun deleteSession(id: Int) = api.deleteChatSession(id)
     suspend fun clearMessages(id: Int) = api.clearChatMessages(id)
+
+    // Recurring schedules
+    suspend fun listRecurringSchedules(): List<ChatRecurringScheduleDto> = api.getChatRecurringSchedules()
+
+    suspend fun createRecurringSchedule(
+        name: String, description: String?, daysOfWeek: List<Int>, startTime: String, endTime: String, retentionPolicy: String
+    ): ChatRecurringScheduleDto =
+        api.createChatRecurringSchedule(ChatRecurringScheduleRequest(name, description, daysOfWeek, startTime, endTime, retentionPolicy))
+
+    suspend fun updateRecurringSchedule(
+        id: Int, name: String, description: String?, daysOfWeek: List<Int>, startTime: String, endTime: String,
+        retentionPolicy: String, isActive: Boolean
+    ): ChatRecurringScheduleDto =
+        api.updateChatRecurringSchedule(id, ChatRecurringScheduleRequest(name, description, daysOfWeek, startTime, endTime, retentionPolicy, isActive))
+
+    suspend fun deleteRecurringSchedule(id: Int) = api.deleteChatRecurringSchedule(id)
 
     // Messages
     suspend fun getMessages(sessionId: Int, afterId: Int? = null): List<ChatMessageDto> =
