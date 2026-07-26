@@ -76,6 +76,31 @@ class SettingsRepository(
 
     fun cachedLocationShareTtl(): Int = prefs.getInt(KEY_LOCATION_SHARE_TTL, DEFAULT_LOCATION_SHARE_TTL_MINUTES)
 
+    /** Purely local, per-device - never synced to the server (there's no per-user server-side
+     * notification-preference concept anywhere else in this app either). Gates all chat push-style
+     * notifications: new session opened, new message, 5-minute warning, session ended. */
+    fun chatNotificationsEnabled(): Boolean = prefs.getBoolean(KEY_CHAT_NOTIFICATIONS_ENABLED, true)
+
+    fun setChatNotificationsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CHAT_NOTIFICATIONS_ENABLED, enabled).apply()
+    }
+
+    /** Tracks the last chat session/status this device has already notified about in the
+     * background (ChatBackgroundWorker) - separate from ChatRoomViewModel's in-memory dedup,
+     * since this needs to survive the app process being killed between 15-minute worker runs. */
+    fun lastNotifiedChatSession(): Pair<Int, String>? {
+        val id = prefs.getInt(KEY_LAST_NOTIFIED_CHAT_SESSION_ID, -1)
+        val status = prefs.getString(KEY_LAST_NOTIFIED_CHAT_STATUS, null)
+        return if (id != -1 && status != null) id to status else null
+    }
+
+    fun setLastNotifiedChatSession(id: Int?, status: String?) {
+        prefs.edit()
+            .putInt(KEY_LAST_NOTIFIED_CHAT_SESSION_ID, id ?: -1)
+            .putString(KEY_LAST_NOTIFIED_CHAT_STATUS, status)
+            .apply()
+    }
+
     companion object {
         private const val DEFAULT_OVERDUE_DAYS = 30
         private const val KEY_OVERDUE_DAYS = "overdue_days"
@@ -83,5 +108,8 @@ class SettingsRepository(
         private const val KEY_LOCAL_THEME_OVERRIDE = "local_theme_override"
         private const val DEFAULT_LOCATION_SHARE_TTL_MINUTES = 60
         private const val KEY_LOCATION_SHARE_TTL = "location_share_ttl_minutes"
+        private const val KEY_CHAT_NOTIFICATIONS_ENABLED = "chat_notifications_enabled"
+        private const val KEY_LAST_NOTIFIED_CHAT_SESSION_ID = "last_notified_chat_session_id"
+        private const val KEY_LAST_NOTIFIED_CHAT_STATUS = "last_notified_chat_status"
     }
 }

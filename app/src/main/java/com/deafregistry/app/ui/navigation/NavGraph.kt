@@ -23,6 +23,8 @@ import com.deafregistry.app.ui.admin.ThemeSettingsScreen
 import com.deafregistry.app.ui.admin.NotificationSettingsScreen
 import com.deafregistry.app.ui.admin.LocationSharingSettingsScreen
 import com.deafregistry.app.ui.calendar.CalendarScreen
+import com.deafregistry.app.ui.chat.ChatRoomScreen
+import com.deafregistry.app.ui.chat.ChatSessionManageScreen
 import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.location.LocationSharingScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
@@ -69,6 +71,7 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenUserAccounts = { navController.navigate(Routes.ADMIN_USERS) },
                 onOpenCalendar = { navController.navigate(Routes.CALENDAR) },
                 onOpenLocationSharing = { navController.navigate(Routes.LOCATION_SHARING) },
+                onOpenChat = { navController.navigate(Routes.CHAT) },
                 onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
@@ -84,6 +87,16 @@ fun AppNavGraph(sessionManager: SessionManager) {
 
         composable(Routes.LOCATION_SHARING) {
             LocationSharingScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.CHAT) {
+            ChatRoomScreen(
+                onBack = { navController.popBackStack() },
+                onManageSessions = { navController.navigate(Routes.ADMIN_CHAT_SESSIONS) }
+            )
+        }
+        composable(Routes.ADMIN_CHAT_SESSIONS) {
+            ChatSessionManageScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.MUNICIPALITY_DIRECTORY) {

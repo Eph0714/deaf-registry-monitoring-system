@@ -8,6 +8,8 @@ object Routes {
     const val MUNICIPALITY_DIRECTORY = "municipality_directory"
     const val CALENDAR = "calendar"
     const val LOCATION_SHARING = "location_sharing"
+    const val CHAT = "chat"
+    const val ADMIN_CHAT_SESSIONS = "admin_chat_sessions"
     const val DEAF_PROFILE = "deaf/{uuid}"
     const val DEAF_EDITOR = "deaf_editor?uuid={uuid}&municipalityId={municipalityId}"
     const val SEARCH = "search"

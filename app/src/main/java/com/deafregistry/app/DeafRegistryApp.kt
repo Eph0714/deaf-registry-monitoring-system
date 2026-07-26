@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.deafregistry.app.data.sync.ChatBackgroundWorker
 import com.deafregistry.app.data.sync.VisitDueWorker
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.util.NotificationHelper
@@ -29,5 +30,14 @@ class DeafRegistryApp : Application() {
 
         WorkManager.getInstance(this)
             .enqueueUniquePeriodicWork("visit_due_work", ExistingPeriodicWorkPolicy.KEEP, visitDueRequest)
+
+        // 15 minutes is WorkManager's floor for PeriodicWorkRequest - this is a best-effort check
+        // for when the app isn't in the foreground; see ChatBackgroundWorker's doc for what it
+        // can/can't reliably catch at this interval.
+        val chatRequest = PeriodicWorkRequestBuilder<ChatBackgroundWorker>(15, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(this)
+            .enqueueUniquePeriodicWork("chat_background_work", ExistingPeriodicWorkPolicy.KEEP, chatRequest)
     }
 }

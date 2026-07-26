@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -110,6 +111,7 @@ fun DashboardScreen(
     onOpenUserAccounts: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenLocationSharing: () -> Unit,
+    onOpenChat: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -369,7 +371,8 @@ fun DashboardScreen(
                             onOpenCalendar = onOpenCalendar,
                             hasEventToday = hasEventToday,
                             onOpenLocationSharing = onOpenLocationSharing,
-                            teamLocationCount = teamLocations.size
+                            teamLocationCount = teamLocations.size,
+                            onOpenChat = onOpenChat
                         )
                     }
 
@@ -624,7 +627,8 @@ private fun DashboardQuickActionsRow(
     onOpenCalendar: () -> Unit,
     hasEventToday: Boolean,
     onOpenLocationSharing: () -> Unit,
-    teamLocationCount: Int
+    teamLocationCount: Int,
+    onOpenChat: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
@@ -674,6 +678,13 @@ private fun DashboardQuickActionsRow(
                     Modifier.weight(1f),
                     badgeCount = teamLocationCount
                 )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DashboardQuickActionTile("Chat", Icons.AutoMirrored.Filled.Chat, onOpenChat, Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
             }
         }
     }

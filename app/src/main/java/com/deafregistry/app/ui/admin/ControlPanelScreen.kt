@@ -63,6 +63,7 @@ fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             add(AdminMenuItem("User Accounts", "Manage app user accounts and roles", "admin_users"))
             add(AdminMenuItem("Pending User Approvals", "Approve or decline new self-service signups", "admin_pending_users", badgeCount = pendingApprovalCount))
             add(AdminMenuItem("Password Reset Requests", "Review and resolve forgot-password requests", "admin_password_reset_requests", badgeCount = passwordResetRequestCount))
+            add(AdminMenuItem("Chat Sessions", "Create, schedule, and moderate the group chat", "admin_chat_sessions"))
             add(AdminMenuItem("User Log Report", "See who did what across the app", "admin_audit_log"))
             if (ServiceLocator.sessionManager.isSuperAdmin()) {
                 add(AdminMenuItem("Reset All Data", "Super Admin only - wipe all registry data on the server", "admin_reset_data"))

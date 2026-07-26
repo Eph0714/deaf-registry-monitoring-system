@@ -12,6 +12,7 @@ const reportsRoutes = require('./routes/reports.routes');
 const adminRoutes = require('./routes/admin.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const calendarEventsRoutes = require('./routes/calendarEvents.routes');
+const chatRoutes = require('./routes/chat.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/calendar-events', calendarEventsRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 app.use(errorHandler);

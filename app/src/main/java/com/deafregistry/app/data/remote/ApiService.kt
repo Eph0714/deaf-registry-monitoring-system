@@ -244,4 +244,74 @@ interface ApiService {
     // Super Admin only
     @POST("admin/reset-all")
     suspend fun resetAllData(): Response<Unit>
+
+    // Chat - sessions (admin management + the single "active" room)
+    @GET("chat/sessions")
+    suspend fun getChatSessions(): List<ChatSessionDto>
+
+    @GET("chat/sessions/active")
+    suspend fun getActiveChatSession(): Response<ChatSessionDto>
+
+    @POST("chat/sessions")
+    suspend fun createChatSession(@Body request: ChatSessionRequest): ChatSessionDto
+
+    @PUT("chat/sessions/{id}")
+    suspend fun updateChatSession(@Path("id") id: Int, @Body request: ChatSessionRequest): ChatSessionDto
+
+    @POST("chat/sessions/{id}/open")
+    suspend fun openChatSession(@Path("id") id: Int): ChatSessionDto
+
+    @POST("chat/sessions/{id}/close")
+    suspend fun closeChatSession(@Path("id") id: Int): ChatSessionDto
+
+    @DELETE("chat/sessions/{id}")
+    suspend fun deleteChatSession(@Path("id") id: Int): Response<Unit>
+
+    @POST("chat/sessions/{id}/clear-messages")
+    suspend fun clearChatMessages(@Path("id") id: Int): ResponseBody
+
+    // Chat - messages
+    @GET("chat/sessions/{id}/messages")
+    suspend fun getChatMessages(@Path("id") id: Int, @Query("after_id") afterId: Int? = null, @Query("limit") limit: Int = 200): List<ChatMessageDto>
+
+    @POST("chat/sessions/{id}/messages")
+    suspend fun sendChatMessage(@Path("id") id: Int, @Body request: SendChatMessageRequest): ChatMessageDto
+
+    @DELETE("chat/sessions/{id}/messages/{messageId}")
+    suspend fun deleteChatMessage(@Path("id") id: Int, @Path("messageId") messageId: Int): Response<Unit>
+
+    @POST("chat/sessions/{id}/messages/{messageId}/pin")
+    suspend fun pinChatMessage(@Path("id") id: Int, @Path("messageId") messageId: Int): Response<Unit>
+
+    @POST("chat/sessions/{id}/messages/{messageId}/unpin")
+    suspend fun unpinChatMessage(@Path("id") id: Int, @Path("messageId") messageId: Int): Response<Unit>
+
+    @GET("chat/sessions/{id}/search")
+    suspend fun searchChatMessages(@Path("id") id: Int, @Query("query") query: String? = null, @Query("date") date: String? = null): List<ChatMessageDto>
+
+    // Chat - participants
+    @GET("chat/sessions/{id}/participants")
+    suspend fun getChatParticipants(@Path("id") id: Int): List<ChatParticipantDto>
+
+    @POST("chat/sessions/{id}/join")
+    suspend fun joinChatSession(@Path("id") id: Int): Response<Unit>
+
+    @POST("chat/sessions/{id}/leave")
+    suspend fun leaveChatSession(@Path("id") id: Int): Response<Unit>
+
+    @POST("chat/sessions/{id}/participants/{userId}/mute")
+    suspend fun muteChatParticipant(@Path("id") id: Int, @Path("userId") userId: Int): Response<Unit>
+
+    @POST("chat/sessions/{id}/participants/{userId}/unmute")
+    suspend fun unmuteChatParticipant(@Path("id") id: Int, @Path("userId") userId: Int): Response<Unit>
+
+    @POST("chat/sessions/{id}/participants/{userId}/remove")
+    suspend fun removeChatParticipant(@Path("id") id: Int, @Path("userId") userId: Int): Response<Unit>
+
+    // Chat - notifications
+    @GET("chat/notifications")
+    suspend fun getChatNotifications(): List<ChatNotificationDto>
+
+    @POST("chat/notifications/read")
+    suspend fun markChatNotificationsRead(@Body request: MarkChatNotificationsReadRequest): Response<Unit>
 }
