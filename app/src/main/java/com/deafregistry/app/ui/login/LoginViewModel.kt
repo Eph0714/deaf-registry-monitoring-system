@@ -14,7 +14,6 @@ data class LoginUiState(
     val username: String = "",
     val password: String = "",
     val rememberMe: Boolean = false,
-    val biometricEnabled: Boolean = false,
     val passwordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -49,7 +48,6 @@ class LoginViewModel(
                 username = lastUsername ?: "",
                 password = lastPassword ?: "",
                 rememberMe = lastUsername != null && lastPassword != null,
-                biometricEnabled = lastUsername != null && sessionManager.canUseBiometricFor(lastUsername),
                 rememberedUsernames = sessionManager.rememberedUsernames()
             )
         }
@@ -69,7 +67,6 @@ class LoginViewModel(
             username = value,
             password = rememberedPassword ?: "",
             rememberMe = rememberedPassword != null,
-            biometricEnabled = rememberedPassword != null && sessionManager.canUseBiometricFor(trimmed),
             error = null
         )
     }
@@ -85,7 +82,6 @@ class LoginViewModel(
             username = username,
             password = rememberedPassword ?: "",
             rememberMe = rememberedPassword != null,
-            biometricEnabled = sessionManager.canUseBiometricFor(username),
             showUsernameSuggestions = false,
             error = null
         )
@@ -102,7 +98,7 @@ class LoginViewModel(
      * login depends on the password still being remembered.
      */
     fun onRememberMeChange(value: Boolean) {
-        _uiState.value = _uiState.value.copy(rememberMe = value, biometricEnabled = if (value) _uiState.value.biometricEnabled else false)
+        _uiState.value = _uiState.value.copy(rememberMe = value)
         if (!value) {
             val username = _uiState.value.username.trim()
             if (username.isNotEmpty()) {
@@ -110,13 +106,6 @@ class LoginViewModel(
                 _uiState.value = _uiState.value.copy(rememberedUsernames = sessionManager.rememberedUsernames())
             }
         }
-    }
-
-    /** Only meaningful while Remember Password is checked - the actual on/off toggle is persisted
-     * at login time (see login() below) alongside rememberCredentials(), same as rememberMe. */
-    fun onBiometricEnabledChange(value: Boolean) {
-        if (!_uiState.value.rememberMe) return
-        _uiState.value = _uiState.value.copy(biometricEnabled = value)
     }
 
     fun togglePasswordVisibility() {
@@ -136,10 +125,12 @@ class LoginViewModel(
                 authRepository.login(username, state.password)
                 // Re-saving on every successful login (not just the first time) is what keeps a
                 // changed password up to date in storage, per the validation requirement that a
-                // stale remembered password gets refreshed after the next successful login.
+                // stale remembered password gets refreshed after the next successful login - this
+                // also keeps Biometric Login (enabled/disabled only via the Control Panel module
+                // now, not here) working after a password change, since it re-submits this same
+                // stored password.
                 if (state.rememberMe) {
                     sessionManager.rememberCredentials(username, state.password)
-                    sessionManager.setBiometricEnabled(username, state.biometricEnabled)
                 } else {
                     sessionManager.forgetCredentials(username)
                 }
@@ -172,7 +163,7 @@ class LoginViewModel(
      * log into - shown instead of ever opening the system fingerprint/face prompt for nothing. */
     fun onBiometricNotEnrolled() {
         _uiState.value = _uiState.value.copy(
-            error = "Biometric login isn't set up on this device yet. Log in normally with \"Remember Password\" and \"Enable Biometric Login\" checked to set it up."
+            error = "Biometric login isn't set up on this device yet. Log in normally, then go to Control Panel > Biometric Login to set it up."
         )
     }
 

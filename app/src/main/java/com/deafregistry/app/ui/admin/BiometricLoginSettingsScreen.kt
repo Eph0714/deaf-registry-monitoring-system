@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
+import com.deafregistry.app.util.BiometricStatus
 import com.deafregistry.app.util.BiometricUtil
 import com.deafregistry.app.util.friendlyMessage
 import kotlinx.coroutines.launch
@@ -64,7 +65,7 @@ fun BiometricLoginSettingsScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val session by ServiceLocator.sessionManager.session.collectAsState()
     val username = session?.username ?: ""
-    val hardwareAvailable = remember { BiometricUtil.isAvailable(context) }
+    val biometricStatus = remember { BiometricUtil.status(context) }
     var enabled by remember(username) { mutableStateOf(ServiceLocator.sessionManager.canUseBiometricFor(username)) }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -117,9 +118,14 @@ fun BiometricLoginSettingsScreen(onBack: () -> Unit) {
         Column(
             Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())
         ) {
-            if (!hardwareAvailable) {
+            if (biometricStatus == BiometricStatus.NO_HARDWARE) {
                 Text(
-                    "Your device doesn't support biometric login yet, or no fingerprint, face, or PIN is registered on it.",
+                    "This device doesn't have a fingerprint sensor, face unlock, or PIN/pattern lock, so Biometric Login isn't available here.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else if (biometricStatus == BiometricStatus.NOT_ENROLLED) {
+                Text(
+                    "This device supports biometric login, but no fingerprint, face, or PIN is registered on it yet. Set one up first, then come back here to register it for your account.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(12.dp))
@@ -152,7 +158,7 @@ fun BiometricLoginSettingsScreen(onBack: () -> Unit) {
                 ) { Text("Disable Biometric Login") }
             } else {
                 Text(
-                    "Enter your password once to link this device's fingerprint, face, or PIN to your account (\"$username\") - after that, you can log in with a fingerprint scan instead of typing your password.",
+                    "This device already has a fingerprint, face, or PIN registered. Enter your password once to link it to your account (\"$username\") - after that, you can log in with a scan instead of typing your password.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(16.dp))

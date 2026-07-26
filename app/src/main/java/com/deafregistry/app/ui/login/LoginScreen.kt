@@ -154,24 +154,6 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
                 Text("Remember password", style = MaterialTheme.typography.bodyMedium)
             }
 
-            if (biometricHardwareAvailable) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = state.biometricEnabled,
-                        onCheckedChange = viewModel::onBiometricEnabledChange,
-                        enabled = state.rememberMe
-                    )
-                    Text(
-                        "Enable Biometric Login",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (state.rememberMe) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = viewModel::openForgotPasswordDialog) { Text("Forgot Password?") }
             }

@@ -12,13 +12,26 @@ import androidx.fragment.app.FragmentActivity
 private const val ALLOWED_AUTHENTICATORS =
     BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
 
+/** Distinguishes *why* biometric auth isn't usable right now, since the Biometric Login settings
+ * screen needs to show a different message/action for each case: a device with no sensor at all
+ * can't do anything, while a device with a sensor but nothing enrolled just needs the user to add
+ * one in Settings. */
+enum class BiometricStatus { AVAILABLE, NOT_ENROLLED, NO_HARDWARE }
+
 object BiometricUtil {
 
     /** Whether this device can do biometric (or device PIN/pattern) auth right now - checked
      * before ever showing a "Login with Biometrics" option, so the button never appears on a
      * device with no usable hardware/enrollment. */
-    fun isAvailable(context: Context): Boolean =
-        BiometricManager.from(context).canAuthenticate(ALLOWED_AUTHENTICATORS) == BiometricManager.BIOMETRIC_SUCCESS
+    fun isAvailable(context: Context): Boolean = status(context) == BiometricStatus.AVAILABLE
+
+    /** Finer-grained read of [isAvailable] - see [BiometricStatus]. */
+    fun status(context: Context): BiometricStatus =
+        when (BiometricManager.from(context).canAuthenticate(ALLOWED_AUTHENTICATORS)) {
+            BiometricManager.BIOMETRIC_SUCCESS -> BiometricStatus.AVAILABLE
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricStatus.NOT_ENROLLED
+            else -> BiometricStatus.NO_HARDWARE
+        }
 
     fun authenticate(activity: FragmentActivity, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val executor = ContextCompat.getMainExecutor(activity)
