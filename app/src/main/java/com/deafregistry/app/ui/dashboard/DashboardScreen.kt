@@ -259,7 +259,9 @@ fun DashboardScreen(
                     IconButton(onClick = { if (state.pendingApprovalCount > 0) onOpenPendingUsers() else onOpenControlPanel() }) {
                         if (state.pendingApprovalCount > 0) {
                             BadgedBox(badge = {
-                                Badge { Text(state.pendingApprovalCount.toString()) }
+                                Badge(modifier = Modifier.size(20.dp)) {
+                                    Text(state.pendingApprovalCount.toString(), style = MaterialTheme.typography.labelMedium)
+                                }
                             }) {
                                 Icon(Icons.Default.AdminPanelSettings, contentDescription = "Pending User Approvals (${state.pendingApprovalCount} pending)")
                             }
@@ -730,13 +732,17 @@ private fun DashboardQuickActionTile(
         ) {
             if (showBell) {
                 BadgedBox(badge = {
-                    Badge { Icon(Icons.Default.Notifications, contentDescription = "Event today", modifier = Modifier.size(10.dp)) }
+                    Badge(modifier = Modifier.size(18.dp)) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Event today", modifier = Modifier.size(13.dp))
+                    }
                 }) {
                     Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
                 }
             } else if (badgeCount != null && badgeCount > 0) {
                 BadgedBox(badge = {
-                    Badge { Text(badgeCount.toString()) }
+                    Badge(modifier = Modifier.size(20.dp)) {
+                        Text(badgeCount.toString(), style = MaterialTheme.typography.labelMedium)
+                    }
                 }) {
                     Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
                 }
