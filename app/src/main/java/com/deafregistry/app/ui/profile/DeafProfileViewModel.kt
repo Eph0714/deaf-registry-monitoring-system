@@ -3,7 +3,6 @@ package com.deafregistry.app.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deafregistry.app.data.local.entity.DeafIndividualEntity
-import com.deafregistry.app.data.local.entity.RemarkEntity
 import com.deafregistry.app.data.local.entity.VisitEntity
 import com.deafregistry.app.data.remote.dto.AssignmentHistoryDto
 import com.deafregistry.app.data.repository.DeafIndividualRepository
@@ -94,9 +93,25 @@ class DeafProfileViewModel(
         }
     }
 
-    fun editVisit(visitUuid: String, visitDateTime: String, publisherName: String) {
+    /**
+     * A visit record holds at most one remark, edited together with the visit itself rather than
+     * as a separate add/edit/delete-able list - [existingRemarkUuid] is whichever remark (if any)
+     * is already attached, passed in by the caller since this ViewModel doesn't track "the current
+     * edit target" itself. Blanking the field deletes that remark; leaving it blank with no
+     * existing remark is a no-op; anything else creates or edits it.
+     */
+    fun editVisitWithRemark(visitUuid: String, visitDateTime: String, publisherName: String, remarkText: String, existingRemarkUuid: String?) {
         viewModelScope.launch {
             visitRepository.editVisit(visitUuid, visitDateTime, publisherName.ifBlank { null })
+            val trimmed = remarkText.trim()
+            when {
+                trimmed.isBlank() && existingRemarkUuid != null -> remarkRepository.deleteRemark(existingRemarkUuid)
+                trimmed.isNotBlank() && existingRemarkUuid != null -> remarkRepository.editRemark(existingRemarkUuid, trimmed)
+                trimmed.isNotBlank() -> {
+                    val session = sessionManager.session.value
+                    remarkRepository.addRemark(visitUuid, session?.userId, publisherName.ifBlank { session?.name ?: "Unknown" }, trimmed)
+                }
+            }
             _message.value = "Visit updated"
         }
     }
@@ -106,35 +121,6 @@ class DeafProfileViewModel(
             visitRepository.deleteVisit(visitUuid)
             _message.value = "Visit deleted"
         }
-    }
-
-    fun addRemark(visitUuid: String, text: String) {
-        if (text.isBlank()) return
-        viewModelScope.launch {
-            val session = sessionManager.session.value
-            remarkRepository.addRemark(visitUuid, session?.userId, session?.name ?: "Unknown", text)
-            _message.value = "Remark added"
-        }
-    }
-
-    fun editRemark(uuid: String, text: String) {
-        if (text.isBlank()) return
-        viewModelScope.launch {
-            remarkRepository.editRemark(uuid, text)
-            _message.value = "Remark updated"
-        }
-    }
-
-    fun deleteRemark(uuid: String) {
-        viewModelScope.launch {
-            remarkRepository.deleteRemark(uuid)
-            _message.value = "Remark deleted"
-        }
-    }
-
-    fun canModifyRemark(remark: RemarkEntity): Boolean {
-        val session = sessionManager.session.value ?: return false
-        return session.role == "admin" || (remark.userId != null && remark.userId == session.userId)
     }
 
     fun deleteIndividual(onDeleted: () -> Unit) {

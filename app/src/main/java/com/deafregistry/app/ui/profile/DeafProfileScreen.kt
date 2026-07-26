@@ -468,13 +468,13 @@ private fun InfoRow(label: String, value: String) {
 @Composable
 private fun VisitCard(visit: VisitEntity, viewModel: DeafProfileViewModel) {
     var expanded by remember { mutableStateOf(false) }
-    var remarkText by remember { mutableStateOf("") }
-    var editingUuid by remember { mutableStateOf<String?>(null) }
-    var editText by remember { mutableStateOf("") }
-    var deletingUuid by remember { mutableStateOf<String?>(null) }
     var showEditVisit by remember { mutableStateOf(false) }
     var showDeleteVisit by remember { mutableStateOf(false) }
+    // A visit holds at most one remark - remarksFor() still returns a list for backward
+    // compatibility with any visit that already had more than one before this rule existed, but
+    // the UI only ever shows/edits the first (oldest) one going forward.
     val remarks by viewModel.remarksFor(visit.uuid).collectAsState(initial = emptyList())
+    val remark = remarks.firstOrNull()
 
     Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Column(Modifier.padding(16.dp)) {
@@ -497,82 +497,24 @@ private fun VisitCard(visit: VisitEntity, viewModel: DeafProfileViewModel) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text("Remarks", style = MaterialTheme.typography.labelLarge)
-                remarks.forEach { remark ->
-                    if (editingUuid == remark.uuid) {
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                            OutlinedTextField(
-                                value = editText,
-                                onValueChange = { editText = it },
-                                modifier = Modifier.weight(1f)
-                            )
-                            TextButton(onClick = {
-                                viewModel.editRemark(remark.uuid, editText)
-                                editingUuid = null
-                            }) { Text("Save") }
-                            TextButton(onClick = { editingUuid = null }) { Text("Cancel") }
-                        }
-                    } else {
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 4.dp),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                "• ${remark.remarkText} — ${remark.userName ?: ""} (${remark.createdAt})",
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (viewModel.canModifyRemark(remark)) {
-                                IconButton(onClick = { editingUuid = remark.uuid; editText = remark.remarkText }, modifier = Modifier.size(28.dp)) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edit remark", modifier = Modifier.size(16.dp))
-                                }
-                                IconButton(onClick = { deletingUuid = remark.uuid }, modifier = Modifier.size(28.dp)) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete remark", modifier = Modifier.size(16.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = remarkText,
-                        onValueChange = { remarkText = it },
-                        label = { Text("Add remark") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = {
-                        viewModel.addRemark(visit.uuid, remarkText)
-                        remarkText = ""
-                    }) { Text("Add") }
-                }
+                Text(
+                    remark?.remarkText ?: "No remarks yet - tap Edit to add one.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (remark == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
         }
-    }
-
-    deletingUuid?.let { uuid ->
-        AlertDialog(
-            onDismissRequest = { deletingUuid = null },
-            title = { Text("Delete remark?") },
-            text = { Text("This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteRemark(uuid)
-                    deletingUuid = null
-                }) { Text("Delete") }
-            },
-            dismissButton = { TextButton(onClick = { deletingUuid = null }) { Text("Cancel") } }
-        )
     }
 
     if (showEditVisit) {
         EditVisitDialog(
             visit = visit,
+            existingRemark = remark?.remarkText ?: "",
             onDismiss = { showEditVisit = false },
-            onConfirm = { dateIso, publisher ->
+            onConfirm = { dateIso, publisher, remarkText ->
                 showEditVisit = false
-                viewModel.editVisit(visit.uuid, dateIso, publisher)
+                viewModel.editVisitWithRemark(visit.uuid, dateIso, publisher, remarkText, remark?.uuid)
             }
         )
     }
@@ -596,8 +538,9 @@ private fun VisitCard(visit: VisitEntity, viewModel: DeafProfileViewModel) {
 @Composable
 private fun EditVisitDialog(
     visit: VisitEntity,
+    existingRemark: String,
     onDismiss: () -> Unit,
-    onConfirm: (dateIso: String, publisher: String) -> Unit
+    onConfirm: (dateIso: String, publisher: String, remarks: String) -> Unit
 ) {
     val context = LocalContext.current
     // parseServerDateTime handles both this device's own ISO "T"-separated writes (a visit created
@@ -605,6 +548,7 @@ private fun EditVisitDialog(
     // visit comes back as - a plain LocalDateTime.parse() would throw on the latter.
     val initial = com.deafregistry.app.ui.chat.parseServerDateTime(visit.visitDateTime) ?: java.time.LocalDateTime.now()
     var publisher by remember { mutableStateOf(visit.conductorName ?: "") }
+    var remarks by remember { mutableStateOf(existingRemark) }
     var selectedDate by remember { mutableStateOf(initial.toLocalDate()) }
     var selectedTime by remember { mutableStateOf(initial.toLocalTime()) }
 
@@ -658,13 +602,21 @@ private fun EditVisitDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = remarks,
+                    onValueChange = { remarks = it },
+                    label = { Text("Remarks") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 val dateIso = java.time.LocalDateTime.of(selectedDate, selectedTime)
                     .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                onConfirm(dateIso, publisher.trim())
+                onConfirm(dateIso, publisher.trim(), remarks.trim())
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
