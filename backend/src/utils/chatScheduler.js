@@ -35,24 +35,35 @@ async function notifyParticipants(sessionId, message) {
 // admin/super_admin sets a recurring schedule up once (Control Panel > Chat Sessions > Recurring
 // Schedules) instead of re-creating the same one-off session every time. Runs every scheduler tick
 // (once/minute, same cadence as the other jobs here) rather than only at midnight, so a schedule
-// created or a server restart mid-day still catches up rather than skipping that day entirely -
-// last_generated_date guards against generating the same day's session twice.
+// created or a server restart mid-day still catches up rather than skipping that day entirely.
+//
+// Gated on "does a session for this schedule already exist for today" (a live NOT EXISTS check
+// against chat_sessions), not last_generated_date - that flag alone made the guard non-self-healing:
+// once set for today, it stayed set even if the session it refers to got deleted (e.g. an admin
+// deletes a generated session via Manage Chat Sessions, whether by mistake or to force a redo),
+// permanently blocking regeneration for the rest of that day even though "no session is currently
+// scheduled" was then literally true. last_generated_date is still stamped for display purposes,
+// it just no longer gates whether a new session gets created.
 //
 // end_time <= start_time means the schedule spans past midnight (e.g. 10 PM - 2 AM) rather than
-// being invalid (see chat.controller.js::validateRecurringSchedule) - OVERNIGHT_END below adds a
+// being invalid (see chat.controller.js::validateRecurringSchedule) - overnightEnd() below adds a
 // day to end_time's date in that case, everywhere end_datetime is computed or compared, so both
 // the generation cutoff and the stored session correctly reflect a real multi-hour window instead
 // of one that (read as same-day times) would already look like it ended in the past.
-const OVERNIGHT_END = `(${LOCAL_NOW}::date + end_time + CASE WHEN end_time <= start_time THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`;
+const overnightEnd = (alias) =>
+  `(${LOCAL_NOW}::date + ${alias}.end_time + CASE WHEN ${alias}.end_time <= ${alias}.start_time THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`;
 
 async function generateScheduledSessions() {
   const { rows } = await pool.query(
-    `SELECT id, session_name, description, start_time, end_time, retention_policy, created_by
-     FROM chat_recurring_schedules
-     WHERE is_active = true
-       AND EXTRACT(DOW FROM ${LOCAL_NOW})::int = ANY(days_of_week)
-       AND (last_generated_date IS NULL OR last_generated_date <> ${LOCAL_NOW}::date)
-       AND ${OVERNIGHT_END} > ${LOCAL_NOW}`
+    `SELECT rs.id, rs.session_name, rs.description, rs.start_time, rs.end_time, rs.retention_policy, rs.created_by
+     FROM chat_recurring_schedules rs
+     WHERE rs.is_active = true
+       AND EXTRACT(DOW FROM ${LOCAL_NOW})::int = ANY(rs.days_of_week)
+       AND ${overnightEnd('rs')} > ${LOCAL_NOW}
+       AND NOT EXISTS (
+         SELECT 1 FROM chat_sessions cs
+         WHERE cs.recurring_schedule_id = rs.id AND cs.start_datetime::date = ${LOCAL_NOW}::date
+       )`
   );
   for (const schedule of rows) {
     const { rows: sessionRows } = await pool.query(
