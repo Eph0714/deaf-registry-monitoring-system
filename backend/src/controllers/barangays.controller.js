@@ -45,4 +45,17 @@ const remove = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
-module.exports = { list, create, update, remove };
+// Unauthenticated - used by the public Sign Up form's Barangay dropdown, filtered by the
+// Municipality already chosen there. Same "no sensitive stats" reasoning as
+// municipalities.controller.js::publicList - just id/name.
+const publicList = asyncHandler(async (req, res) => {
+  const { municipality_id } = req.query;
+  if (!municipality_id) return res.status(400).json({ message: 'municipality_id is required' });
+  const { rows } = await pool.query(
+    'SELECT id, name FROM barangays WHERE municipality_id = $1 ORDER BY name ASC',
+    [municipality_id]
+  );
+  res.json(rows);
+});
+
+module.exports = { list, create, update, remove, publicList };

@@ -61,7 +61,7 @@ class ReportsViewModel(private val reportRepository: ReportRepository) : ViewMod
                     recentVisits = recentVisits, notVisited = notVisited
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "Could not load reports (are you online?): ${e.message}")
+                _uiState.value = _uiState.value.copy(isLoading = false, error = "Could not load reports (are you online?): ${com.deafregistry.app.util.friendlyMessage(e)}")
             }
         }
     }

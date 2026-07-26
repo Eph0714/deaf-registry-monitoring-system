@@ -25,6 +25,12 @@ data class TeacherDto(
     @SerializedName("updated_at") val updatedAt: String
 )
 
+/** Lightweight, unauthenticated shape returned by /municipalities/public and /barangays/public -
+ * used only by the pre-login Sign Up form's dropdowns (no deaf_count/updated_at, unlike the
+ * authenticated MunicipalityDto/BarangayDto above - registry size isn't exposed pre-login). */
+data class PublicMunicipalityDto(val id: Int, val name: String)
+data class PublicBarangayDto(val id: Int, val name: String)
+
 data class NameRequest(val name: String)
 data class BarangayRequest(val name: String, val municipality_id: Int)
 data class TeacherRequest(val name: String, val contact_number: String?)

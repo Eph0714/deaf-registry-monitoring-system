@@ -38,4 +38,12 @@ const remove = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
-module.exports = { list, create, update, remove };
+// Unauthenticated - used by the public Sign Up form's Municipality dropdown, before the user has
+// an account/token. Deliberately returns only id/name (not the deaf_count the authenticated list
+// endpoint includes) - registry size by municipality isn't something to expose pre-login.
+const publicList = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query('SELECT id, name FROM municipalities ORDER BY name ASC');
+  res.json(rows);
+});
+
+module.exports = { list, create, update, remove, publicList };

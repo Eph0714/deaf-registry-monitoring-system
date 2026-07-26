@@ -112,7 +112,7 @@ fun DeafProfileScreen(
             scope.launch {
                 runCatching { ExportUtils.writeImageToUri(context, uri, source) }
                     .onSuccess { Toast.makeText(context, "Saved", Toast.LENGTH_LONG).show() }
-                    .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                    .onFailure { Toast.makeText(context, "Download failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
                 isDownloadingPhoto = false
             }
         }

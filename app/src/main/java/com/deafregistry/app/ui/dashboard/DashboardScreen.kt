@@ -112,6 +112,8 @@ fun DashboardScreen(
     onOpenCalendar: () -> Unit,
     onOpenLocationSharing: () -> Unit,
     onOpenChat: () -> Unit,
+    onOpenPendingUsers: () -> Unit,
+    onOpenMunicipalityStatistics: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -124,15 +126,17 @@ fun DashboardScreen(
                 ServiceLocator.userRepository,
                 ServiceLocator.reportRepository,
                 ServiceLocator.settingsRepository,
-                ServiceLocator.networkMonitor
+                ServiceLocator.networkMonitor,
+                ServiceLocator.chatRepository
             )
         }
     )
     val state by viewModel.uiState.collectAsState()
     // The ViewModel survives navigating to Admin screens and back (same nav back-stack entry),
-    // so re-fetch the user/pending-approval counts on every visit - otherwise adding/removing a
-    // user or approving/declining a signup while off this screen leaves it showing a stale number.
-    LaunchedEffect(Unit) { viewModel.refreshUserCounts() }
+    // so re-fetch the user/pending-approval/unread-chat counts on every visit - otherwise
+    // adding/removing a user, approving/declining a signup, or reading chat messages elsewhere
+    // leaves this screen showing a stale number.
+    LaunchedEffect(Unit) { viewModel.refreshUserCounts(); viewModel.refreshUnreadChatCount() }
     val totalDeafRecords = state.municipalities.sumOf { it.deafCount }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -188,14 +192,14 @@ fun DashboardScreen(
         if (success) pendingPhotoFile?.let { file ->
             runCatching { ImageUtils.prepareSquareProfileImage(context, Uri.fromFile(file)) }
                 .onSuccess { pendingProfilePreview = it }
-                .onFailure { Toast.makeText(context, "Couldn't process photo: ${it.message}", Toast.LENGTH_LONG).show() }
+                .onFailure { Toast.makeText(context, "Couldn't process photo: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
         }
     }
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             runCatching { ImageUtils.prepareSquareProfileImage(context, uri) }
                 .onSuccess { pendingProfilePreview = it }
-                .onFailure { Toast.makeText(context, "Couldn't process photo: ${it.message}", Toast.LENGTH_LONG).show() }
+                .onFailure { Toast.makeText(context, "Couldn't process photo: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
         }
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -247,12 +251,17 @@ fun DashboardScreen(
                     IconButton(onClick = onOpenSearch) { Icon(Icons.Default.Search, contentDescription = "Search") }
                     // Conductors can open Control Panel too now, just with a reduced menu (App
                     // Update view-only, Theme Color for their own device) - see ControlPanelScreen.
-                    IconButton(onClick = onOpenControlPanel) {
+                    // When there's a pending-approval badge showing, tapping this icon goes
+                    // straight to Pending User Approvals instead of the full Control Panel - the
+                    // badge IS effectively "the notification," so it should open exactly what it's
+                    // about, not every admin module. With nothing pending, it's just the normal
+                    // Control Panel entry point.
+                    IconButton(onClick = { if (state.pendingApprovalCount > 0) onOpenPendingUsers() else onOpenControlPanel() }) {
                         if (state.pendingApprovalCount > 0) {
                             BadgedBox(badge = {
                                 Badge { Text(state.pendingApprovalCount.toString()) }
                             }) {
-                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel (${state.pendingApprovalCount} pending approvals)")
+                                Icon(Icons.Default.AdminPanelSettings, contentDescription = "Pending User Approvals (${state.pendingApprovalCount} pending)")
                             }
                         } else {
                             Icon(Icons.Default.AdminPanelSettings, contentDescription = "Control Panel")
@@ -372,7 +381,9 @@ fun DashboardScreen(
                             hasEventToday = hasEventToday,
                             onOpenLocationSharing = onOpenLocationSharing,
                             teamLocationCount = teamLocations.size,
-                            onOpenChat = onOpenChat
+                            onOpenChat = onOpenChat,
+                            unreadChatCount = state.unreadChatCount,
+                            onOpenMunicipalityStatistics = onOpenMunicipalityStatistics
                         )
                     }
 
@@ -467,7 +478,7 @@ fun DashboardScreen(
                         isUploading = true
                         scope.launch {
                             runCatching { ServiceLocator.authRepository.uploadProfilePhoto(file.absolutePath) }
-                                .onFailure { Toast.makeText(context, "Upload failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                                .onFailure { Toast.makeText(context, "Upload failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
                             isUploading = false
                             pendingProfilePreview = null
                         }
@@ -628,7 +639,9 @@ private fun DashboardQuickActionsRow(
     hasEventToday: Boolean,
     onOpenLocationSharing: () -> Unit,
     teamLocationCount: Int,
-    onOpenChat: () -> Unit
+    onOpenChat: () -> Unit,
+    unreadChatCount: Int,
+    onOpenMunicipalityStatistics: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
@@ -683,8 +696,14 @@ private fun DashboardQuickActionsRow(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardQuickActionTile("Chat", Icons.AutoMirrored.Filled.Chat, onOpenChat, Modifier.weight(1f))
-                Spacer(Modifier.weight(1f))
+                DashboardQuickActionTile(
+                    "Chat",
+                    Icons.AutoMirrored.Filled.Chat,
+                    onOpenChat,
+                    Modifier.weight(1f),
+                    badgeCount = unreadChatCount
+                )
+                DashboardQuickActionTile("Statistics", Icons.Default.BarChart, onOpenMunicipalityStatistics, Modifier.weight(1f))
             }
         }
     }

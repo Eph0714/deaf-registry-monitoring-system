@@ -101,6 +101,18 @@ class SettingsRepository(
             .apply()
     }
 
+    /** The highest chat_messages.id this device has actually seen (Chat Room screen open) -
+     * drives the unread-count badge on the Dashboard's Chat tile. Global rather than per-session:
+     * ids increment across the whole table regardless of which session they belong to, so a fresh
+     * session's messages are automatically "unseen" without needing to track anything per-session. */
+    fun lastSeenChatMessageId(): Int = prefs.getInt(KEY_LAST_SEEN_CHAT_MESSAGE_ID, 0)
+
+    fun setLastSeenChatMessageId(id: Int) {
+        if (id > lastSeenChatMessageId()) {
+            prefs.edit().putInt(KEY_LAST_SEEN_CHAT_MESSAGE_ID, id).apply()
+        }
+    }
+
     companion object {
         private const val DEFAULT_OVERDUE_DAYS = 30
         private const val KEY_OVERDUE_DAYS = "overdue_days"
@@ -111,5 +123,6 @@ class SettingsRepository(
         private const val KEY_CHAT_NOTIFICATIONS_ENABLED = "chat_notifications_enabled"
         private const val KEY_LAST_NOTIFIED_CHAT_SESSION_ID = "last_notified_chat_session_id"
         private const val KEY_LAST_NOTIFIED_CHAT_STATUS = "last_notified_chat_status"
+        private const val KEY_LAST_SEEN_CHAT_MESSAGE_ID = "last_seen_chat_message_id"
     }
 }

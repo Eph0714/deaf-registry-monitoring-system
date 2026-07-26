@@ -60,7 +60,7 @@ fun PasswordResetRequestsScreen(onBack: () -> Unit) {
     var newPasswordVisible by remember { mutableStateOf(false) }
 
     suspend fun reload() {
-        runCatching { requests = repo.passwordResetRequests() }.onFailure { error = it.message }
+        runCatching { requests = repo.passwordResetRequests() }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -95,7 +95,7 @@ fun PasswordResetRequestsScreen(onBack: () -> Unit) {
                             }) { Icon(Icons.Default.LockReset, contentDescription = "Reset Password") }
                             IconButton(onClick = {
                                 scope.launch {
-                                    runCatching { repo.resolvePasswordResetRequest(request.id, null) }.onFailure { error = it.message }
+                                    runCatching { repo.resolvePasswordResetRequest(request.id, null) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                                     reload()
                                 }
                             }) { Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.error) }
@@ -142,7 +142,7 @@ fun PasswordResetRequestsScreen(onBack: () -> Unit) {
                         val target = request
                         resolvingRequest = null
                         scope.launch {
-                            runCatching { repo.resolvePasswordResetRequest(target.id, newPassword) }.onFailure { error = it.message }
+                            runCatching { repo.resolvePasswordResetRequest(target.id, newPassword) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                             reload()
                         }
                     }

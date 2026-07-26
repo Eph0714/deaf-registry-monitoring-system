@@ -37,6 +37,13 @@ interface ApiService {
     @GET("users/locations")
     suspend fun getUserLocations(): List<UserLocationDto>
 
+    // Public reference data - unauthenticated, used only by the pre-login Sign Up form's dropdowns
+    @GET("municipalities/public")
+    suspend fun getPublicMunicipalities(): List<PublicMunicipalityDto>
+
+    @GET("barangays/public")
+    suspend fun getPublicBarangays(@Query("municipality_id") municipalityId: Int): List<PublicBarangayDto>
+
     // Municipalities
     @GET("municipalities")
     suspend fun getMunicipalities(): List<MunicipalityDto>

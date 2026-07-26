@@ -57,7 +57,7 @@ fun PhotoViewerDialog(photoUrl: String, fileName: String, onDismiss: () -> Unit)
             scope.launch {
                 runCatching { ExportUtils.writeImageToUri(context, uri, photoUrl) }
                     .onSuccess { Toast.makeText(context, "Saved", Toast.LENGTH_LONG).show() }
-                    .onFailure { Toast.makeText(context, "Download failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                    .onFailure { Toast.makeText(context, "Download failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
                 isDownloading = false
             }
         }

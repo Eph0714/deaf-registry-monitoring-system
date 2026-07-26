@@ -10,6 +10,7 @@ object Routes {
     const val LOCATION_SHARING = "location_sharing"
     const val CHAT = "chat"
     const val ADMIN_CHAT_SESSIONS = "admin_chat_sessions"
+    const val MUNICIPALITY_STATISTICS = "municipality_statistics"
     const val DEAF_PROFILE = "deaf/{uuid}"
     const val DEAF_EDITOR = "deaf_editor?uuid={uuid}&municipalityId={municipalityId}"
     const val SEARCH = "search"

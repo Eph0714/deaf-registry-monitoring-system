@@ -4,6 +4,7 @@ const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
 const { uploadPhoto: uploadPhotoToStorage } = require('../utils/photoStorage');
+const { usernameError, passwordError } = require('../utils/validation');
 
 function signToken(user) {
   return jwt.sign(
@@ -69,24 +70,36 @@ const logout = asyncHandler(async (req, res) => {
 });
 
 const signup = asyncHandler(async (req, res) => {
-  const { name, email, username, password, contact_number, location } = req.body;
-  if (!name || !email || !username || !password) {
-    return res.status(400).json({ message: 'name, email, username and password are required' });
+  const { name, username, password, contact_number, location } = req.body;
+  if (!name || !username || !password) {
+    return res.status(400).json({ message: 'name, username and password are required' });
   }
-  if (password.length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  const usernameProblem = usernameError(username);
+  if (usernameProblem) return res.status(400).json({ message: usernameProblem });
+  const passwordProblem = passwordError(password);
+  if (passwordProblem) return res.status(400).json({ message: passwordProblem });
+  if (!contact_number || !location) {
+    return res.status(400).json({ message: 'contact_number and location are required' });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const trimmedUsername = username.trim();
+  // Self-service signup no longer collects an email address (Username/Password only per the
+  // registration redesign) - users.email is still NOT NULL/UNIQUE though (kept for admin-created
+  // accounts and internal reference), so a placeholder derived from the now-guaranteed-unique
+  // username is synthesized here instead of asking for a real address. It's never used to send
+  // anything - this app has no email-sending capability at all (email verification was removed
+  // earlier in this project's history, see memory).
+  const placeholderEmail = `${trimmedUsername.toLowerCase()}@no-email.deafregistry.local`;
   const { rows } = await pool.query(
     `INSERT INTO users (name, email, username, password_hash, role, approval_status, contact_number, location)
      VALUES ($1, $2, $3, $4, 'conductor', 'pending', $5, $6)
      RETURNING id`,
-    [name, email, username, passwordHash, contact_number || null, location || null]
+    [name, placeholderEmail, trimmedUsername, passwordHash, contact_number, location]
   );
   const userId = rows[0].id;
 
-  await logAudit(userId, 'SIGNUP', 'user', userId, { email, username });
+  await logAudit(userId, 'SIGNUP', 'user', userId, { username: trimmedUsername });
   res.status(201).json({ message: 'Your request has been submitted. An administrator will review and approve your account.' });
 });
 

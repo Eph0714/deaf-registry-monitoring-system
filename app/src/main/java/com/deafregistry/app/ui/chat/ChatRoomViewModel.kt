@@ -10,6 +10,7 @@ import com.deafregistry.app.data.repository.SettingsRepository
 import com.deafregistry.app.data.session.SessionManager
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.util.NotificationHelper
+import com.deafregistry.app.util.friendlyMessage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,6 +111,9 @@ class ChatRoomViewModel(
             newMessages = runCatching { chatRepository.getMessages(activeSession.id, lastMessageId) }.getOrDefault(emptyList())
             if (newMessages.isNotEmpty()) {
                 lastMessageId = newMessages.last().id
+                // Marks these messages as seen for the Dashboard's unread-count badge - the Chat
+                // Room screen being open and actively polling IS "read" for this app's purposes.
+                settingsRepository.setLastSeenChatMessageId(newMessages.last().id)
             }
         }
 
@@ -210,7 +214,7 @@ class ChatRoomViewModel(
                         messages = _uiState.value.messages + it
                     )
                 }
-                .onFailure { _uiState.value = _uiState.value.copy(sending = false, sendError = it.message) }
+                .onFailure { _uiState.value = _uiState.value.copy(sending = false, sendError = friendlyMessage(it)) }
         }
     }
 

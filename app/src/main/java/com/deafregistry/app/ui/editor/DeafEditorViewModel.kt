@@ -133,6 +133,18 @@ class DeafEditorViewModel(
             _form.value = f.copy(error = "Full name, municipality and barangay are required")
             return
         }
+        if (f.latitude != null && (f.latitude < -90.0 || f.latitude > 90.0)) {
+            _form.value = f.copy(error = "Latitude must be between -90 and 90")
+            return
+        }
+        if (f.longitude != null && (f.longitude < -180.0 || f.longitude > 180.0)) {
+            _form.value = f.copy(error = "Longitude must be between -180 and 180")
+            return
+        }
+        if ((f.latitude == null) != (f.longitude == null)) {
+            _form.value = f.copy(error = "Please provide both latitude and longitude, or leave both blank")
+            return
+        }
         _form.value = f.copy(isSaving = true, error = null)
         viewModelScope.launch {
             try {
@@ -187,7 +199,7 @@ class DeafEditorViewModel(
                 _form.value = _form.value.copy(isSaving = false, saved = true)
                 runCatching { syncManager.sync() }
             } catch (e: Exception) {
-                _form.value = _form.value.copy(isSaving = false, error = "Save failed: ${e.message}")
+                _form.value = _form.value.copy(isSaving = false, error = com.deafregistry.app.util.friendlyMessage(e))
             }
         }
     }

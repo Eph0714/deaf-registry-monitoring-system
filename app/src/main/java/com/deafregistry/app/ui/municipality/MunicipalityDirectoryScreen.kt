@@ -352,7 +352,7 @@ fun MunicipalityDirectoryScreen(
                                 onEdit = { onEditProfile(row.individual.uuid) },
                                 onPrint = {
                                     runCatching { printIndividual(context, row) }
-                                        .onFailure { Toast.makeText(context, "Print failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                                        .onFailure { Toast.makeText(context, "Print failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
                                 }
                             )
                         }

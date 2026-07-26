@@ -76,7 +76,7 @@ fun LocationSharingSettingsScreen(onBack: () -> Unit) {
                         val result = runCatching { repo.updateLocationShareTtl(minutes) }
                         isSaving = false
                         result.onSuccess { message = "Saved" }
-                        result.onFailure { message = "Failed to save: ${it.message}" }
+                        result.onFailure { message = "Failed to save: ${com.deafregistry.app.util.friendlyMessage(it)}" }
                     }
                 },
                 enabled = !isSaving,

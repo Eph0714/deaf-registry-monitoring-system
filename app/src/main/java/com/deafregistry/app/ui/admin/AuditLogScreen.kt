@@ -45,7 +45,7 @@ fun AuditLogScreen(onBack: () -> Unit) {
     var showDeleteAllConfirm by remember { mutableStateOf(false) }
 
     suspend fun reload() {
-        runCatching { logs = repo.auditLogs(200) }.onFailure { error = it.message }
+        runCatching { logs = repo.auditLogs(200) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -93,7 +93,7 @@ fun AuditLogScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     showDeleteAllConfirm = false
                     scope.launch {
-                        runCatching { repo.deleteAllAuditLogs() }.onFailure { error = it.message }
+                        runCatching { repo.deleteAllAuditLogs() }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                         reload()
                     }
                 }) { Text("Delete All", color = MaterialTheme.colorScheme.error) }

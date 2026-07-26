@@ -158,7 +158,7 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
                             }
                             isSaving = false
                             result.onSuccess { message = "Saved" }
-                            result.onFailure { message = "Failed to save: ${it.message}" }
+                            result.onFailure { message = "Failed to save: ${com.deafregistry.app.util.friendlyMessage(it)}" }
                         }
                     },
                     enabled = !isSaving,

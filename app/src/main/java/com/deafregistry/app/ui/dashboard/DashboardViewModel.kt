@@ -9,6 +9,7 @@ import com.deafregistry.app.data.remote.dto.BySkillDto
 import com.deafregistry.app.data.remote.dto.ByStatusDto
 import com.deafregistry.app.data.remote.dto.NotVisitedDto
 import com.deafregistry.app.data.remote.dto.RecentVisitDto
+import com.deafregistry.app.data.repository.ChatRepository
 import com.deafregistry.app.data.repository.ReferenceDataRepository
 import com.deafregistry.app.data.repository.ReportRepository
 import com.deafregistry.app.data.repository.SettingsRepository
@@ -40,7 +41,8 @@ data class DashboardUiState(
     val pendingSyncCount: Int = 0,
     val updateInfo: AppVersionDto? = null,
     val showUpdateDialog: Boolean = false,
-    val overdueDaysThreshold: Int = 30
+    val overdueDaysThreshold: Int = 30,
+    val unreadChatCount: Int = 0
 )
 
 class DashboardViewModel(
@@ -50,7 +52,8 @@ class DashboardViewModel(
     private val userRepository: UserRepository,
     private val reportRepository: ReportRepository,
     private val settingsRepository: SettingsRepository,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val chatRepository: ChatRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -75,6 +78,7 @@ class DashboardViewModel(
 
         refreshUserCounts()
         refreshReportCards()
+        refreshUnreadChatCount()
 
         refreshPendingSyncCount()
         // Pull-only refresh on screen load - downloads fresh data but never pushes local edits.
@@ -162,13 +166,33 @@ class DashboardViewModel(
                 syncManager.sync()
                 _uiState.value = _uiState.value.copy(isSyncing = false)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isSyncing = false, syncError = "Sync failed: ${e.message}")
+                _uiState.value = _uiState.value.copy(isSyncing = false, syncError = "Sync failed: ${com.deafregistry.app.util.friendlyMessage(e)}")
             }
             refreshPendingSyncCount()
         }
         refreshUserCounts()
         refreshReportCards()
+        refreshUnreadChatCount()
         checkForUpdate()
+    }
+
+    /** Unread = messages in the currently-open chat session that arrived after this device last
+     * had the Chat Room screen open (see SettingsRepository.lastSeenChatMessageId). Drives the
+     * badge on the Dashboard's Chat tile - called on load, on Sync/pull-to-refresh, and whenever
+     * the Dashboard is revisited (see the LaunchedEffect in DashboardScreen), same cadence as
+     * refreshUserCounts(). */
+    fun refreshUnreadChatCount() {
+        viewModelScope.launch {
+            val result = runCatching {
+                val session = chatRepository.activeSession()
+                if (session != null && session.status == "open") {
+                    chatRepository.getMessages(session.id, settingsRepository.lastSeenChatMessageId()).size
+                } else {
+                    0
+                }
+            }
+            _uiState.value = _uiState.value.copy(unreadChatCount = result.getOrDefault(0))
+        }
     }
 
     /**

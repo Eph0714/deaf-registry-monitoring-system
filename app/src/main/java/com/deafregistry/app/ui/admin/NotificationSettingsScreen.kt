@@ -76,7 +76,7 @@ fun NotificationSettingsScreen(onBack: () -> Unit) {
                         val result = runCatching { repo.updateOverdueDays(days) }
                         isSaving = false
                         result.onSuccess { message = "Saved" }
-                        result.onFailure { message = "Failed to save: ${it.message}" }
+                        result.onFailure { message = "Failed to save: ${com.deafregistry.app.util.friendlyMessage(it)}" }
                     }
                 },
                 enabled = !isSaving,

@@ -37,14 +37,14 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
         if (uri != null) {
             runCatching { BackupUtil.backupTo(context, uri) }
                 .onSuccess { Toast.makeText(context, "Local backup saved", Toast.LENGTH_SHORT).show() }
-                .onFailure { Toast.makeText(context, "Backup failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                .onFailure { Toast.makeText(context, "Backup failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
         }
     }
     val openDocLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { BackupUtil.restoreFrom(context, uri) }
                 .onSuccess { Toast.makeText(context, "Restored. Restart the app to apply.", Toast.LENGTH_LONG).show() }
-                .onFailure { Toast.makeText(context, "Restore failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                .onFailure { Toast.makeText(context, "Restore failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
         }
     }
 
@@ -93,7 +93,7 @@ fun BackupRestoreScreen(onBack: () -> Unit) {
                         scope.launch {
                             runCatching { ServiceLocator.adminRepository.createServerBackup() }
                                 .onSuccess { Toast.makeText(context, "Server backup created", Toast.LENGTH_SHORT).show() }
-                                .onFailure { Toast.makeText(context, "Failed: ${it.message}", Toast.LENGTH_LONG).show() }
+                                .onFailure { Toast.makeText(context, "Failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
                         }
                     }) { Text("Trigger Server Backup") }
                 }

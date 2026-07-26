@@ -115,7 +115,7 @@ fun ResetAllDataScreen(onBack: () -> Unit) {
                                     onBack()
                                 }
                                 .onFailure {
-                                    Toast.makeText(context, "Reset failed: ${it.message}", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Reset failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show()
                                 }
                             isWorking = false
                         }

@@ -80,7 +80,7 @@ fun CalendarScreen(onBack: () -> Unit) {
         scope.launch {
             runCatching { ServiceLocator.calendarEventRepository.list() }
                 .onSuccess { events = it }
-                .onFailure { Toast.makeText(context, "Failed to load calendar: ${it.message}", Toast.LENGTH_LONG).show() }
+                .onFailure { Toast.makeText(context, "Failed to load calendar: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
         }
     }
     LaunchedEffect(Unit) { loadEvents() }
@@ -271,7 +271,7 @@ fun CalendarScreen(onBack: () -> Unit) {
                                     scope.launch {
                                         runCatching { ServiceLocator.calendarEventRepository.delete(event.id) }
                                             .onSuccess { loadEvents() }
-                                            .onFailure { Toast.makeText(context, "Failed to delete event: ${it.message}", Toast.LENGTH_LONG).show() }
+                                            .onFailure { Toast.makeText(context, "Failed to delete event: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
                                     }
                                     showDayDialog = false
                                 }) { Icon(Icons.Default.Delete, contentDescription = "Delete event") }
@@ -335,7 +335,7 @@ fun CalendarScreen(onBack: () -> Unit) {
                                         ServiceLocator.calendarEventRepository.update(existing.id, titleText.trim(), descriptionText.trim().ifBlank { null }, editDate.toString())
                                     }
                                 }.onSuccess { loadEvents() }
-                                    .onFailure { Toast.makeText(context, "Failed to save event: ${it.message}", Toast.LENGTH_LONG).show() }
+                                    .onFailure { Toast.makeText(context, "Failed to save event: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
                             }
                         }
                     }

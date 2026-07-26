@@ -306,6 +306,10 @@ fun DeafEditorScreen(
             Row {
                 var latText by remember(form.latitude) { mutableStateOf(form.latitude?.toString() ?: "") }
                 var lonText by remember(form.longitude) { mutableStateOf(form.longitude?.toString() ?: "") }
+                val lat = form.latitude
+                val lon = form.longitude
+                val latOutOfRange = lat != null && (lat < -90.0 || lat > 90.0)
+                val lonOutOfRange = lon != null && (lon < -180.0 || lon > 180.0)
                 OutlinedTextField(
                     value = latText,
                     onValueChange = { v ->
@@ -313,6 +317,8 @@ fun DeafEditorScreen(
                         viewModel.update { it.copy(latitude = v.toDoubleOrNull()) }
                     },
                     label = { Text("Latitude") },
+                    isError = latOutOfRange,
+                    supportingText = { if (latOutOfRange) Text("Must be between -90 and 90") },
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                     modifier = Modifier.weight(1f)
                 )
@@ -324,6 +330,8 @@ fun DeafEditorScreen(
                         viewModel.update { it.copy(longitude = v.toDoubleOrNull()) }
                     },
                     label = { Text("Longitude") },
+                    isError = lonOutOfRange,
+                    supportingText = { if (lonOutOfRange) Text("Must be between -180 and 180") },
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                     modifier = Modifier.weight(1f)
                 )
@@ -342,7 +350,7 @@ fun DeafEditorScreen(
                 }) {
                     Icon(Icons.Default.LocationOn, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
-                    Text("Capture")
+                    Text("Use Current GPS")
                 }
                 if (form.latitude != null) {
                     Spacer(Modifier.width(8.dp))

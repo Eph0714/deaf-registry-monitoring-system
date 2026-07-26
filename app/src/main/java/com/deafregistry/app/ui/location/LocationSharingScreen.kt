@@ -100,7 +100,7 @@ fun LocationSharingScreen(onBack: () -> Unit) {
             isSharingLocation = true
             runCatching { ServiceLocator.authRepository.shareLocation(coords.latitude, coords.longitude) }
                 .onSuccess { loadTeamLocations() }
-                .onFailure { Toast.makeText(context, "Failed to share location: ${it.message}", Toast.LENGTH_LONG).show() }
+                .onFailure { Toast.makeText(context, "Failed to share location: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
             isSharingLocation = false
         }
     }

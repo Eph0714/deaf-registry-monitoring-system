@@ -42,7 +42,7 @@ fun AdminPendingUsersScreen(onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
 
     suspend fun reload() {
-        runCatching { signups = repo.pendingSignups() }.onFailure { error = it.message }
+        runCatching { signups = repo.pendingSignups() }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -79,13 +79,13 @@ fun AdminPendingUsersScreen(onBack: () -> Unit) {
                             }
                             IconButton(onClick = {
                                 scope.launch {
-                                    runCatching { repo.approveSignup(signup.id) }.onFailure { error = it.message }
+                                    runCatching { repo.approveSignup(signup.id) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                                     reload()
                                 }
                             }) { Icon(Icons.Default.Check, contentDescription = "Approve") }
                             IconButton(onClick = {
                                 scope.launch {
-                                    runCatching { repo.rejectSignup(signup.id) }.onFailure { error = it.message }
+                                    runCatching { repo.rejectSignup(signup.id) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                                     reload()
                                 }
                             }) { Icon(Icons.Default.Close, contentDescription = "Decline", tint = MaterialTheme.colorScheme.error) }

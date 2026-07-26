@@ -79,6 +79,10 @@ class ReferenceDataRepository(
 
     suspend fun getAssignmentHistory(deafServerId: Int) = api.getAssignmentHistory(deafServerId)
 
+    /** Unauthenticated - for the pre-login Sign Up form's Municipality/Barangay dropdowns only. */
+    suspend fun getPublicMunicipalities() = api.getPublicMunicipalities()
+    suspend fun getPublicBarangays(municipalityId: Int) = api.getPublicBarangays(municipalityId)
+
     suspend fun bulkReassignTeacher(fromTeacherId: Int, toTeacherId: Int, reason: String?) =
         api.bulkReassignTeacher(BulkReassignRequest(fromTeacherId, toTeacherId, reason))
 }

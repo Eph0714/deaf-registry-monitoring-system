@@ -13,7 +13,6 @@ data class LoginResponse(val token: String, val user: UserDto)
 
 data class SignupRequest(
     val name: String,
-    val email: String,
     val username: String,
     val password: String,
     val contact_number: String? = null,

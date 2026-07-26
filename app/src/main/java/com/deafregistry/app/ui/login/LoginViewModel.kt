@@ -169,7 +169,7 @@ class LoginViewModel(
             } catch (e: LoginException) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "Login failed: ${e.message}")
+                _uiState.value = _uiState.value.copy(isLoading = false, error = "Login failed: ${com.deafregistry.app.util.friendlyMessage(e)}")
             }
         }
     }
@@ -214,7 +214,7 @@ class LoginViewModel(
             val result = runCatching { authRepository.forgotPassword(username, _uiState.value.forgotPasswordNote.trim().ifBlank { null }) }
             _uiState.value = _uiState.value.copy(
                 forgotPasswordSubmitting = false,
-                forgotPasswordResult = result.getOrElse { "Request failed: ${it.message}" }
+                forgotPasswordResult = result.getOrElse { "Request failed: ${com.deafregistry.app.util.friendlyMessage(it)}" }
             )
         }
     }

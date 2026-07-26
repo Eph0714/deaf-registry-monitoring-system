@@ -51,13 +51,12 @@ class AuthRepository(
 
     suspend fun signup(
         name: String,
-        email: String,
         username: String,
         password: String,
         contactNumber: String?,
         location: String?
     ): String {
-        val response = api.signup(SignupRequest(name, email, username, password, contactNumber, location))
+        val response = api.signup(SignupRequest(name, username, password, contactNumber, location))
         return response.message
     }
 

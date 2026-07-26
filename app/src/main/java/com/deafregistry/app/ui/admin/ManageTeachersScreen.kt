@@ -163,7 +163,7 @@ fun ManageTeachersScreen(onBack: () -> Unit) {
                 scope.launch {
                     val result = runCatching { repo.bulkReassignTeacher(fromId, toId, reason) }
                     result.onSuccess { bulkMessage = "${it.reassignedCount} individual(s) reassigned" }
-                    result.onFailure { bulkMessage = "Reassignment failed: ${it.message}" }
+                    result.onFailure { bulkMessage = "Reassignment failed: ${com.deafregistry.app.util.friendlyMessage(it)}" }
                     runCatching { repo.refreshAll() }
                     runCatching { ServiceLocator.deafIndividualRepository.refreshFromServer() }
                 }

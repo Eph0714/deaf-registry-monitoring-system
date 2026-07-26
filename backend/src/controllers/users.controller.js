@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
+const { usernameError, passwordError } = require('../utils/validation');
 
 // Guards against a plain admin editing/deactivating/deleting a Super Admin's account.
 async function isTargetSuperAdmin(id) {
@@ -23,6 +24,10 @@ const create = asyncHandler(async (req, res) => {
   if (!name || !email || !username || !password) {
     return res.status(400).json({ message: 'name, email, username and password are required' });
   }
+  const usernameProblem = usernameError(username);
+  if (usernameProblem) return res.status(400).json({ message: usernameProblem });
+  const passwordProblem = passwordError(password);
+  if (passwordProblem) return res.status(400).json({ message: passwordProblem });
   if (role === 'super_admin' && req.user.role !== 'super_admin') {
     return res.status(403).json({ message: 'Only a Super Administrator can create a Super Admin account' });
   }
@@ -42,9 +47,8 @@ const create = asyncHandler(async (req, res) => {
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, username, role, teacher_id, is_active } = req.body;
-  if (!username) {
-    return res.status(400).json({ message: 'username is required' });
-  }
+  const usernameProblem = usernameError(username);
+  if (usernameProblem) return res.status(400).json({ message: usernameProblem });
   if (role === 'super_admin' && req.user.role !== 'super_admin') {
     return res.status(403).json({ message: 'Only a Super Administrator can grant Super Admin access' });
   }

@@ -94,7 +94,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
     var viewingPhotoUser by remember { mutableStateOf<UserDto?>(null) }
 
     suspend fun reload() {
-        runCatching { users = repo.list() }.onFailure { error = it.message }
+        runCatching { users = repo.list() }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -182,7 +182,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                                 }) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
                                 IconButton(onClick = {
                                     scope.launch {
-                                        runCatching { repo.deactivate(user.id) }.onFailure { error = it.message }
+                                        runCatching { repo.deactivate(user.id) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                                         reload()
                                     }
                                 }) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
@@ -241,7 +241,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                     showAddDialog = false
                     scope.launch {
                         runCatching { repo.create(newName.trim(), newEmail.trim(), newUsername.trim(), newPassword, newRole, null) }
-                            .onFailure { error = it.message }
+                            .onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                         reload()
                     }
                 }) { Text("Add") }
@@ -305,10 +305,10 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                     editingUser = null
                     scope.launch {
                         runCatching { repo.update(target.id, editName.trim(), editUsername.trim(), editRole, editTeacherId, editActive) }
-                            .onFailure { error = it.message }
+                            .onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                         if (editNewPassword.isNotBlank()) {
                             runCatching { repo.resetPassword(target.id, editNewPassword) }
-                                .onFailure { error = it.message }
+                                .onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                         }
                         reload()
                     }
@@ -333,7 +333,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
                     val id = target.id
                     permanentDeleteTarget = null
                     scope.launch {
-                        runCatching { repo.permanentlyDelete(id) }.onFailure { error = it.message }
+                        runCatching { repo.permanentlyDelete(id) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                         reload()
                     }
                 }) { Text("Delete Permanently", color = MaterialTheme.colorScheme.error) }

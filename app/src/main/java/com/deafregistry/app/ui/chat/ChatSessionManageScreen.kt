@@ -63,7 +63,7 @@ fun ChatSessionManageScreen(onBack: () -> Unit) {
     var deleteTarget by remember { mutableStateOf<ChatSessionDto?>(null) }
 
     suspend fun reload() {
-        runCatching { sessions = repo.listSessions() }.onFailure { error = it.message }
+        runCatching { sessions = repo.listSessions() }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
     }
 
     LaunchedEffect(Unit) { reload() }
@@ -102,7 +102,7 @@ fun ChatSessionManageScreen(onBack: () -> Unit) {
                                 if (session.status == "scheduled" || session.status == "closed") {
                                     TextButton(onClick = {
                                         scope.launch {
-                                            runCatching { repo.openSession(session.id) }.onFailure { error = it.message }
+                                            runCatching { repo.openSession(session.id) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                                             reload()
                                         }
                                     }) { Text("Open") }
@@ -110,7 +110,7 @@ fun ChatSessionManageScreen(onBack: () -> Unit) {
                                 if (session.status == "open") {
                                     TextButton(onClick = {
                                         scope.launch {
-                                            runCatching { repo.closeSession(session.id) }.onFailure { error = it.message }
+                                            runCatching { repo.closeSession(session.id) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                                             reload()
                                         }
                                     }) { Text("Close") }
@@ -139,7 +139,7 @@ fun ChatSessionManageScreen(onBack: () -> Unit) {
                     runCatching {
                         if (target == null) repo.createSession(name, description, start, end, retention)
                         else repo.updateSession(target.id, name, description, start, end, retention)
-                    }.onFailure { error = it.message }
+                    }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                     reload()
                 }
             }
@@ -155,7 +155,7 @@ fun ChatSessionManageScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     clearTarget = null
                     scope.launch {
-                        runCatching { repo.clearMessages(target.id) }.onFailure { error = it.message }
+                        runCatching { repo.clearMessages(target.id) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                     }
                 }) { Text("Clear", color = MaterialTheme.colorScheme.error) }
             },
@@ -172,7 +172,7 @@ fun ChatSessionManageScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     deleteTarget = null
                     scope.launch {
-                        runCatching { repo.deleteSession(target.id) }.onFailure { error = it.message }
+                        runCatching { repo.deleteSession(target.id) }.onFailure { error = com.deafregistry.app.util.friendlyMessage(it) }
                         reload()
                     }
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
