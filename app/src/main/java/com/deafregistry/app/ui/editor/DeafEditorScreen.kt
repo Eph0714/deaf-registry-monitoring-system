@@ -153,9 +153,15 @@ fun DeafEditorScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
+                // imePadding() must come before verticalScroll() - it needs to shrink the
+                // available height first so the scroll viewport itself accounts for the
+                // keyboard. Applied after verticalScroll() (the previous order), it only adds
+                // padding at the tail of the scrollable content instead, so a field near the
+                // bottom - like Remarks/Notes - doesn't reliably get scrolled into view above
+                // the keyboard when focused.
+                .imePadding()
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
-                .imePadding()
         ) {
             val photoModel = form.localPhotoPath ?: form.existingPhotoUrl
             Row(verticalAlignment = Alignment.CenterVertically) {

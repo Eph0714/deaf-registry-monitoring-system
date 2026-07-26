@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,7 +44,16 @@ fun SignUpScreen(onBack: () -> Unit) {
         topBar = { AppTopBar(title = "Create Account", onBack = onBack) }
     ) { padding: PaddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                // imePadding() before verticalScroll() so the scroll viewport itself accounts
+                // for the keyboard's height - see DeafEditorScreen for the same fix and why
+                // the order matters (reversed, it only pads the scrollable content's tail
+                // instead of actually shrinking the visible viewport).
+                .imePadding()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (state.successMessage != null) {
