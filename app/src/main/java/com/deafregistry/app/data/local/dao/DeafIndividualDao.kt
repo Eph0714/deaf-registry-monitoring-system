@@ -21,6 +21,10 @@ data class DeafIndividualWithLastVisit(
     val lastVisitDate: String?
 )
 
+/** Used to map a visit's server-side deaf_individual_id back to the local uuid FK visits are
+ * actually keyed by - see VisitRepository.refreshAll(). */
+data class ServerIdUuid(val serverId: Int, val uuid: String)
+
 @Dao
 interface DeafIndividualDao {
 
@@ -185,4 +189,7 @@ interface DeafIndividualDao {
     // device gets reconciled locally, since upsertAll alone only ever adds/updates, never removes).
     @Query("DELETE FROM deaf_individuals WHERE serverId IS NOT NULL AND uuid NOT IN (:protectedUuids)")
     suspend fun clearSyncedExcept(protectedUuids: List<String>)
+
+    @Query("SELECT serverId, uuid FROM deaf_individuals WHERE serverId IS NOT NULL")
+    suspend fun getServerIdUuidPairs(): List<ServerIdUuid>
 }

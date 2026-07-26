@@ -56,6 +56,27 @@ class VisitRepository(
         visitDao.upsertAll(entities)
     }
 
+    /**
+     * Pulls every visit across the whole roster in one call, not just whichever individuals this
+     * device happens to have opened the profile of - refreshForDeaf() alone meant a visit recorded
+     * on another device only ever appeared locally once someone opened that exact individual's
+     * profile screen, so anything relying on the local `visits` table roster-wide (the "Last Visit"
+     * grouping/sort in All Deaf Records, per-row last-visited display, etc.) silently stayed stale
+     * on every other device. Called from SyncManager.pull()/sync() after the deaf-individuals
+     * refresh, since it needs local serverId->uuid mappings to already be up to date.
+     */
+    suspend fun refreshAll() {
+        val remote = api.getAllVisits()
+        val uuidByServerId = deafDao.getServerIdUuidPairs().associate { it.serverId to it.uuid }
+        val dirtyUuids = visitDao.getDirty().map { it.uuid }.toSet()
+        val entities = remote.mapNotNull { dto ->
+            if (dto.uuid in dirtyUuids) return@mapNotNull null
+            val deafUuid = uuidByServerId[dto.deafIndividualId] ?: return@mapNotNull null
+            toEntity(dto, deafUuid)
+        }
+        visitDao.upsertAll(entities)
+    }
+
     private fun toEntity(dto: VisitDto, deafUuid: String) = VisitEntity(
         uuid = dto.uuid,
         serverId = dto.id,

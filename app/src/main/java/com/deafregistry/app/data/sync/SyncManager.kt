@@ -36,6 +36,9 @@ class SyncManager(
         visitRepository.pushDirty()
         remarkRepository.pushDirty()
         deafIndividualRepository.refreshFromServer()
+        // Must come after the individuals refresh above - it needs each individual's serverId
+        // already mapped locally to attach a pulled visit to the right uuid.
+        runCatching { visitRepository.refreshAll() }
     }
 
     /**
@@ -49,6 +52,7 @@ class SyncManager(
         runCatching { settingsRepository.refreshTheme() }
         runCatching { authRepository.refreshProfile() }
         deafIndividualRepository.refreshFromServer()
+        runCatching { visitRepository.refreshAll() }
     }
 
     /** Count of locally-queued (not-yet-synced) records across all entity types. */

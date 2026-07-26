@@ -5,6 +5,7 @@ const remarksCtrl = require('../controllers/remarks.controller');
 
 const router = express.Router();
 
+router.get('/', requireAuth, visitsCtrl.listAll);
 router.delete('/:id', requireAuth, visitsCtrl.remove);
 router.get('/:visitId/remarks', requireAuth, remarksCtrl.listForVisit);
 router.post('/:visitId/remarks', requireAuth, remarksCtrl.create);

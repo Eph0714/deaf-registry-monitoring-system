@@ -172,6 +172,12 @@ interface ApiService {
     suspend fun updateLocationShareTtl(@Body request: LocationShareTtlDto): LocationShareTtlDto
 
     // Visits
+    // Every visit across the whole roster in one call - used by Sync/pull so a visit recorded on
+    // one device shows up on another without that device needing to have separately opened every
+    // individual's profile (see getVisits below, which only ever fetches one individual's visits).
+    @GET("visits")
+    suspend fun getAllVisits(): List<VisitDto>
+
     @GET("deaf-individuals/{deafId}/visits")
     suspend fun getVisits(@Path("deafId") deafId: Int): List<VisitDto>
 

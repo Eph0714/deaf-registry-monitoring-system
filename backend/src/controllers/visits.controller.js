@@ -3,6 +3,20 @@ const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
 
+// Every visit across every (non-deleted) individual, for the Android client's Sync button to pull
+// the whole roster's visit history in one call instead of only ever fetching visits for whichever
+// individual profile happens to have been opened on that specific device (see VisitRepository.kt's
+// refreshForDeaf, which stayed per-individual - this is the bulk companion it was missing).
+const listAll = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT v.*, t.name AS conductor_teacher_name FROM visits v
+     LEFT JOIN teachers t ON t.id = v.conductor_id
+     JOIN deaf_individuals d ON d.id = v.deaf_individual_id AND d.is_deleted = false
+     ORDER BY v.visit_datetime DESC`
+  );
+  res.json(rows);
+});
+
 const listForDeaf = asyncHandler(async (req, res) => {
   const { deafId } = req.params;
   const { rows } = await pool.query(
@@ -35,4 +49,4 @@ const remove = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
-module.exports = { listForDeaf, create, remove };
+module.exports = { listAll, listForDeaf, create, remove };
