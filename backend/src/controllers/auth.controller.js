@@ -18,7 +18,13 @@ const login = asyncHandler(async (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ message: 'Username and password are required' });
   }
-  const { rows } = await pool.query('SELECT * FROM users WHERE username = $1 AND is_active = true', [username]);
+  // Case-insensitive, and also falls back to matching on email - a lot of users are still typing
+  // the email they used to log in with before login switched from email to username, and there's
+  // no reason to make that a hard failure when the account is unambiguous either way.
+  const { rows } = await pool.query(
+    'SELECT * FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND is_active = true LIMIT 1',
+    [username]
+  );
   const user = rows[0];
   if (!user) {
     return res.status(401).json({ message: 'Invalid credentials' });

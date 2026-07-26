@@ -111,11 +111,16 @@ async function ensureUsernames(client) {
     console.log(`Backfilled username for user ${id}: ${username}`);
   }
 
+  // A case-insensitive unique index (not just a plain UNIQUE constraint) - login matches
+  // username case-insensitively (see auth.controller.js), so two accounts differing only by
+  // case would make that lookup ambiguous. Plain UNIQUE(username) would still allow "JohnDoe"
+  // and "johndoe" as separate rows; this index rejects that at the database level instead.
   try {
     await client.query('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_unique');
-    await client.query('ALTER TABLE users ADD CONSTRAINT users_username_unique UNIQUE (username)');
+    await client.query('DROP INDEX IF EXISTS users_username_lower_unique');
+    await client.query('CREATE UNIQUE INDEX users_username_lower_unique ON users (LOWER(username))');
   } catch (err) {
-    console.error('Could not add users_username_unique constraint (check for duplicate usernames):', err.message);
+    console.error('Could not add users_username_lower_unique index (check for case-variant duplicate usernames):', err.message);
   }
 }
 
