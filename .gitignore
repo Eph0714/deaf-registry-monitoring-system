@@ -12,6 +12,7 @@
 *.aab
 *.jks
 *.keystore
+keystore.properties
 app/build/
 
 # Local notes containing credentials - never commit these
