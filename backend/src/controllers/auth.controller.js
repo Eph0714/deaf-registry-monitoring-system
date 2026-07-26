@@ -82,8 +82,19 @@ const signup = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'contact_number and location are required' });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
   const trimmedUsername = username.trim();
+  // Explicit pre-check rather than relying solely on the DB constraint + generic error handler:
+  // the synthesized placeholder email below is deterministic from the username, so a duplicate
+  // username always also collides on email, and Postgres may report whichever constraint it
+  // happens to check first - which could surface "email already exists" for a signup that never
+  // even had an email field. Checking username first guarantees the message the user sees always
+  // matches the field they actually filled in.
+  const { rows: existing } = await pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [trimmedUsername]);
+  if (existing.length) {
+    return res.status(409).json({ message: 'This username is already taken. Please choose a different one.' });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
   // Self-service signup no longer collects an email address (Username/Password only per the
   // registration redesign) - users.email is still NOT NULL/UNIQUE though (kept for admin-created
   // accounts and internal reference), so a placeholder derived from the now-guaranteed-unique
