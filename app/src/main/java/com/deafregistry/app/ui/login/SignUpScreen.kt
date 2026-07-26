@@ -3,7 +3,6 @@ package com.deafregistry.app.ui.login
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,10 +11,14 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -135,29 +138,37 @@ fun SignUpScreen(onBack: () -> Unit) {
                     label = { Text("Password") },
                     singleLine = true,
                     visualTransformation = if (state.showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = viewModel::toggleShowPassword) {
+                            Icon(
+                                if (state.showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (state.showPassword) "Hide password" else "Show password"
+                            )
+                        }
+                    },
                     isError = state.attemptedSubmit && state.password.length < 8,
                     supportingText = { if (state.attemptedSubmit && state.password.length < 8) Text("At least 8 characters, with letters and numbers") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = state.showPassword, onCheckedChange = { viewModel.toggleShowPassword() })
-                    Text("Show Password", style = MaterialTheme.typography.bodyMedium)
-                }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = state.confirmPassword,
                     onValueChange = viewModel::onConfirmPasswordChange,
                     label = { Text("Confirm Password") },
                     singleLine = true,
                     visualTransformation = if (state.showConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = viewModel::toggleShowConfirmPassword) {
+                            Icon(
+                                if (state.showConfirmPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (state.showConfirmPassword) "Hide password" else "Show password"
+                            )
+                        }
+                    },
                     isError = state.attemptedSubmit && state.password != state.confirmPassword,
                     supportingText = { if (state.attemptedSubmit && state.password != state.confirmPassword) Text("Passwords do not match") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = state.showConfirmPassword, onCheckedChange = { viewModel.toggleShowConfirmPassword() })
-                    Text("Show Confirm Password", style = MaterialTheme.typography.bodyMedium)
-                }
 
                 state.error?.let {
                     Spacer(Modifier.height(8.dp))
