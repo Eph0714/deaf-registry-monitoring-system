@@ -24,12 +24,33 @@ class MainActivity : FragmentActivity() {
         // frame - even the pre-login screen should render in whichever theme was last set,
         // without needing an authenticated fetch first.
         ServiceLocator.settingsRepository.applyCachedTheme()
+        ServiceLocator.sessionManager.recordActivity()
         setContent {
             DeafRegistryTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     AppNavGraph(sessionManager = ServiceLocator.sessionManager)
                 }
             }
+        }
+    }
+
+    // Called by the system on every touch/key/trackball event that reaches this Activity while
+    // it's in the foreground - the standard Android signal for "the user is still actively using
+    // this screen," used here to drive the 5-minute idle auto-logout (see
+    // SessionManager.recordActivity()/shouldTimeOut() and AppNavGraph's periodic check).
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        ServiceLocator.sessionManager.recordActivity()
+    }
+
+    // Catches the case where the app was backgrounded (or the device locked) for longer than the
+    // idle timeout - onUserInteraction() alone wouldn't fire again until the user touches the
+    // screen, by which point they'd already see the app as if still logged in for a moment.
+    // Checking here logs them out the instant the app becomes visible again, before that happens.
+    override fun onResume() {
+        super.onResume()
+        if (ServiceLocator.sessionManager.shouldTimeOut()) {
+            ServiceLocator.sessionManager.clear()
         }
     }
 }

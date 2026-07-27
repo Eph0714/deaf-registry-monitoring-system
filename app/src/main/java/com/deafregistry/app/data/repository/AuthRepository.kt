@@ -106,6 +106,14 @@ class AuthRepository(
         api.shareLocation(ShareLocationRequest(latitude, longitude))
     }
 
+    suspend fun stopSharingLocation() {
+        val response = api.stopSharingLocation()
+        // Response<Unit> doesn't throw on a non-2xx by itself - without this check, a failed
+        // stop-sharing call would look like it succeeded and the UI would show it as no longer
+        // shared while the server still has the old location on record.
+        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+    }
+
     suspend fun getUserLocations(): List<UserLocationDto> = api.getUserLocations()
 
     /**

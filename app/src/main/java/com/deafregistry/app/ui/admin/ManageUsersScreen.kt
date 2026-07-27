@@ -200,7 +200,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
             title = { Text("Add User") },
             text = {
                 Column {
-                    OutlinedTextField(value = newName, onValueChange = { newName = it }, label = { Text("Name") })
+                    OutlinedTextField(value = newName, onValueChange = { newName = it.uppercase() }, label = { Text("Name") })
                     OutlinedTextField(value = newEmail, onValueChange = { newEmail = it }, label = { Text("Email") })
                     OutlinedTextField(value = newUsername, onValueChange = { newUsername = it }, label = { Text("Username") })
                     OutlinedTextField(
@@ -256,7 +256,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
             title = { Text("Edit User") },
             text = {
                 Column {
-                    OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Name") })
+                    OutlinedTextField(value = editName, onValueChange = { editName = it.uppercase() }, label = { Text("Name") })
                     OutlinedTextField(value = editUsername, onValueChange = { editUsername = it }, label = { Text("Username") })
                     Text(user.email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 

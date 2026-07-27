@@ -165,6 +165,16 @@ const shareLocation = asyncHandler(async (req, res) => {
   res.json(rows[0]);
 });
 
+// Manually clears this user's own shared location immediately, rather than waiting for it to age
+// out past the admin-configured TTL (see users.controller.js::listLocations / locationRetention.js).
+const stopSharingLocation = asyncHandler(async (req, res) => {
+  await pool.query(
+    `UPDATE users SET shared_latitude = NULL, shared_longitude = NULL, shared_location_at = NULL WHERE id = $1`,
+    [req.user.id]
+  );
+  res.status(204).send();
+});
+
 const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
@@ -179,4 +189,4 @@ const changePassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password updated' });
 });
 
-module.exports = { login, signup, me, changePassword, uploadPhoto, shareLocation, logout, forgotPassword };
+module.exports = { login, signup, me, changePassword, uploadPhoto, shareLocation, stopSharingLocation, logout, forgotPassword };

@@ -34,6 +34,9 @@ interface ApiService {
     @PUT("auth/share-location")
     suspend fun shareLocation(@Body request: ShareLocationRequest): ShareLocationResponse
 
+    @PUT("auth/stop-sharing-location")
+    suspend fun stopSharingLocation(): Response<Unit>
+
     @GET("users/locations")
     suspend fun getUserLocations(): List<UserLocationDto>
 

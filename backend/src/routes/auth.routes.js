@@ -13,5 +13,6 @@ router.post('/change-password', requireAuth, ctrl.changePassword);
 router.post('/logout', requireAuth, ctrl.logout);
 router.post('/photo', requireAuth, upload.single('photo'), ctrl.uploadPhoto);
 router.put('/share-location', requireAuth, ctrl.shareLocation);
+router.put('/stop-sharing-location', requireAuth, ctrl.stopSharingLocation);
 
 module.exports = router;

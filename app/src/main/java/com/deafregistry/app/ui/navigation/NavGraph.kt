@@ -1,6 +1,12 @@
 package com.deafregistry.app.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -8,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.deafregistry.app.data.session.SessionManager
+import kotlinx.coroutines.delay
 import com.deafregistry.app.ui.admin.ControlPanelScreen
 import com.deafregistry.app.ui.admin.AdminPendingUsersScreen
 import com.deafregistry.app.ui.admin.PasswordResetRequestsScreen
@@ -46,6 +53,29 @@ import java.net.URLDecoder
 fun AppNavGraph(sessionManager: SessionManager) {
     val navController: NavHostController = rememberNavController()
     val startDestination = if (sessionManager.isLoggedIn()) Routes.DASHBOARD else Routes.LOGIN
+
+    // Catches the app being left open and untouched (screen still on, no background/foreground
+    // transition to trigger MainActivity.onResume()'s check) - periodically re-checks the same
+    // 5-minute idle timeout while this graph is composed, i.e. for as long as the app is actually
+    // visible. Session going non-null -> null for ANY reason (auto-timeout here, or any other
+    // future call to SessionManager.clear()) is handled by the single reactive effect below,
+    // rather than duplicating "navigate to Login" at every place that could end a session.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            if (sessionManager.shouldTimeOut()) sessionManager.clear()
+        }
+    }
+
+    val session by sessionManager.session.collectAsState()
+    var wasLoggedIn by remember { mutableStateOf(sessionManager.isLoggedIn()) }
+    LaunchedEffect(session) {
+        val nowLoggedIn = session != null
+        if (wasLoggedIn && !nowLoggedIn) {
+            navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
+        }
+        wasLoggedIn = nowLoggedIn
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
 

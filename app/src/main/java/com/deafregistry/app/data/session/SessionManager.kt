@@ -130,6 +130,24 @@ class SessionManager(context: Context) {
 
     fun isLoggedIn(): Boolean = _session.value != null
 
+    // Deliberately in-memory only, like loggedOutThisSession above - an idle timer has no meaning
+    // across process restarts, and starting a fresh process is itself real activity. Updated from
+    // MainActivity.onUserInteraction() (any touch/key event reaching the app) and read by a
+    // periodic check in AppNavGraph plus MainActivity.onResume() (so returning to the app after
+    // being away past the timeout logs out immediately, not just on the next periodic tick).
+    @Volatile
+    private var lastActivityAt: Long = System.currentTimeMillis()
+
+    fun recordActivity() {
+        lastActivityAt = System.currentTimeMillis()
+    }
+
+    /** True once [IDLE_TIMEOUT_MS] has passed with no recorded activity while a session is active -
+     * never true when already logged out, so this can be checked unconditionally without an extra
+     * isLoggedIn() guard at every call site. */
+    fun shouldTimeOut(): Boolean =
+        isLoggedIn() && System.currentTimeMillis() - lastActivityAt >= IDLE_TIMEOUT_MS
+
     fun isAdmin(): Boolean = _session.value?.role == "admin" || _session.value?.role == "super_admin"
 
     fun isSuperAdmin(): Boolean = _session.value?.role == "super_admin"
@@ -209,5 +227,6 @@ class SessionManager(context: Context) {
         private const val KEY_LAST_REMEMBERED_USERNAME = "last_remembered_username"
         private const val KEY_REMEMBERED_PASSWORD_PREFIX = "remembered_password::"
         private const val KEY_BIOMETRIC_ENABLED_USERNAMES = "biometric_enabled_usernames"
+        const val IDLE_TIMEOUT_MS = 5 * 60 * 1000L
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
@@ -30,6 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,7 +68,12 @@ fun LocationSharingScreen(onBack: () -> Unit) {
     var myCoordinates by remember { mutableStateOf<GpsPoint?>(null) }
     var isCapturingLocation by remember { mutableStateOf(false) }
     var isSharingLocation by remember { mutableStateOf(false) }
+    var isStoppingSharing by remember { mutableStateOf(false) }
     var teamLocations by remember { mutableStateOf<List<com.deafregistry.app.data.remote.dto.UserLocationDto>>(emptyList()) }
+    // Whether *this* user currently has an active share, per the server's own record (not just
+    // local UI state) - teamLocations already excludes anything past the admin-configured TTL, so
+    // this stays accurate even if a share expired on its own since the screen last refreshed.
+    val isCurrentlySharing = teamLocations.any { it.id == ServiceLocator.sessionManager.session.value?.userId }
 
     fun loadTeamLocations() {
         scope.launch {
@@ -102,6 +109,15 @@ fun LocationSharingScreen(onBack: () -> Unit) {
                 .onSuccess { loadTeamLocations() }
                 .onFailure { Toast.makeText(context, "Failed to share location: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
             isSharingLocation = false
+        }
+    }
+    fun stopSharing() {
+        scope.launch {
+            isStoppingSharing = true
+            runCatching { ServiceLocator.authRepository.stopSharingLocation() }
+                .onSuccess { loadTeamLocations() }
+                .onFailure { Toast.makeText(context, "Failed to stop sharing: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
+            isStoppingSharing = false
         }
     }
     fun openInMaps(lat: Double, lng: Double, label: String) {
@@ -158,6 +174,17 @@ fun LocationSharingScreen(onBack: () -> Unit) {
                         Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Share")
+                    }
+                }
+                if (isCurrentlySharing) {
+                    OutlinedButton(onClick = { stopSharing() }, enabled = !isStoppingSharing) {
+                        if (isStoppingSharing) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        } else {
+                            Icon(Icons.Default.LocationOff, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Stop Sharing")
+                        }
                     }
                 }
             }

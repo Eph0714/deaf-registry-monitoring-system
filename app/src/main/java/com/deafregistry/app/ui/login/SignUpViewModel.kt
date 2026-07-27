@@ -56,7 +56,7 @@ class SignUpViewModel(
         }
     }
 
-    fun onNameChange(value: String) { _uiState.value = _uiState.value.copy(name = value, error = null) }
+    fun onNameChange(value: String) { _uiState.value = _uiState.value.copy(name = value.uppercase(), error = null) }
     fun onUsernameChange(value: String) { _uiState.value = _uiState.value.copy(username = value, error = null) }
     fun onPasswordChange(value: String) { _uiState.value = _uiState.value.copy(password = value, error = null) }
     fun onConfirmPasswordChange(value: String) { _uiState.value = _uiState.value.copy(confirmPassword = value, error = null) }
