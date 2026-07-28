@@ -14,14 +14,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import com.deafregistry.app.BuildConfig
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.common.AppTopBar
+import com.deafregistry.app.util.AppUpdateInstaller
+import com.deafregistry.app.util.UpdateInstallResult
 import kotlinx.coroutines.launch
 
 /**
@@ -59,6 +64,9 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
     var releaseNotes by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
+    var showLinkChoiceDialog by remember { mutableStateOf(false) }
+    var isInstallingUpdate by remember { mutableStateOf(false) }
+    var installProgress by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         runCatching { repo.getLatestAppVersion() }.onSuccess {
@@ -114,15 +122,7 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
                 readOnly = !isAdmin,
                 trailingIcon = {
                     if (apkUrl.isNotBlank()) {
-                        IconButton(onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)))
-                            }.onFailure {
-                                if (it is ActivityNotFoundException) {
-                                    Toast.makeText(context, "No app found to open this link", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        }) {
+                        IconButton(onClick = { showLinkChoiceDialog = true }) {
                             Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Open download link")
                         }
                     }
@@ -171,5 +171,84 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
                 Text(it, color = MaterialTheme.colorScheme.primary)
             }
         }
+    }
+
+    // Tapping the link no longer jumps straight to a browser - it offers what the user actually
+    // wants to do with it: hand it off to someone else, install the update on this device, or just
+    // download the raw APK file.
+    if (showLinkChoiceDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isInstallingUpdate) showLinkChoiceDialog = false },
+            title = { Text("Download Link") },
+            text = {
+                Column {
+                    Text(apkUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isInstallingUpdate) {
+                        Spacer(Modifier.height(12.dp))
+                        LinearProgressIndicator(progress = { installProgress / 100f }, modifier = Modifier.fillMaxWidth())
+                        Text("Downloading... $installProgress%", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isInstallingUpdate,
+                    onClick = {
+                        isInstallingUpdate = true
+                        scope.launch {
+                            val result = runCatching {
+                                AppUpdateInstaller.downloadAndInstall(context, apkUrl) { progress -> installProgress = progress }
+                            }
+                            isInstallingUpdate = false
+                            result
+                                .onSuccess {
+                                    when (it) {
+                                        UpdateInstallResult.INSTALLER_LAUNCHED -> showLinkChoiceDialog = false
+                                        UpdateInstallResult.PERMISSION_REQUESTED ->
+                                            Toast.makeText(context, "Allow installs from this app in Settings, then try again", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                                .onFailure {
+                                    Toast.makeText(context, "Update failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show()
+                                }
+                        }
+                    }
+                ) { Text("Update the System") }
+            },
+            dismissButton = {
+                Column {
+                    TextButton(
+                        enabled = !isInstallingUpdate,
+                        onClick = {
+                            showLinkChoiceDialog = false
+                            runCatching {
+                                context.startActivity(
+                                    Intent.createChooser(
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, apkUrl)
+                                        },
+                                        "Share download link"
+                                    )
+                                )
+                            }
+                        }
+                    ) { Text("Share") }
+                    TextButton(
+                        enabled = !isInstallingUpdate,
+                        onClick = {
+                            showLinkChoiceDialog = false
+                            runCatching {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)))
+                            }.onFailure {
+                                if (it is ActivityNotFoundException) {
+                                    Toast.makeText(context, "No app found to open this link", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    ) { Text("Download the App") }
+                }
+            }
+        )
     }
 }

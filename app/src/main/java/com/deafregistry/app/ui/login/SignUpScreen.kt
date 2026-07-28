@@ -1,5 +1,6 @@
 package com.deafregistry.app.ui.login
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,6 +46,11 @@ fun SignUpScreen(onBack: () -> Unit) {
         factory = GenericViewModelFactory { SignUpViewModel(ServiceLocator.authRepository, ServiceLocator.referenceDataRepository) }
     )
     val state by viewModel.uiState.collectAsState()
+
+    // Explicit handler for the system/gesture back button - without this, the NavHost's default
+    // back handling was sending users here all the way out of the app instead of back to Login
+    // (observed as "the whole application hides"), rather than just popping this one screen.
+    BackHandler(onBack = onBack)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

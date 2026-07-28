@@ -116,6 +116,11 @@ class AuthRepository(
 
     suspend fun getUserLocations(): List<UserLocationDto> = api.getUserLocations()
 
+    suspend fun stopSharingLocationFor(userId: Int) {
+        val response = api.stopSharingLocationFor(userId)
+        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+    }
+
     /**
      * Records the logout in the server-side Audit Trail before clearing the local session - best
      * effort only (wrapped so a failed/offline request never blocks the local logout, which must

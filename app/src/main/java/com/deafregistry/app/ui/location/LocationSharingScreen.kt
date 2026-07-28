@@ -30,8 +30,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,12 +68,11 @@ fun LocationSharingScreen(onBack: () -> Unit) {
     var myCoordinates by remember { mutableStateOf<GpsPoint?>(null) }
     var isCapturingLocation by remember { mutableStateOf(false) }
     var isSharingLocation by remember { mutableStateOf(false) }
-    var isStoppingSharing by remember { mutableStateOf(false) }
+    // Keyed by user id so stopping one row's share doesn't disable every other row's button too.
+    var stoppingSharingForUserId by remember { mutableStateOf<Int?>(null) }
     var teamLocations by remember { mutableStateOf<List<com.deafregistry.app.data.remote.dto.UserLocationDto>>(emptyList()) }
-    // Whether *this* user currently has an active share, per the server's own record (not just
-    // local UI state) - teamLocations already excludes anything past the admin-configured TTL, so
-    // this stays accurate even if a share expired on its own since the screen last refreshed.
-    val isCurrentlySharing = teamLocations.any { it.id == ServiceLocator.sessionManager.session.value?.userId }
+    val currentUserId = ServiceLocator.sessionManager.session.value?.userId
+    val isAdmin = ServiceLocator.sessionManager.isAdmin()
 
     fun loadTeamLocations() {
         scope.launch {
@@ -111,13 +110,21 @@ fun LocationSharingScreen(onBack: () -> Unit) {
             isSharingLocation = false
         }
     }
-    fun stopSharing() {
+    fun stopSharing(userId: Int) {
         scope.launch {
-            isStoppingSharing = true
-            runCatching { ServiceLocator.authRepository.stopSharingLocation() }
+            stoppingSharingForUserId = userId
+            // Only my own share can go through the self-service endpoint - stopping someone
+            // else's requires admin/super_admin, enforced server-side too (not just this if/else).
+            runCatching {
+                if (userId == currentUserId) {
+                    ServiceLocator.authRepository.stopSharingLocation()
+                } else {
+                    ServiceLocator.authRepository.stopSharingLocationFor(userId)
+                }
+            }
                 .onSuccess { loadTeamLocations() }
                 .onFailure { Toast.makeText(context, "Failed to stop sharing: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
-            isStoppingSharing = false
+            stoppingSharingForUserId = null
         }
     }
     fun openInMaps(lat: Double, lng: Double, label: String) {
@@ -176,17 +183,6 @@ fun LocationSharingScreen(onBack: () -> Unit) {
                         Text("Share")
                     }
                 }
-                if (isCurrentlySharing) {
-                    OutlinedButton(onClick = { stopSharing() }, enabled = !isStoppingSharing) {
-                        if (isStoppingSharing) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                        } else {
-                            Icon(Icons.Default.LocationOff, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Stop Sharing")
-                        }
-                    }
-                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -207,31 +203,53 @@ fun LocationSharingScreen(onBack: () -> Unit) {
                 )
             } else {
                 teamLocations.forEach { loc ->
+                    // Anyone can stop their own share; stopping someone else's is admin/super_admin
+                    // only - a plain conductor can't silently cut off a teammate's shared location.
+                    val canStop = loc.id == currentUserId || isAdmin
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { openInMaps(loc.sharedLatitude, loc.sharedLongitude, loc.name) }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                loc.name,
-                                style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
-                                color = MaterialTheme.colorScheme.primary
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { openInMaps(loc.sharedLatitude, loc.sharedLongitude, loc.name) }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Text(
-                                "${loc.role} — shared ${loc.sharedLocationAt}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    loc.name,
+                                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "${loc.role} — shared ${loc.sharedLocationAt}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        if (canStop) {
+                            if (stoppingSharingForUserId == loc.id) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                            } else {
+                                IconButton(
+                                    onClick = { stopSharing(loc.id) },
+                                    enabled = stoppingSharingForUserId == null
+                                ) {
+                                    Icon(Icons.Default.LocationOff, contentDescription = "Stop sharing")
+                                }
+                            }
                         }
                     }
                 }

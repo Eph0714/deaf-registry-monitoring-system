@@ -125,6 +125,18 @@ const listLocations = asyncHandler(async (req, res) => {
   res.json(rows);
 });
 
+// Admin/super_admin-only counterpart to auth.controller.js::stopSharingLocation, which only ever
+// clears the caller's own share - this lets an admin clear someone else's, e.g. a teammate who
+// left their location shared and isn't around to stop it themselves.
+const stopSharingLocationFor = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await pool.query(
+    `UPDATE users SET shared_latitude = NULL, shared_longitude = NULL, shared_location_at = NULL WHERE id = $1`,
+    [id]
+  );
+  res.status(204).send();
+});
+
 const listPendingSignups = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, name, email, username, contact_number, location, created_at
@@ -206,6 +218,6 @@ const resolvePasswordResetRequest = asyncHandler(async (req, res) => {
 
 module.exports = {
   list, create, update, resetPassword, remove, permanentlyDelete,
-  listPendingSignups, approveSignup, rejectSignup, listLocations,
+  listPendingSignups, approveSignup, rejectSignup, listLocations, stopSharingLocationFor,
   listPasswordResetRequests, resolvePasswordResetRequest
 };

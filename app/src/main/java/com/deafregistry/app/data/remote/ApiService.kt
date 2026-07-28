@@ -40,6 +40,11 @@ interface ApiService {
     @GET("users/locations")
     suspend fun getUserLocations(): List<UserLocationDto>
 
+    // Admin/super_admin only - clears someone else's shared location (see ctrl.stopSharingLocation
+    // above for the self-service version any user can call on their own).
+    @PUT("users/{id}/stop-sharing-location")
+    suspend fun stopSharingLocationFor(@Path("id") userId: Int): Response<Unit>
+
     // Public reference data - unauthenticated, used only by the pre-login Sign Up form's dropdowns
     @GET("municipalities/public")
     suspend fun getPublicMunicipalities(): List<PublicMunicipalityDto>
