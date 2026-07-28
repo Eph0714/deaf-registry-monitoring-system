@@ -65,6 +65,11 @@ const login = asyncHandler(async (req, res) => {
 });
 
 const logout = asyncHandler(async (req, res) => {
+  // Otherwise a logged-out user would keep showing as "online" (see users.controller.js::
+  // listOnlineUsers) for up to the full 5-minute window, since nothing else clears last_seen_at -
+  // an explicit logout should make someone disappear from "who's online" immediately, not just
+  // time out like an abandoned session would.
+  await pool.query('UPDATE users SET last_seen_at = NULL WHERE id = $1', [req.user.id]);
   await logAudit(req.user.id, 'LOGOUT', 'user', req.user.id, null);
   res.json({ message: 'Logged out' });
 });

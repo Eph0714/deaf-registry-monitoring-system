@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.deafregistry.app.data.session.SessionManager
+import com.deafregistry.app.di.ServiceLocator
 import kotlinx.coroutines.delay
 import com.deafregistry.app.ui.admin.ControlPanelScreen
 import com.deafregistry.app.ui.admin.AdminPendingUsersScreen
@@ -63,7 +64,9 @@ fun AppNavGraph(sessionManager: SessionManager) {
     LaunchedEffect(Unit) {
         while (true) {
             delay(30_000)
-            if (sessionManager.shouldTimeOut()) sessionManager.clear()
+            // Server logout (not a bare sessionManager.clear()) so last_seen_at is cleared too -
+            // see MainActivity.onResume()'s matching fix for why this matters for "who's online".
+            if (sessionManager.shouldTimeOut()) ServiceLocator.authRepository.logout()
         }
     }
 

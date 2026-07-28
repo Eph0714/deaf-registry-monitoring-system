@@ -9,9 +9,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import com.deafregistry.app.di.ServiceLocator
 import com.deafregistry.app.ui.navigation.AppNavGraph
 import com.deafregistry.app.ui.theme.DeafRegistryTheme
+import kotlinx.coroutines.launch
 
 // FragmentActivity (not the usual Compose ComponentActivity) - BiometricPrompt requires a
 // FragmentActivity host to attach its dialog fragment to.
@@ -50,7 +52,11 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         if (ServiceLocator.sessionManager.shouldTimeOut()) {
-            ServiceLocator.sessionManager.clear()
+            // Routed through AuthRepository.logout() (server call + local clear), not a bare
+            // sessionManager.clear() - the server also nulls last_seen_at on logout, so an
+            // idle-timed-out user disappears from "who's online" immediately instead of lingering
+            // there for up to 5 more minutes with nothing left to clear it.
+            lifecycleScope.launch { ServiceLocator.authRepository.logout() }
         }
     }
 }

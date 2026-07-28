@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -189,6 +191,7 @@ fun DashboardScreen(
     LaunchedEffect(Unit) { loadTeamLocations() }
 
     var onlineUsers by remember { mutableStateOf<List<com.deafregistry.app.data.remote.dto.OnlineUserDto>>(emptyList()) }
+    var showOnlineUsersDialog by remember { mutableStateOf(false) }
     fun loadOnlineUsers() {
         scope.launch {
             runCatching { ServiceLocator.authRepository.getOnlineUsers() }
@@ -197,11 +200,13 @@ fun DashboardScreen(
     }
     // Polled while the Dashboard is open rather than loaded once - "who's online" goes stale fast
     // (last_seen_at ages out of the 5-minute window on the server the moment someone stops using
-    // the app), so a one-time fetch would just show an increasingly wrong snapshot.
+    // the app, or drops out immediately on logout - see auth.controller.js::logout), so a one-time
+    // fetch would just show an increasingly wrong snapshot. 15s keeps this feeling close to live
+    // without hammering the server.
     LaunchedEffect(Unit) {
         while (true) {
             loadOnlineUsers()
-            kotlinx.coroutines.delay(30_000)
+            kotlinx.coroutines.delay(15_000)
         }
     }
     // The raw camera/gallery pick isn't uploaded directly anymore - it's first auto-cropped to a
@@ -364,7 +369,10 @@ fun DashboardScreen(
                     }
 
                     item {
-                        OnlineUsersCard(onlineUsers = onlineUsers)
+                        OnlineUsersButton(
+                            count = onlineUsers.size,
+                            onClick = { showOnlineUsersDialog = true }
+                        )
                     }
 
                     item {
@@ -622,6 +630,41 @@ fun DashboardScreen(
             }
         )
     }
+
+    if (showOnlineUsersDialog) {
+        AlertDialog(
+            onDismissRequest = { showOnlineUsersDialog = false },
+            title = { Text("Online Now (${onlineUsers.size})") },
+            text = {
+                if (onlineUsers.isEmpty()) {
+                    Text("No one else is currently online.", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        onlineUsers.forEach { user ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(Color(0xFF2E7D32), CircleShape)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(user.name, style = MaterialTheme.typography.bodyMedium)
+                                    Text(user.role, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showOnlineUsersDialog = false }) { Text("Close") }
+            }
+        )
+    }
 }
 
 @Composable
@@ -689,46 +732,42 @@ private fun SyncStatusRow(
 }
 
 @Composable
-private fun OnlineUsersCard(onlineUsers: List<com.deafregistry.app.data.remote.dto.OnlineUserDto>) {
+private fun OnlineUsersButton(count: Int, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(Modifier.fillMaxWidth().padding(12.dp)) {
-            Text(
-                "Online Now (${onlineUsers.size})",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
-            if (onlineUsers.isEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "No one else is currently online.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Spacer(Modifier.height(8.dp))
-                Row(
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .size(8.dp)
+                        .background(if (count > 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurfaceVariant, CircleShape)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Online Now", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    onlineUsers.forEach { user ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(Color(0xFF2E7D32), CircleShape)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(user.name, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
+                    Text(
+                        count.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
+                Spacer(Modifier.width(4.dp))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
