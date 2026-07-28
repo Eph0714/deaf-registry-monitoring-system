@@ -9,7 +9,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -80,34 +79,42 @@ fun LocationSharingScreen(onBack: () -> Unit) {
                 .onSuccess { teamLocations = it }
         }
     }
-    LaunchedEffect(Unit) { loadTeamLocations() }
+    // Auto-refreshed rather than loaded once - once someone taps Share, everyone else's screen
+    // should reflect it (and any further movement/expiry) without anyone needing to pull-to-refresh.
+    LaunchedEffect(Unit) {
+        while (true) {
+            loadTeamLocations()
+            kotlinx.coroutines.delay(10_000)
+        }
+    }
 
-    fun captureMyLocation() {
-        scope.launch {
-            isCapturingLocation = true
-            myCoordinates = LocationHelper.getCurrentLocation(context)
-            isCapturingLocation = false
-        }
+    suspend fun captureMyLocation(): GpsPoint? {
+        isCapturingLocation = true
+        val point = LocationHelper.getCurrentLocation(context)
+        myCoordinates = point
+        isCapturingLocation = false
+        return point
     }
-    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) captureMyLocation()
-    }
-    fun showMyCoordinates() {
-        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (hasPermission) {
-            captureMyLocation()
-        } else {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
-    fun shareMyLocation() {
-        val coords = myCoordinates ?: return
+    fun shareMyLocation(coords: GpsPoint) {
         scope.launch {
             isSharingLocation = true
             runCatching { ServiceLocator.authRepository.shareLocation(coords.latitude, coords.longitude) }
                 .onSuccess { loadTeamLocations() }
                 .onFailure { Toast.makeText(context, "Failed to share location: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show() }
             isSharingLocation = false
+        }
+    }
+    // Share now captures a fresh GPS fix and shares it in one tap - no more separate "Show my
+    // coordinates" step first (that button is gone; capture only ever existed to feed Share).
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) scope.launch { captureMyLocation()?.let { shareMyLocation(it) } }
+    }
+    fun captureAndShare() {
+        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission) {
+            scope.launch { captureMyLocation()?.let { shareMyLocation(it) } }
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
     fun stopSharing(userId: Int) {
@@ -164,24 +171,13 @@ fun LocationSharingScreen(onBack: () -> Unit) {
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { showMyCoordinates() }, enabled = !isCapturingLocation) {
-                    if (isCapturingLocation) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Show my coordinates")
-                    }
-                }
-                Button(onClick = { shareMyLocation() }, enabled = myCoordinates != null && !isSharingLocation) {
-                    if (isSharingLocation) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Share")
-                    }
+            Button(onClick = { captureAndShare() }, enabled = !isCapturingLocation && !isSharingLocation) {
+                if (isCapturingLocation || isSharingLocation) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Share")
                 }
             }
 
