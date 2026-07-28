@@ -4,12 +4,16 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -188,66 +192,75 @@ fun AppUpdateSettingsScreen(onBack: () -> Unit) {
                         LinearProgressIndicator(progress = { installProgress / 100f }, modifier = Modifier.fillMaxWidth())
                         Text("Downloading... $installProgress%", style = MaterialTheme.typography.bodySmall)
                     }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !isInstallingUpdate,
-                    onClick = {
-                        isInstallingUpdate = true
-                        scope.launch {
-                            val result = runCatching {
-                                AppUpdateInstaller.downloadAndInstall(context, apkUrl) { progress -> installProgress = progress }
+                    Spacer(Modifier.height(16.dp))
+                    // All three choices in one scrollable row so they sit side-by-side rather than
+                    // being split across AlertDialog's separate confirm/dismiss slots (which stacked
+                    // Share/Download vertically under a lone Update button, and didn't scroll).
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(
+                            enabled = !isInstallingUpdate,
+                            onClick = {
+                                showLinkChoiceDialog = false
+                                runCatching {
+                                    context.startActivity(
+                                        Intent.createChooser(
+                                            Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(Intent.EXTRA_TEXT, apkUrl)
+                                            },
+                                            "Share download link"
+                                        )
+                                    )
+                                }
                             }
-                            isInstallingUpdate = false
-                            result
-                                .onSuccess {
-                                    when (it) {
-                                        UpdateInstallResult.INSTALLER_LAUNCHED -> showLinkChoiceDialog = false
-                                        UpdateInstallResult.PERMISSION_REQUESTED ->
-                                            Toast.makeText(context, "Allow installs from this app in Settings, then try again", Toast.LENGTH_LONG).show()
+                        ) { Text("Share") }
+                        TextButton(
+                            enabled = !isInstallingUpdate,
+                            onClick = {
+                                isInstallingUpdate = true
+                                scope.launch {
+                                    val result = runCatching {
+                                        AppUpdateInstaller.downloadAndInstall(context, apkUrl) { progress -> installProgress = progress }
+                                    }
+                                    isInstallingUpdate = false
+                                    result
+                                        .onSuccess {
+                                            when (it) {
+                                                UpdateInstallResult.INSTALLER_LAUNCHED -> showLinkChoiceDialog = false
+                                                UpdateInstallResult.PERMISSION_REQUESTED ->
+                                                    Toast.makeText(context, "Allow installs from this app in Settings, then try again", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+                                        .onFailure {
+                                            Toast.makeText(context, "Update failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show()
+                                        }
+                                }
+                            }
+                        ) { Text("Update the System") }
+                        TextButton(
+                            enabled = !isInstallingUpdate,
+                            onClick = {
+                                showLinkChoiceDialog = false
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)))
+                                }.onFailure {
+                                    if (it is ActivityNotFoundException) {
+                                        Toast.makeText(context, "No app found to open this link", Toast.LENGTH_LONG).show()
                                     }
                                 }
-                                .onFailure {
-                                    Toast.makeText(context, "Update failed: ${com.deafregistry.app.util.friendlyMessage(it)}", Toast.LENGTH_LONG).show()
-                                }
-                        }
+                            }
+                        ) { Text("Download the App") }
                     }
-                ) { Text("Update the System") }
-            },
-            dismissButton = {
-                Column {
-                    TextButton(
-                        enabled = !isInstallingUpdate,
-                        onClick = {
-                            showLinkChoiceDialog = false
-                            runCatching {
-                                context.startActivity(
-                                    Intent.createChooser(
-                                        Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, apkUrl)
-                                        },
-                                        "Share download link"
-                                    )
-                                )
-                            }
-                        }
-                    ) { Text("Share") }
-                    TextButton(
-                        enabled = !isInstallingUpdate,
-                        onClick = {
-                            showLinkChoiceDialog = false
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)))
-                            }.onFailure {
-                                if (it is ActivityNotFoundException) {
-                                    Toast.makeText(context, "No app found to open this link", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        }
-                    ) { Text("Download the App") }
                 }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(enabled = !isInstallingUpdate, onClick = { showLinkChoiceDialog = false }) { Text("Cancel") }
             }
         )
     }
