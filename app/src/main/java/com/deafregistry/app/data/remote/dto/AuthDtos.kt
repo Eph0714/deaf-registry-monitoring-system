@@ -100,6 +100,12 @@ data class UserLocationDto(
     @SerializedName("shared_location_at") val sharedLocationAt: String
 )
 
+data class OnlineUserDto(
+    val id: Int,
+    val name: String,
+    val role: String
+)
+
 data class AuditLogDto(
     val id: Int,
     val action: String,

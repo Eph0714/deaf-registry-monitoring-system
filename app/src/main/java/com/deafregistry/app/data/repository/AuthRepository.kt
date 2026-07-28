@@ -5,6 +5,7 @@ import com.deafregistry.app.data.remote.dto.ChangePasswordRequest
 import com.deafregistry.app.data.remote.dto.ForgotPasswordRequest
 import com.deafregistry.app.data.remote.dto.LoginErrorBody
 import com.deafregistry.app.data.remote.dto.LoginRequest
+import com.deafregistry.app.data.remote.dto.OnlineUserDto
 import com.deafregistry.app.data.remote.dto.ShareLocationRequest
 import com.deafregistry.app.data.remote.dto.SignupRequest
 import com.deafregistry.app.data.remote.dto.UserDto
@@ -120,6 +121,8 @@ class AuthRepository(
         val response = api.stopSharingLocationFor(userId)
         if (!response.isSuccessful) throw retrofit2.HttpException(response)
     }
+
+    suspend fun getOnlineUsers(): List<OnlineUserDto> = api.getOnlineUsers()
 
     /**
      * Records the logout in the server-side Audit Trail before clearing the local session - best

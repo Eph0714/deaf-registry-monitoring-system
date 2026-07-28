@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get('/', requireAuth, requireAdmin, ctrl.list);
 router.get('/locations', requireAuth, ctrl.listLocations);
+router.get('/online', requireAuth, ctrl.listOnlineUsers);
 router.put('/:id/stop-sharing-location', requireAuth, requireAdmin, ctrl.stopSharingLocationFor);
 router.post('/', requireAuth, requireAdmin, ctrl.create);
 router.get('/pending-signups', requireAuth, requireAdmin, ctrl.listPendingSignups);

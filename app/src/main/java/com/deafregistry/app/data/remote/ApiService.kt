@@ -45,6 +45,9 @@ interface ApiService {
     @PUT("users/{id}/stop-sharing-location")
     suspend fun stopSharingLocationFor(@Path("id") userId: Int): Response<Unit>
 
+    @GET("users/online")
+    suspend fun getOnlineUsers(): List<OnlineUserDto>
+
     // Public reference data - unauthenticated, used only by the pre-login Sign Up form's dropdowns
     @GET("municipalities/public")
     suspend fun getPublicMunicipalities(): List<PublicMunicipalityDto>

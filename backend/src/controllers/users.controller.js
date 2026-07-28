@@ -125,6 +125,20 @@ const listLocations = asyncHandler(async (req, res) => {
   res.json(rows);
 });
 
+// Any authenticated user (not admin-gated, same call as listLocations above) - "online" means a
+// last_seen_at stamped within the last 5 minutes, matching the idle-auto-logout window already
+// used elsewhere in the app, so "online" here lines up with "hasn't been auto-logged-out yet".
+// last_seen_at is stamped on every authenticated request by requireAuth (see middleware/auth.js),
+// not a dedicated heartbeat the client has to remember to call.
+const listOnlineUsers = asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, name, role FROM users
+     WHERE is_active = true AND last_seen_at > NOW() - INTERVAL '5 minutes'
+     ORDER BY name`
+  );
+  res.json(rows);
+});
+
 // Admin/super_admin-only counterpart to auth.controller.js::stopSharingLocation, which only ever
 // clears the caller's own share - this lets an admin clear someone else's, e.g. a teammate who
 // left their location shared and isn't around to stop it themselves.
@@ -218,6 +232,6 @@ const resolvePasswordResetRequest = asyncHandler(async (req, res) => {
 
 module.exports = {
   list, create, update, resetPassword, remove, permanentlyDelete,
-  listPendingSignups, approveSignup, rejectSignup, listLocations, stopSharingLocationFor,
+  listPendingSignups, approveSignup, rejectSignup, listLocations, listOnlineUsers, stopSharingLocationFor,
   listPasswordResetRequests, resolvePasswordResetRequest
 };

@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,6 +79,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -184,6 +187,23 @@ fun DashboardScreen(
         }
     }
     LaunchedEffect(Unit) { loadTeamLocations() }
+
+    var onlineUsers by remember { mutableStateOf<List<com.deafregistry.app.data.remote.dto.OnlineUserDto>>(emptyList()) }
+    fun loadOnlineUsers() {
+        scope.launch {
+            runCatching { ServiceLocator.authRepository.getOnlineUsers() }
+                .onSuccess { onlineUsers = it }
+        }
+    }
+    // Polled while the Dashboard is open rather than loaded once - "who's online" goes stale fast
+    // (last_seen_at ages out of the 5-minute window on the server the moment someone stops using
+    // the app), so a one-time fetch would just show an increasingly wrong snapshot.
+    LaunchedEffect(Unit) {
+        while (true) {
+            loadOnlineUsers()
+            kotlinx.coroutines.delay(30_000)
+        }
+    }
     // The raw camera/gallery pick isn't uploaded directly anymore - it's first auto-cropped to a
     // square and downsized (ImageUtils.prepareSquareProfileImage), then held here so the user gets
     // a preview with Save/Cancel before anything is actually uploaded.
@@ -339,8 +359,12 @@ fun DashboardScreen(
                             isSyncing = state.isSyncing,
                             syncError = state.syncError,
                             pendingSyncCount = state.pendingSyncCount,
-                            onSync = { viewModel.sync(); loadTeamLocations(); loadCalendarEvents() }
+                            onSync = { viewModel.sync(); loadTeamLocations(); loadCalendarEvents(); loadOnlineUsers() }
                         )
+                    }
+
+                    item {
+                        OnlineUsersCard(onlineUsers = onlineUsers)
                     }
 
                     item {
@@ -658,6 +682,52 @@ private fun SyncStatusRow(
                     Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Sync")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnlineUsersCard(onlineUsers: List<com.deafregistry.app.data.remote.dto.OnlineUserDto>) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Text(
+                "Online Now (${onlineUsers.size})",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (onlineUsers.isEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "No one else is currently online.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    onlineUsers.forEach { user ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF2E7D32), CircleShape)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(user.name, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
             }
         }

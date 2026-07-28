@@ -57,6 +57,7 @@ async function ensureColumns(client) {
     { table: 'users', column: 'shared_longitude', definition: 'DOUBLE PRECISION NULL' },
     { table: 'users', column: 'shared_location_at', definition: 'TIMESTAMP NULL' },
     { table: 'users', column: 'last_login_at', definition: 'TIMESTAMP NULL' },
+    { table: 'users', column: 'last_seen_at', definition: 'TIMESTAMP NULL' },
     { table: 'users', column: 'username', definition: 'VARCHAR(50) NULL' },
     { table: 'chat_sessions', column: 'recurring_schedule_id', definition: 'INT NULL REFERENCES chat_recurring_schedules(id) ON DELETE SET NULL' },
     { table: 'chat_sessions', column: 'single_schedule_id', definition: 'INT NULL REFERENCES chat_single_schedules(id) ON DELETE SET NULL' }
