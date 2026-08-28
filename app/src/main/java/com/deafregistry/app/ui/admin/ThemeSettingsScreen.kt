@@ -56,7 +56,7 @@ fun ThemeSettingsScreen(onBack: () -> Unit) {
 
             ThemeOptionRow(
                 title = "Light",
-                subtitle = "White background, blue banner, black text",
+                subtitle = "White background, navy blue banner, black text",
                 selected = selected == AppThemeOption.LIGHT_BLUE,
                 onClick = { selected = AppThemeOption.LIGHT_BLUE }
             )
