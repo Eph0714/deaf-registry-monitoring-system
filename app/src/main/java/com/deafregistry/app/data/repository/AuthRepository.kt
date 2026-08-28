@@ -17,10 +17,12 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.HttpException
 import java.io.File
+import java.io.IOException
 
 sealed class LoginException(message: String) : Exception(message) {
     class AccountPending(message: String) : LoginException(message)
     class AccountRejected(message: String) : LoginException(message)
+    class OfflineLoginUnavailable(message: String) : LoginException(message)
 }
 
 class AuthRepository(
@@ -32,6 +34,10 @@ class AuthRepository(
         try {
             val response = api.login(request)
             sessionManager.save(response.token, response.user)
+            // Only place a device ever learns a valid username/password pair - captured here so
+            // login() below can still succeed offline for this account later (e.g. after the
+            // idle-timeout auto-logout fires while there's no connection to log back in with).
+            sessionManager.cacheOfflineLogin(username, password, response.token, response.user)
         } catch (e: HttpException) {
             if (e.code() == 403) {
                 val body = runCatching {
@@ -47,6 +53,21 @@ class AuthRepository(
                 }
             }
             throw e
+        } catch (e: IOException) {
+            // The server couldn't be reached at all (no connection, DNS failure, timeout - can't
+            // tell which from here, and it doesn't matter). Fall back to verifying against the
+            // last successful online login for this exact account on this device, if there is
+            // one - the whole point of this app being offline-first (see SyncManager) is
+            // undermined if a conductor with no signal can't even get past the login screen.
+            if (sessionManager.hasOfflineLoginCached(username)) {
+                if (sessionManager.tryOfflineLogin(username, password)) return
+                throw LoginException.OfflineLoginUnavailable(
+                    "Incorrect password. You're offline, so this can only be checked against the last password saved on this device."
+                )
+            }
+            throw LoginException.OfflineLoginUnavailable(
+                "You're offline and this device has no saved login for this account yet. Connect to the internet and log in once - after that, this account can log in offline."
+            )
         }
     }
 

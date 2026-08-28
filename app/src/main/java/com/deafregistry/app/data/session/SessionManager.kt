@@ -5,8 +5,11 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.deafregistry.app.data.remote.dto.UserDto
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.security.MessageDigest
+import java.security.SecureRandom
 
 data class Session(
     val token: String,
@@ -214,6 +217,91 @@ class SessionManager(context: Context) {
         return enabled && rememberedPasswordFor(username) != null
     }
 
+    /**
+     * What a device needs on hand to let a conductor log back in with no connection at all:
+     * a salted hash of the password (never the password itself) to verify against, plus the
+     * profile fields and token from the login this was captured on. The token will usually be
+     * stale by the time it's used offline - that's fine, every screen already reads local Room
+     * data regardless of token validity (see SyncManager); only actual server calls made during
+     * that offline session fail (with the existing "session expired" messaging), and a fresh
+     * online login replaces this cache with a valid token again.
+     */
+    private data class OfflineCredentialCache(
+        val passwordHash: String,
+        val salt: String,
+        val token: String,
+        val userId: Int,
+        val name: String,
+        val email: String,
+        val username: String,
+        val role: String,
+        val teacherId: Int?,
+        val photoUrl: String?
+    )
+
+    /**
+     * Captured after every successful *online* login - this is the only place a device ever
+     * learns that a username/password pair is genuinely valid, so offline login can only ever
+     * work for an account that has logged in online at least once on this device. Overwriting on
+     * every login keeps it current with password changes and refreshed tokens.
+     */
+    fun cacheOfflineLogin(username: String, password: String, token: String, user: UserDto) {
+        val salt = randomSalt()
+        val cache = OfflineCredentialCache(
+            passwordHash = hashPassword(password, salt),
+            salt = salt,
+            token = token,
+            userId = user.id,
+            name = user.name,
+            email = user.email,
+            username = user.username ?: username,
+            role = user.role,
+            teacherId = user.teacherId,
+            photoUrl = user.photoUrl
+        )
+        prefs.edit().putString(offlineCacheKey(username), Gson().toJson(cache)).apply()
+    }
+
+    fun hasOfflineLoginCached(username: String): Boolean = prefs.contains(offlineCacheKey(username))
+
+    /**
+     * Verifies [password] against the salted hash saved by [cacheOfflineLogin] for [username],
+     * and if it matches, restores that cached login as the active session (same effect as
+     * [save], just from cached data instead of a fresh server response). Returns false without
+     * touching the active session on any mismatch or missing cache - callers should only get
+     * here after a real login attempt failed to reach the server at all.
+     */
+    fun tryOfflineLogin(username: String, password: String): Boolean {
+        val json = prefs.getString(offlineCacheKey(username), null) ?: return false
+        val cache = runCatching { Gson().fromJson(json, OfflineCredentialCache::class.java) }.getOrNull() ?: return false
+        if (hashPassword(password, cache.salt) != cache.passwordHash) return false
+        prefs.edit()
+            .putString(KEY_TOKEN, cache.token)
+            .putInt(KEY_USER_ID, cache.userId)
+            .putString(KEY_NAME, cache.name)
+            .putString(KEY_EMAIL, cache.email)
+            .putString(KEY_USERNAME, cache.username)
+            .putString(KEY_ROLE, cache.role)
+            .putInt(KEY_TEACHER_ID, cache.teacherId ?: -1)
+            .putString(KEY_PHOTO_URL, cache.photoUrl)
+            .apply()
+        _session.value = loadFromPrefs()
+        return true
+    }
+
+    private fun offlineCacheKey(username: String) = "$KEY_OFFLINE_LOGIN_CACHE_PREFIX$username"
+
+    private fun randomSalt(): String {
+        val bytes = ByteArray(16)
+        SecureRandom().nextBytes(bytes)
+        return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun hashPassword(password: String, salt: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest((salt + password).toByteArray(Charsets.UTF_8))
+        return bytes.joinToString("") { "%02x".format(it) }
+    }
+
     companion object {
         private const val KEY_TOKEN = "token"
         private const val KEY_USER_ID = "user_id"
@@ -227,6 +315,7 @@ class SessionManager(context: Context) {
         private const val KEY_LAST_REMEMBERED_USERNAME = "last_remembered_username"
         private const val KEY_REMEMBERED_PASSWORD_PREFIX = "remembered_password::"
         private const val KEY_BIOMETRIC_ENABLED_USERNAMES = "biometric_enabled_usernames"
+        private const val KEY_OFFLINE_LOGIN_CACHE_PREFIX = "offline_login_cache::"
         const val IDLE_TIMEOUT_MS = 5 * 60 * 1000L
     }
 }
