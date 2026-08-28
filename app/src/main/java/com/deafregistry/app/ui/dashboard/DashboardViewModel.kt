@@ -69,9 +69,10 @@ class DashboardViewModel(
             .onEach { list -> _uiState.value = _uiState.value.copy(municipalities = list) }
             .launchIn(viewModelScope)
 
-        // Only tracks connectivity for the status row / enabling the Sync button - it does NOT
-        // auto-trigger a sync. Pushing local changes to the server happens exclusively when the
-        // user taps Sync (see sync() below), even once the device comes back online.
+        // Drives the status row / enabling the Sync button. The actual auto-sync-on-reconnect
+        // trigger lives at the process level (DeafRegistryApp/AutoSyncWorker), not here, so it
+        // keeps running even when this screen (and this ViewModel) isn't alive; this flow is
+        // display-only.
         networkMonitor.observe()
             .onEach { online -> _uiState.value = _uiState.value.copy(isOnline = online) }
             .launchIn(viewModelScope)

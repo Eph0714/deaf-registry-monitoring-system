@@ -19,10 +19,11 @@ class SyncManager(
      * Push order matters: a deaf individual must obtain a serverId before its visits can be
      * pushed, and a visit must obtain a serverId before its remarks can be pushed.
      *
-     * This is the only method that pushes locally-queued (dirty) records to the server - it
-     * must only ever be called from the user tapping the Sync button, never automatically.
-     * While offline, edits keep saving locally via Room regardless; they just queue as dirty
-     * until the user explicitly syncs.
+     * This is the only method that pushes locally-queued (dirty) records to the server. It runs
+     * both when the user taps the Sync button and automatically in the background as soon as
+     * the device has a connection (see AutoSyncWorker/DeafRegistryApp) - either way, while
+     * offline, edits keep saving locally via Room regardless; they just queue as dirty until one
+     * of those triggers fires.
      */
     suspend fun sync() {
         // Each step is independent - reference data or profile refresh failing (e.g. a slow
