@@ -6,6 +6,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -683,9 +686,57 @@ private fun SyncStatusRow(
     ) {
       Column {
         // Determinate, driven by SyncManager's real step-based progress (see SyncManager.sync())
-        // - not simulated - so the percentage shown always matches actual work done.
+        // - not simulated - so the percentage always matches actual work done. Custom-drawn
+        // (rather than the stock LinearProgressIndicator) for a taller pill track, rounded caps,
+        // a gradient fill along the theme's own primary/tertiary tokens (so it always matches
+        // whichever color theme is active - see ThemeState), and a smoothly animated fill instead
+        // of jumping between each sync step.
         if (isSyncing) {
-            LinearProgressIndicator(progress = { syncProgress / 100f }, modifier = Modifier.fillMaxWidth())
+            val animatedProgress by animateFloatAsState(
+                targetValue = syncProgress / 100f,
+                animationSpec = tween(durationMillis = 400),
+                label = "syncProgress"
+            )
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Syncing device data",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "$syncProgress%",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                                )
+                            )
+                    )
+                }
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -705,7 +756,7 @@ private fun SyncStatusRow(
                     }
                     Text(
                         when {
-                            isSyncing -> "Syncing… $syncProgress%"
+                            isSyncing -> "Syncing…"
                             !isOnline -> "Offline — changes are saved on this device"
                             else -> "Online"
                         },
