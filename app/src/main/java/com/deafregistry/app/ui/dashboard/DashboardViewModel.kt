@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 data class DashboardUiState(
     val municipalities: List<MunicipalityWithCount> = emptyList(),
     val isSyncing: Boolean = false,
+    val syncProgress: Int = 0,
     val syncError: String? = null,
     val isOnline: Boolean = true,
     val userName: String = "",
@@ -173,10 +174,10 @@ class DashboardViewModel(
      * "now showing the post-sync state."
      */
     fun sync() {
-        _uiState.value = _uiState.value.copy(isSyncing = true, syncError = null)
+        _uiState.value = _uiState.value.copy(isSyncing = true, syncProgress = 0, syncError = null)
         viewModelScope.launch {
             try {
-                syncManager.sync()
+                syncManager.sync { progress -> _uiState.value = _uiState.value.copy(syncProgress = progress) }
                 _uiState.value = _uiState.value.copy(isSyncing = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSyncing = false, syncError = "Sync failed: ${com.deafregistry.app.util.friendlyMessage(e)}")

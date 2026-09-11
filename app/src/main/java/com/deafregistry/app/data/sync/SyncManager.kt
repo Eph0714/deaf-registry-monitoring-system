@@ -25,23 +25,34 @@ class SyncManager(
      * offline, edits keep saving locally via Room regardless; they just queue as dirty until one
      * of those triggers fires.
      */
-    suspend fun sync() {
+    /**
+     * [onProgress] reports real, step-based percentage (steps completed / total steps) - not a
+     * simulated animation - so the Dashboard's sync progress bar reflects actual work done.
+     */
+    suspend fun sync(onProgress: (Int) -> Unit = {}) {
         // Each step is independent - reference data or profile refresh failing (e.g. a slow
         // Render cold start timing out on an early call) must not prevent deaf individuals from
         // being pushed/pulled, which is the part users actually notice as "Sync doesn't work".
-        runCatching { referenceDataRepository.refreshAll() }
-        runCatching { settingsRepository.refreshOverdueDays() }
-        runCatching { settingsRepository.refreshTheme() }
-        runCatching { authRepository.refreshProfile() }
-        deafIndividualRepository.pushDirty()
-        visitRepository.pushDirty()
-        remarkRepository.pushDirty()
-        deafIndividualRepository.refreshFromServer()
-        // Must come after the individuals refresh above - it needs each individual's serverId
-        // already mapped locally to attach a pulled visit to the right uuid. Remarks must come
-        // after visits for the same reason (needs visit serverId->uuid mappings).
-        runCatching { visitRepository.refreshAll() }
-        runCatching { remarkRepository.refreshAll() }
+        val steps = listOf<suspend () -> Unit>(
+            { runCatching { referenceDataRepository.refreshAll() } },
+            { runCatching { settingsRepository.refreshOverdueDays() } },
+            { runCatching { settingsRepository.refreshTheme() } },
+            { runCatching { authRepository.refreshProfile() } },
+            { deafIndividualRepository.pushDirty() },
+            { visitRepository.pushDirty() },
+            { remarkRepository.pushDirty() },
+            { deafIndividualRepository.refreshFromServer() },
+            // Must come after the individuals refresh above - it needs each individual's
+            // serverId already mapped locally to attach a pulled visit to the right uuid.
+            // Remarks must come after visits for the same reason (visit serverId->uuid mapping).
+            { runCatching { visitRepository.refreshAll() } },
+            { runCatching { remarkRepository.refreshAll() } }
+        )
+        onProgress(0)
+        steps.forEachIndexed { index, step ->
+            step()
+            onProgress((index + 1) * 100 / steps.size)
+        }
     }
 
     /**

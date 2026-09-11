@@ -361,6 +361,7 @@ fun DashboardScreen(
                         SyncStatusRow(
                             isOnline = state.isOnline,
                             isSyncing = state.isSyncing,
+                            syncProgress = state.syncProgress,
                             syncError = state.syncError,
                             pendingSyncCount = state.pendingSyncCount,
                             onSync = { viewModel.sync(); loadTeamLocations(); loadCalendarEvents(); loadOnlineUsers() }
@@ -669,6 +670,7 @@ fun DashboardScreen(
 private fun SyncStatusRow(
     isOnline: Boolean,
     isSyncing: Boolean,
+    syncProgress: Int,
     syncError: String?,
     pendingSyncCount: Int,
     onSync: () -> Unit
@@ -680,11 +682,10 @@ private fun SyncStatusRow(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
       Column {
-        // Sync has no percent-complete to report (see SyncManager.sync()), so this is
-        // indeterminate - its job is just to make "a sync is happening" obvious beyond the small
-        // spinner in the Sync button below, since that one is easy to miss.
+        // Determinate, driven by SyncManager's real step-based progress (see SyncManager.sync())
+        // - not simulated - so the percentage shown always matches actual work done.
         if (isSyncing) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            LinearProgressIndicator(progress = { syncProgress / 100f }, modifier = Modifier.fillMaxWidth())
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -704,7 +705,7 @@ private fun SyncStatusRow(
                     }
                     Text(
                         when {
-                            isSyncing -> "Syncing…"
+                            isSyncing -> "Syncing… $syncProgress%"
                             !isOnline -> "Offline — changes are saved on this device"
                             else -> "Online"
                         },
@@ -723,14 +724,12 @@ private fun SyncStatusRow(
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
+            // No spinner here anymore - the progress bar above (with its percentage in the label)
+            // is the one loading indicator for sync now, so the button just disables while busy.
             Button(onClick = onSync, enabled = !isSyncing) {
-                if (isSyncing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Sync")
-                }
+                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(if (isSyncing) "Syncing…" else "Sync")
             }
         }
       }
