@@ -113,7 +113,6 @@ fun DashboardScreen(
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenControlPanel: () -> Unit,
-    onOpenAppUpdate: () -> Unit,
     onOpenUserAccounts: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenLocationSharing: () -> Unit,
@@ -411,7 +410,6 @@ fun DashboardScreen(
                             onOpenSearch = onOpenSearch,
                             onOpenReports = onOpenReports,
                             onOpenMunicipality = onOpenDeafRecords,
-                            onOpenAppUpdate = onOpenAppUpdate,
                             onOpenCalendar = onOpenCalendar,
                             hasEventToday = hasEventToday,
                             onOpenLocationSharing = onOpenLocationSharing,
@@ -681,6 +679,13 @@ private fun SyncStatusRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
+      Column {
+        // Sync has no percent-complete to report (see SyncManager.sync()), so this is
+        // indeterminate - its job is just to make "a sync is happening" obvious beyond the small
+        // spinner in the Sync button below, since that one is easy to miss.
+        if (isSyncing) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -728,6 +733,7 @@ private fun SyncStatusRow(
                 }
             }
         }
+      }
     }
 }
 
@@ -778,7 +784,6 @@ private fun DashboardQuickActionsRow(
     onOpenSearch: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenMunicipality: () -> Unit,
-    onOpenAppUpdate: () -> Unit,
     onOpenCalendar: () -> Unit,
     hasEventToday: Boolean,
     onOpenLocationSharing: () -> Unit,
@@ -813,14 +818,6 @@ private fun DashboardQuickActionsRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, onOpenMunicipality, Modifier.weight(1f))
-                // Conductors can open this too now - AppUpdateSettingsScreen already renders
-                // view-only for them (no Save button), so there's nothing unsafe about showing it.
-                DashboardQuickActionTile("App Update", Icons.Default.SystemUpdate, onOpenAppUpdate, Modifier.weight(1f))
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
                 DashboardQuickActionTile(
                     "Calendar",
                     Icons.Default.CalendarMonth,
@@ -828,6 +825,11 @@ private fun DashboardQuickActionsRow(
                     Modifier.weight(1f),
                     showBell = hasEventToday
                 )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 DashboardQuickActionTile(
                     "Location Sharing",
                     Icons.Default.LocationOn,
@@ -835,11 +837,6 @@ private fun DashboardQuickActionsRow(
                     Modifier.weight(1f),
                     badgeCount = teamLocationCount
                 )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
                 DashboardQuickActionTile(
                     "Chat",
                     Icons.AutoMirrored.Filled.Chat,
@@ -847,6 +844,11 @@ private fun DashboardQuickActionsRow(
                     Modifier.weight(1f),
                     badgeCount = unreadChatCount
                 )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 DashboardQuickActionTile("Statistics", Icons.Default.BarChart, onOpenMunicipalityStatistics, Modifier.weight(1f))
             }
         }

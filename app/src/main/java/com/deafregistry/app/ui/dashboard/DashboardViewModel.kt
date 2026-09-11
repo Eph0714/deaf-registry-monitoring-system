@@ -16,6 +16,7 @@ import com.deafregistry.app.data.repository.SettingsRepository
 import com.deafregistry.app.data.repository.UserRepository
 import com.deafregistry.app.data.session.SessionManager
 import com.deafregistry.app.data.sync.SyncManager
+import com.deafregistry.app.util.GitHubUpdateChecker
 import com.deafregistry.app.util.NetworkMonitor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -93,15 +94,16 @@ class DashboardViewModel(
 
     /**
      * This app isn't distributed through Google Play, so there's no automatic update channel -
-     * App Update in Control Panel is what sets this value. Checked on Dashboard load and again
-     * every time the user taps Sync or pulls to refresh (see sync() below), so a version an
-     * admin just published shows up without needing to fully restart the app.
+     * this checks GitHub Releases directly instead (see GitHubUpdateChecker), so every user sees
+     * the prompt as soon as a release goes out, with no admin step in between. Checked on
+     * Dashboard load and again every time the user taps Sync or pulls to refresh (see sync()
+     * below), so a release published while the app is open still shows up without a restart.
      */
     private fun checkForUpdate() {
         viewModelScope.launch {
-            runCatching { settingsRepository.getLatestAppVersion() }
+            runCatching { GitHubUpdateChecker.fetchLatest() }
                 .onSuccess { info ->
-                    if (info.versionCode > BuildConfig.VERSION_CODE && !info.apkUrl.isNullOrBlank()) {
+                    if (info != null && info.versionCode > BuildConfig.VERSION_CODE && !info.apkUrl.isNullOrBlank()) {
                         _uiState.value = _uiState.value.copy(updateInfo = info, showUpdateDialog = true)
                     }
                 }

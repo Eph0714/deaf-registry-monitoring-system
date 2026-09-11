@@ -26,7 +26,6 @@ import com.deafregistry.app.ui.admin.ManageBarangaysScreen
 import com.deafregistry.app.ui.admin.ManageMunicipalitiesScreen
 import com.deafregistry.app.ui.admin.ManageTeachersScreen
 import com.deafregistry.app.ui.admin.ManageUsersScreen
-import com.deafregistry.app.ui.admin.AppUpdateSettingsScreen
 import com.deafregistry.app.ui.admin.ThemeSettingsScreen
 import com.deafregistry.app.ui.admin.BiometricLoginSettingsScreen
 import com.deafregistry.app.ui.admin.NotificationSettingsScreen
@@ -104,7 +103,6 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenReports = { navController.navigate(Routes.REPORTS) },
                 onOpenControlPanel = { navController.navigate(Routes.CONTROL_PANEL) },
-                onOpenAppUpdate = { navController.navigate(Routes.ADMIN_APP_UPDATE) },
                 onOpenUserAccounts = { navController.navigate(Routes.ADMIN_USERS) },
                 onOpenCalendar = { navController.navigate(Routes.CALENDAR) },
                 onOpenLocationSharing = { navController.navigate(Routes.LOCATION_SHARING) },
@@ -267,9 +265,6 @@ fun AppNavGraph(sessionManager: SessionManager) {
         }
         composable(Routes.ADMIN_NOTIFICATIONS) {
             NotificationSettingsScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Routes.ADMIN_APP_UPDATE) {
-            AppUpdateSettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.ADMIN_THEME) {
             ThemeSettingsScreen(onBack = { navController.popBackStack() })

@@ -31,8 +31,10 @@ data class AdminMenuItem(val title: String, val subtitle: String, val route: Str
 
 /**
  * Admin/Super Admin get every admin tool: reference data, system tools, and user/account
- * management. Conductors can open this screen too, but only see App Update (view-only) and
- * Theme Color (applies to their own device only) - see AppUpdateSettingsScreen/ThemeSettingsScreen.
+ * management. Conductors can open this screen too, but only see Theme Color (applies to their
+ * own device only) - see ThemeSettingsScreen. There's no App Update management here - the app
+ * checks GitHub Releases directly (see GitHubUpdateChecker) so every user, not just admins, sees
+ * the update prompt without anyone having to publish a version by hand.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +59,6 @@ fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             add(AdminMenuItem("BS Conductors", "Manage teacher/conductor records", "admin_teachers"))
             add(AdminMenuItem("Backup & Restore", "Local device backup and server database backup", "admin_backup"))
             add(AdminMenuItem("Notification Settings", "Configure overdue-visit alert threshold", "admin_notifications"))
-            add(AdminMenuItem("App Update", "Set the latest version so users get prompted to update", "admin_app_update"))
             add(AdminMenuItem("Theme Color", "Choose the color theme for your own device", "admin_theme"))
             add(AdminMenuItem("Biometric Login", "Register your fingerprint, face, or PIN for faster login", "biometric_settings"))
             add(AdminMenuItem("Location Sharing", "Set how long a shared location stays visible in Team Locations", "admin_location_sharing"))
@@ -70,7 +71,6 @@ fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 add(AdminMenuItem("Reset All Data", "Super Admin only - wipe all registry data on the server", "admin_reset_data"))
             }
         } else {
-            add(AdminMenuItem("App Update", "View the latest published version", "admin_app_update"))
             add(AdminMenuItem("Theme Color", "Choose the app theme for your own device", "admin_theme"))
             add(AdminMenuItem("Biometric Login", "Register your fingerprint, face, or PIN for faster login", "biometric_settings"))
         }

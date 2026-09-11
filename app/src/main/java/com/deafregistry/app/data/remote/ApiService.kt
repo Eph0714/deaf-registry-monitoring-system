@@ -167,12 +167,6 @@ interface ApiService {
     @PUT("settings/overdue-days")
     suspend fun updateOverdueDays(@Body request: OverdueDaysDto): OverdueDaysDto
 
-    @GET("settings/app-version")
-    suspend fun getAppVersion(): AppVersionDto
-
-    @PUT("settings/app-version")
-    suspend fun updateAppVersion(@Body request: AppVersionDto): AppVersionDto
-
     @GET("settings/theme")
     suspend fun getTheme(): ThemeDto
 
