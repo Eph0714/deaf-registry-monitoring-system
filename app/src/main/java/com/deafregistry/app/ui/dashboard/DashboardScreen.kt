@@ -123,6 +123,7 @@ fun DashboardScreen(
     onOpenPendingUsers: () -> Unit,
     onOpenMunicipalityStatistics: () -> Unit,
     onOpenProfile: (String) -> Unit,
+    onOpenAccountManagement: () -> Unit,
     onLogout: () -> Unit
 ) {
     val viewModel: DashboardViewModel = viewModel(
@@ -303,6 +304,7 @@ fun DashboardScreen(
                         photoUrl = photoUrl,
                         onViewProfile = { showViewProfileDialog = true },
                         onUpdatePhoto = { showPhotoSourceDialog = true },
+                        onAccountManagement = onOpenAccountManagement,
                         onLogout = { showLogoutConfirm = true }
                     )
                 }

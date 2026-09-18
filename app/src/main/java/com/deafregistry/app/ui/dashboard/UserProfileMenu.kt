@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,6 +52,7 @@ fun UserProfileMenu(
     photoUrl: String?,
     onViewProfile: () -> Unit,
     onUpdatePhoto: () -> Unit,
+    onAccountManagement: () -> Unit,
     onLogout: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -116,6 +118,11 @@ fun UserProfileMenu(
                 text = { Text("Update Profile Image") },
                 leadingIcon = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
                 onClick = { expanded = false; onUpdatePhoto() }
+            )
+            DropdownMenuItem(
+                text = { Text("Account Management") },
+                leadingIcon = { Icon(Icons.Default.ManageAccounts, contentDescription = null) },
+                onClick = { expanded = false; onAccountManagement() }
             )
             HorizontalDivider()
             DropdownMenuItem(

@@ -185,13 +185,39 @@ const changePassword = asyncHandler(async (req, res) => {
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ message: 'currentPassword and newPassword are required' });
   }
+  const passwordProblem = passwordError(newPassword);
+  if (passwordProblem) return res.status(400).json({ message: passwordProblem });
   const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
   const user = rows[0];
   const valid = await bcrypt.compare(currentPassword, user.password_hash);
-  if (!valid) return res.status(401).json({ message: 'Current password is incorrect' });
+  // 400, not 401 - this app's clients treat a 401 as "session expired, log in again" (see
+  // middleware/auth.js), and an incorrect current-password guess here has nothing to do with the
+  // caller's own auth token, which is already known valid via requireAuth by this point.
+  if (!valid) return res.status(400).json({ message: 'Current password is incorrect' });
   const newHash = await bcrypt.hash(newPassword, 10);
   await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, user.id]);
+  await logAudit(req.user.id, 'CHANGE_PASSWORD', 'user', user.id, null);
   res.json({ message: 'Password updated' });
 });
 
-module.exports = { login, signup, me, changePassword, uploadPhoto, shareLocation, stopSharingLocation, logout, forgotPassword };
+// Self-service username change - a user can only ever change their own (req.user.id from the JWT),
+// never another account's. No DB-level UNIQUE constraint on users.username (see schema.pg.sql), so
+// uniqueness is enforced here the same way signup() enforces it for new accounts.
+const changeUsername = asyncHandler(async (req, res) => {
+  const { newUsername } = req.body;
+  const usernameProblem = usernameError(newUsername);
+  if (usernameProblem) return res.status(400).json({ message: usernameProblem });
+  const trimmed = newUsername.trim();
+  const { rows: existing } = await pool.query(
+    'SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2',
+    [trimmed, req.user.id]
+  );
+  if (existing.length) {
+    return res.status(409).json({ message: 'This username is already taken. Please choose a different one.' });
+  }
+  await pool.query('UPDATE users SET username = $1 WHERE id = $2', [trimmed, req.user.id]);
+  await logAudit(req.user.id, 'CHANGE_USERNAME', 'user', req.user.id, { newUsername: trimmed });
+  res.json({ message: 'Username updated' });
+});
+
+module.exports = { login, signup, me, changePassword, changeUsername, uploadPhoto, shareLocation, stopSharingLocation, logout, forgotPassword };

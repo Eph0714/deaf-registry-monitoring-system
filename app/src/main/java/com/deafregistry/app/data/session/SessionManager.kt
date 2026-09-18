@@ -289,6 +289,63 @@ class SessionManager(context: Context) {
         return true
     }
 
+    /**
+     * Keeps this device's Remember Password / offline-login / Biometric Login caches in sync after
+     * the logged-in user changes their own username via Account Management - those caches are all
+     * keyed by username, so without this they'd stay indexed under the now-stale old username and
+     * silently stop offering auto-fill / offline login / biometric login for the new one.
+     */
+    fun renameCachedCredentials(oldUsername: String, newUsername: String) {
+        if (oldUsername == newUsername) return
+        val password = rememberedPasswordFor(oldUsername)
+        val wasBiometricEnabled = (prefs.getStringSet(KEY_BIOMETRIC_ENABLED_USERNAMES, emptySet()) ?: emptySet()).contains(oldUsername)
+        val offlineCacheJson = prefs.getString(offlineCacheKey(oldUsername), null)
+        val wasLastRemembered = lastRememberedUsername() == oldUsername
+
+        if (password != null) {
+            forgetCredentials(oldUsername)
+            rememberCredentials(newUsername, password)
+            if (wasLastRemembered) {
+                prefs.edit().putString(KEY_LAST_REMEMBERED_USERNAME, newUsername).apply()
+            }
+            if (wasBiometricEnabled) setBiometricEnabled(newUsername, true)
+        }
+        if (offlineCacheJson != null) {
+            prefs.edit()
+                .putString(offlineCacheKey(newUsername), offlineCacheJson)
+                .remove(offlineCacheKey(oldUsername))
+                .apply()
+        }
+    }
+
+    /**
+     * Re-caches the Remember Password / offline-login entries for the current session's username
+     * with a newly-changed password, so a subsequent offline login or auto-fill on this device uses
+     * the password that's now actually valid instead of the one it replaced.
+     */
+    fun refreshCachedPasswordAfterChange(newPassword: String) {
+        val current = _session.value ?: return
+        if (rememberedPasswordFor(current.username) != null) {
+            rememberCredentials(current.username, newPassword)
+        }
+        if (hasOfflineLoginCached(current.username)) {
+            cacheOfflineLogin(
+                current.username,
+                newPassword,
+                current.token,
+                com.deafregistry.app.data.remote.dto.UserDto(
+                    id = current.userId,
+                    name = current.name,
+                    email = current.email,
+                    username = current.username,
+                    role = current.role,
+                    teacherId = current.teacherId,
+                    photoUrl = current.photoUrl
+                )
+            )
+        }
+    }
+
     private fun offlineCacheKey(username: String) = "$KEY_OFFLINE_LOGIN_CACHE_PREFIX$username"
 
     private fun randomSalt(): String {

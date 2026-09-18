@@ -2,6 +2,7 @@ package com.deafregistry.app.data.repository
 
 import com.deafregistry.app.data.remote.ApiService
 import com.deafregistry.app.data.remote.dto.ChangePasswordRequest
+import com.deafregistry.app.data.remote.dto.ChangeUsernameRequest
 import com.deafregistry.app.data.remote.dto.ForgotPasswordRequest
 import com.deafregistry.app.data.remote.dto.LoginErrorBody
 import com.deafregistry.app.data.remote.dto.LoginRequest
@@ -91,6 +92,17 @@ class AuthRepository(
 
     suspend fun changePassword(current: String, newPassword: String) {
         api.changePassword(ChangePasswordRequest(current, newPassword))
+        // Keeps Remember Password / offline-login on this device valid against the new password -
+        // otherwise the next offline login attempt (or autofill) would still try the old one.
+        sessionManager.refreshCachedPasswordAfterChange(newPassword)
+    }
+
+    /** Self-service username change for the logged-in user - see AccountManagementViewModel. */
+    suspend fun changeUsername(newUsername: String) {
+        val oldUsername = sessionManager.session.value?.username
+        api.changeUsername(ChangeUsernameRequest(newUsername))
+        refreshProfile()
+        if (oldUsername != null) sessionManager.renameCachedCredentials(oldUsername, newUsername.trim())
     }
 
     suspend fun uploadProfilePhoto(filePath: String) {

@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.deafregistry.app.data.session.SessionManager
+import com.deafregistry.app.ui.account.AccountManagementScreen
 import com.deafregistry.app.di.ServiceLocator
 import kotlinx.coroutines.delay
 import com.deafregistry.app.ui.admin.ControlPanelScreen
@@ -110,12 +111,17 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenPendingUsers = { navController.navigate(Routes.ADMIN_PENDING_USERS) },
                 onOpenMunicipalityStatistics = { navController.navigate(Routes.MUNICIPALITY_STATISTICS) },
                 onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
+                onOpenAccountManagement = { navController.navigate(Routes.ACCOUNT_MANAGEMENT) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
             )
+        }
+
+        composable(Routes.ACCOUNT_MANAGEMENT) {
+            AccountManagementScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.CALENDAR) {

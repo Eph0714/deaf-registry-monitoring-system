@@ -21,6 +21,9 @@ interface ApiService {
     @POST("auth/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequest): ResponseBody
 
+    @POST("auth/change-username")
+    suspend fun changeUsername(@Body request: ChangeUsernameRequest): MessageResponse
+
     @POST("auth/logout")
     suspend fun logout(): ResponseBody
 

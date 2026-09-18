@@ -10,6 +10,7 @@ router.post('/signup', ctrl.signup);
 router.post('/forgot-password', ctrl.forgotPassword);
 router.get('/me', requireAuth, ctrl.me);
 router.post('/change-password', requireAuth, ctrl.changePassword);
+router.post('/change-username', requireAuth, ctrl.changeUsername);
 router.post('/logout', requireAuth, ctrl.logout);
 router.post('/photo', requireAuth, upload.single('photo'), ctrl.uploadPhoto);
 router.put('/share-location', requireAuth, ctrl.shareLocation);

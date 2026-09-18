@@ -32,6 +32,7 @@ object Routes {
     const val ADMIN_PASSWORD_RESET_REQUESTS = "admin_password_reset_requests"
     const val ADMIN_AUDIT_LOG = "admin_audit_log"
     const val ADMIN_RESET_DATA = "admin_reset_data"
+    const val ACCOUNT_MANAGEMENT = "account_management"
 
     fun allIndividuals(title: String, category: String = "all") =
         "all_individuals/${java.net.URLEncoder.encode(title, "UTF-8")}?sort=$category"

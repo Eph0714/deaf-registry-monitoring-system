@@ -49,6 +49,8 @@ data class ChangePasswordRequest(
     val newPassword: String
 )
 
+data class ChangeUsernameRequest(val newUsername: String)
+
 data class CreateUserRequest(
     val name: String,
     val email: String,
