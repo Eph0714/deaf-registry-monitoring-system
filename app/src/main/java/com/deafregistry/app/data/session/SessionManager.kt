@@ -25,10 +25,26 @@ data class Session(
 class SessionManager(context: Context) {
 
     private val prefs: SharedPreferences by lazy {
+        try {
+            buildEncryptedPrefs(context)
+        } catch (e: Exception) {
+            // Some OEM launchers (observed on Honor/Huawei) restore an app's old SharedPreferences
+            // XML file on reinstall without restoring the AndroidKeystore-backed key that encrypted
+            // it - the key material never leaves the TEE, so it can't be backed up/restored. That
+            // mismatch throws (AEADBadTagException/KeyStoreException) on every single launch,
+            // permanently bricking the app for that device since this was previously unrecovered.
+            // The old session is unrecoverable either way, so wipe and start clean instead of
+            // crashing forever.
+            context.deleteSharedPreferences("deaf_registry_session")
+            buildEncryptedPrefs(context)
+        }
+    }
+
+    private fun buildEncryptedPrefs(context: Context): SharedPreferences {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
-        EncryptedSharedPreferences.create(
+        return EncryptedSharedPreferences.create(
             context,
             "deaf_registry_session",
             masterKey,
