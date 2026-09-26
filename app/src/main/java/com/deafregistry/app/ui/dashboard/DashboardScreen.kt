@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -127,6 +128,7 @@ fun DashboardScreen(
     onOpenChat: () -> Unit,
     onOpenPendingUsers: () -> Unit,
     onOpenMunicipalityStatistics: () -> Unit,
+    onOpenTerritoryMap: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onOpenAccountManagement: () -> Unit,
     onLogout: () -> Unit
@@ -433,7 +435,8 @@ fun DashboardScreen(
                             teamLocationCount = teamLocations.size,
                             onOpenChat = onOpenChat,
                             unreadChatCount = state.unreadChatCount,
-                            onOpenMunicipalityStatistics = onOpenMunicipalityStatistics
+                            onOpenMunicipalityStatistics = onOpenMunicipalityStatistics,
+                            onOpenTerritoryMap = onOpenTerritoryMap
                         )
                     }
 
@@ -853,7 +856,8 @@ private fun DashboardQuickActionsRow(
     teamLocationCount: Int,
     onOpenChat: () -> Unit,
     unreadChatCount: Int,
-    onOpenMunicipalityStatistics: () -> Unit
+    onOpenMunicipalityStatistics: () -> Unit,
+    onOpenTerritoryMap: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
@@ -919,6 +923,7 @@ private fun DashboardQuickActionsRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DashboardQuickActionTile("Statistics", Icons.Default.BarChart, Color(0xFFD1C4E9), Color(0xFF4527A0), onOpenMunicipalityStatistics, Modifier.weight(1f))
+                DashboardQuickActionTile("Territory Map", Icons.Default.Map, Color(0xFFFFECB3), Color(0xFFFF6F00), onOpenTerritoryMap, Modifier.weight(1f))
             }
         }
     }

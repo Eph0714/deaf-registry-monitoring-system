@@ -13,6 +13,7 @@ object Routes {
     const val CHAT_RECURRING_SCHEDULES = "chat_recurring_schedules"
     const val CHAT_SINGLE_SCHEDULES = "chat_single_schedules"
     const val MUNICIPALITY_STATISTICS = "municipality_statistics"
+    const val TERRITORY_MAP = "territory_map"
     const val DEAF_PROFILE = "deaf/{uuid}"
     const val DEAF_EDITOR = "deaf_editor?uuid={uuid}&municipalityId={municipalityId}"
     const val SEARCH = "search"

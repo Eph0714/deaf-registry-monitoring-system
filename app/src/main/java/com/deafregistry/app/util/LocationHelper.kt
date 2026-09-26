@@ -8,7 +8,7 @@ import com.google.android.gms.location.Priority
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-data class GpsPoint(val latitude: Double, val longitude: Double)
+data class GpsPoint(val latitude: Double, val longitude: Double, val accuracyMeters: Float? = null)
 
 object LocationHelper {
 
@@ -22,7 +22,7 @@ object LocationHelper {
         client.getCurrentLocation(request, null)
             .addOnSuccessListener { location ->
                 if (cont.isActive) {
-                    cont.resume(location?.let { GpsPoint(it.latitude, it.longitude) })
+                    cont.resume(location?.let { GpsPoint(it.latitude, it.longitude, it.accuracy) })
                 }
             }
             .addOnFailureListener {

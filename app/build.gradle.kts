@@ -25,8 +25,8 @@ android {
         applicationId = "com.deafregistry.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 78
-        versionName = "1.77"
+        versionCode = 79
+        versionName = "1.78"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -133,6 +133,10 @@ dependencies {
 
     // Image loading (profile photos)
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Territory Map - OpenStreetMap tiles, no API key/billing needed (unlike Google Maps,
+    // which isn't set up anywhere in this project).
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     implementation("androidx.core:core-splashscreen:1.0.1")
 

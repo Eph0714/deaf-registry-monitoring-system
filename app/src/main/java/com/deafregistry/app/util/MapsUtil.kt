@@ -22,4 +22,16 @@ object MapsUtil {
             }
         }
     }
+
+    /** Opens turn-by-turn navigation to the given coordinates, preferring the Google Maps app's
+     * dedicated navigation intent and falling back to a plain map view if it's unavailable. */
+    fun navigateTo(context: Context, latitude: Double, longitude: Double) {
+        val navUri = Uri.parse("google.navigation:q=$latitude,$longitude")
+        val navIntent = Intent(Intent.ACTION_VIEW, navUri).setPackage("com.google.android.apps.maps")
+        try {
+            context.startActivity(navIntent)
+        } catch (e: ActivityNotFoundException) {
+            openInMaps(context, latitude, longitude, "")
+        }
+    }
 }

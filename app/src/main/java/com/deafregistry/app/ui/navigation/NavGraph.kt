@@ -44,6 +44,7 @@ import com.deafregistry.app.ui.chat.ChatSingleSchedulesScreen
 import com.deafregistry.app.ui.dashboard.DashboardScreen
 import com.deafregistry.app.ui.location.LocationSharingScreen
 import com.deafregistry.app.ui.editor.DeafEditorScreen
+import com.deafregistry.app.ui.map.TerritoryMapScreen
 import com.deafregistry.app.ui.municipality.MunicipalityDirectoryScreen
 import com.deafregistry.app.ui.login.LoginScreen
 import com.deafregistry.app.ui.login.SignUpScreen
@@ -126,6 +127,7 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenChat = { navController.navigate(Routes.CHAT) },
                 onOpenPendingUsers = { navController.navigate(Routes.ADMIN_PENDING_USERS) },
                 onOpenMunicipalityStatistics = { navController.navigate(Routes.MUNICIPALITY_STATISTICS) },
+                onOpenTerritoryMap = { navController.navigate(Routes.TERRITORY_MAP) },
                 onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
                 onOpenAccountManagement = { navController.navigate(Routes.ACCOUNT_MANAGEMENT) },
                 onLogout = {
@@ -152,6 +154,13 @@ fun AppNavGraph(sessionManager: SessionManager) {
             MunicipalityStatisticsScreen(
                 onBack = { navController.popBackStack() },
                 onOpenMunicipality = { name -> navController.navigate(Routes.reportCategoryDetail("municipality", name)) }
+            )
+        }
+
+        composable(Routes.TERRITORY_MAP) {
+            TerritoryMapScreen(
+                onBack = { navController.popBackStack() },
+                onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) }
             )
         }
 
