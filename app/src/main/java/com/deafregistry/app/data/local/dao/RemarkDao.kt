@@ -21,6 +21,13 @@ interface RemarkDao {
     @Query("DELETE FROM remarks WHERE uuid = :uuid")
     suspend fun hardDelete(uuid: String)
 
+    // Deleting a visit deletes its remarks server-side too (ON DELETE CASCADE) - without this,
+    // a remark still attached to a visit that's being hard-deleted locally (never synced) is
+    // orphaned forever: its visitUuid no longer matches any local row, pushDirty() can never
+    // find a parent for it, and it sits in "pending sync" permanently with no error shown.
+    @Query("DELETE FROM remarks WHERE visitUuid = :visitUuid")
+    suspend fun hardDeleteForVisit(visitUuid: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: RemarkEntity)
 

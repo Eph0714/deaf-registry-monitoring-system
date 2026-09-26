@@ -44,7 +44,7 @@ object ServiceLocator {
     }
 
     val visitRepository: VisitRepository by lazy {
-        VisitRepository(api, database.visitDao(), database.deafIndividualDao())
+        VisitRepository(api, database.visitDao(), database.deafIndividualDao(), database.remarkDao())
     }
 
     val remarkRepository: RemarkRepository by lazy {

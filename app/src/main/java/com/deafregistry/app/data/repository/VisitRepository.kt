@@ -1,6 +1,7 @@
 package com.deafregistry.app.data.repository
 
 import com.deafregistry.app.data.local.dao.DeafIndividualDao
+import com.deafregistry.app.data.local.dao.RemarkDao
 import com.deafregistry.app.data.local.dao.VisitDao
 import com.deafregistry.app.data.local.entity.VisitEntity
 import com.deafregistry.app.data.remote.ApiService
@@ -14,7 +15,8 @@ import java.util.UUID
 class VisitRepository(
     private val api: ApiService,
     private val visitDao: VisitDao,
-    private val deafDao: DeafIndividualDao
+    private val deafDao: DeafIndividualDao,
+    private val remarkDao: RemarkDao
 ) {
     fun observeForDeaf(deafUuid: String): Flow<List<VisitEntity>> = visitDao.observeForDeaf(deafUuid)
     fun observeRecent(limit: Int = 20): Flow<List<VisitEntity>> = visitDao.observeRecent(limit)
@@ -57,8 +59,18 @@ class VisitRepository(
     suspend fun deleteVisit(uuid: String) {
         val existing = visitDao.getByUuid(uuid) ?: return
         if (existing.serverId == null) {
+            // Never synced, so its remarks (if any) can't have synced either - safe to hard-
+            // delete them here too. Without this, a remark still pointing at this now-gone
+            // visitUuid becomes permanently orphaned: pushDirty() can never find a parent for
+            // it, so it sits in "pending sync" forever with no error shown (see
+            // RemarkRepository.pushDirty()'s "parent visit not found locally" skip).
+            remarkDao.hardDeleteForVisit(uuid)
             visitDao.hardDelete(uuid)
         } else {
+            // The server cascades the delete to this visit's remarks (ON DELETE CASCADE), so
+            // any local remarks for it need to go too - same orphaning risk as above applies to
+            // any remark that hadn't synced yet by the time this visit is deleted.
+            remarkDao.hardDeleteForVisit(uuid)
             visitDao.upsert(existing.copy(isDeleted = true, isDirty = true))
         }
     }

@@ -95,7 +95,16 @@ class RemarkRepository(
             try {
                 val visit = visitDao.getByUuid(item.visitUuid)
                 if (visit == null) {
-                    android.util.Log.w("RemarkRepository", "pushDirty skipped ${item.uuid}: parent visit ${item.visitUuid} not found locally")
+                    // Unlike a parent that just hasn't synced yet (below - genuinely temporary),
+                    // a parent row missing from the local database entirely is unrecoverable: it
+                    // was either deleted locally before this remark ever synced (a bug in
+                    // VisitRepository.deleteVisit() that's now fixed to cascade this cleanup
+                    // itself going forward) or never existed. Retrying forever would just leave
+                    // this remark stuck in "pending sync" permanently with no visible error, so
+                    // clean it up here instead - this also self-heals any orphan already created
+                    // by that bug before this fix.
+                    android.util.Log.w("RemarkRepository", "pushDirty discarding ${item.uuid}: parent visit ${item.visitUuid} does not exist locally (unrecoverable)")
+                    remarkDao.hardDelete(item.uuid)
                     continue
                 }
                 val visitServerId = visit.serverId
