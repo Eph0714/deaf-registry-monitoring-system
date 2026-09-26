@@ -21,26 +21,16 @@ const app = express();
 // Render terminates TLS at a proxy in front of this process.
 app.set('trust proxy', true);
 
+// See photoStorage.js for why this can't be a path relative to __dirname on
+// Hostinger's managed Node.js hosting (each build runs from its own isolated,
+// versioned directory - UPLOADS_DIR points at the persistent public_html tree).
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads');
+
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads', express.static(uploadsDir));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
-
-// TEMP diagnostic - remove after confirming static file serving path on Hostinger.
-app.get('/_debug_uploads', (req, res) => {
-  const fs = require('fs');
-  const uploadsRoot = path.join(__dirname, '..', 'uploads');
-  const photosDir = path.join(uploadsRoot, 'photos');
-  let listing = null;
-  let error = null;
-  try {
-    listing = fs.readdirSync(photosDir);
-  } catch (err) {
-    error = err.message;
-  }
-  res.json({ cwd: process.cwd(), dirname: __dirname, uploadsRoot, photosDir, listing, error });
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/municipalities', municipalitiesRoutes);
