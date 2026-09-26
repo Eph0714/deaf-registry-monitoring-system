@@ -25,13 +25,16 @@ android {
         applicationId = "com.deafregistry.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 73
-        versionName = "1.72"
+        versionCode = 74
+        versionName = "1.73"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Backend base URL - the Render-hosted API, reachable from anywhere (not just LAN).
-        buildConfigField("String", "API_BASE_URL", "\"https://deaf-registry-monitoring-system.onrender.com/api/\"")
+        // Backend base URL - the Hostinger-hosted API (MySQL database), reachable from
+        // anywhere (not just LAN). Render (Postgres/Supabase) is kept running as a fallback;
+        // switch this back to https://deaf-registry-monitoring-system.onrender.com/api/ if
+        // Hostinger needs to be rolled back.
+        buildConfigField("String", "API_BASE_URL", "\"https://api.sinaglahinv.com/api/\"")
     }
 
     signingConfigs {
@@ -54,7 +57,6 @@ android {
             }
         }
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"https://deaf-registry-monitoring-system.onrender.com/api/\"")
         }
     }
 
