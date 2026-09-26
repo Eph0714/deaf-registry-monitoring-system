@@ -1,9 +1,10 @@
 const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { logAudit } = require('../utils/audit');
+const { inClause } = require('../utils/sql');
 
 const getOverdueDays = asyncHandler(async (req, res) => {
-  const { rows } = await pool.query('SELECT "value" FROM settings WHERE "key" = \'overdue_visit_days\'');
+  const { rows } = await pool.query("SELECT `value` FROM settings WHERE `key` = 'overdue_visit_days'");
   res.json({ overdue_days: rows.length ? Number(rows[0].value) : 30 });
 });
 
@@ -14,7 +15,7 @@ const updateOverdueDays = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'overdue_days must be a positive integer' });
   }
   await pool.query(
-    'INSERT INTO settings ("key", "value") VALUES (\'overdue_visit_days\', $1) ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED.value',
+    "INSERT INTO settings (`key`, `value`) VALUES ('overdue_visit_days', ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
     [String(days)]
   );
   await logAudit(req.user.id, 'UPDATE', 'setting', null, { key: 'overdue_visit_days', value: days });
@@ -29,7 +30,8 @@ const APP_VERSION_KEYS = {
 };
 
 const getAppVersion = asyncHandler(async (req, res) => {
-  const { rows } = await pool.query('SELECT "key", "value" FROM settings WHERE "key" = ANY($1::text[])', [Object.values(APP_VERSION_KEYS)]);
+  const { sql, params } = inClause(Object.values(APP_VERSION_KEYS));
+  const { rows } = await pool.query(`SELECT \`key\`, \`value\` FROM settings WHERE \`key\` IN (${sql})`, params);
   const byKey = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   res.json({
     version_code: Number(byKey[APP_VERSION_KEYS.version_code] || 0),
@@ -57,7 +59,7 @@ const updateAppVersion = asyncHandler(async (req, res) => {
   ];
   for (const [key, value] of entries) {
     await pool.query(
-      'INSERT INTO settings ("key", "value") VALUES ($1, $2) ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED.value',
+      "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
       [key, value]
     );
   }
@@ -69,7 +71,7 @@ const THEME_KEY = 'app_theme';
 const VALID_THEMES = ['light_blue', 'dark_purple'];
 
 const getTheme = asyncHandler(async (req, res) => {
-  const { rows } = await pool.query('SELECT "value" FROM settings WHERE "key" = $1', [THEME_KEY]);
+  const { rows } = await pool.query('SELECT `value` FROM settings WHERE `key` = ?', [THEME_KEY]);
   res.json({ theme: rows.length && VALID_THEMES.includes(rows[0].value) ? rows[0].value : VALID_THEMES[0] });
 });
 
@@ -79,7 +81,7 @@ const updateTheme = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: `theme must be one of: ${VALID_THEMES.join(', ')}` });
   }
   await pool.query(
-    'INSERT INTO settings ("key", "value") VALUES ($1, $2) ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED.value',
+    "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
     [THEME_KEY, theme]
   );
   await logAudit(req.user.id, 'UPDATE', 'setting', null, { key: THEME_KEY, value: theme });
@@ -90,7 +92,7 @@ const LOCATION_SHARE_TTL_KEY = 'location_share_ttl_minutes';
 const DEFAULT_LOCATION_SHARE_TTL_MINUTES = 60;
 
 const getLocationShareTtl = asyncHandler(async (req, res) => {
-  const { rows } = await pool.query('SELECT "value" FROM settings WHERE "key" = $1', [LOCATION_SHARE_TTL_KEY]);
+  const { rows } = await pool.query('SELECT `value` FROM settings WHERE `key` = ?', [LOCATION_SHARE_TTL_KEY]);
   res.json({ location_share_ttl_minutes: rows.length ? Number(rows[0].value) : DEFAULT_LOCATION_SHARE_TTL_MINUTES });
 });
 
@@ -101,7 +103,7 @@ const updateLocationShareTtl = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'location_share_ttl_minutes must be a positive integer' });
   }
   await pool.query(
-    'INSERT INTO settings ("key", "value") VALUES ($1, $2) ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED.value',
+    "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
     [LOCATION_SHARE_TTL_KEY, String(minutes)]
   );
   await logAudit(req.user.id, 'UPDATE', 'setting', null, { key: LOCATION_SHARE_TTL_KEY, value: minutes });

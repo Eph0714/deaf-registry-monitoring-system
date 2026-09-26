@@ -10,11 +10,11 @@ const RETENTION_DAYS = 7;
 async function cleanupOldAuditLogs() {
   try {
     const result = await pool.query(
-      `DELETE FROM audit_logs WHERE created_at < NOW() - ($1 || ' days')::interval`,
+      `DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL ? DAY`,
       [RETENTION_DAYS]
     );
-    if (result.rowCount) {
-      console.log(`Audit log retention: removed ${result.rowCount} entries older than ${RETENTION_DAYS} days`);
+    if (result.rows.affectedRows) {
+      console.log(`Audit log retention: removed ${result.rows.affectedRows} entries older than ${RETENTION_DAYS} days`);
     }
   } catch (err) {
     console.error('Audit log retention cleanup failed:', err.message);

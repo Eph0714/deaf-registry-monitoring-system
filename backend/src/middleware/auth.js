@@ -16,7 +16,7 @@ async function requireAuth(req, res, next) {
     // /users/online - e.g. the Dashboard's own poll - sees its own stamp already applied instead
     // of racing its own SELECT; failure is still swallowed so a DB hiccup here never breaks the
     // actual request it's riding along on.
-    await pool.query('UPDATE users SET last_seen_at = CURRENT_TIMESTAMP WHERE id = $1', [payload.id]).catch(() => {});
+    await pool.query('UPDATE users SET last_seen_at = CURRENT_TIMESTAMP WHERE id = ?', [payload.id]).catch(() => {});
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Invalid or expired token' });

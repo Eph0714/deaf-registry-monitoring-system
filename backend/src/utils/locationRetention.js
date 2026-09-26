@@ -14,16 +14,16 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 async function clearExpiredLocations() {
   try {
     const { rows } = await pool.query(
-      `SELECT "value" FROM settings WHERE "key" = 'location_share_ttl_minutes'`
+      "SELECT `value` FROM settings WHERE `key` = 'location_share_ttl_minutes'"
     );
     const ttlMinutes = rows.length ? Number(rows[0].value) : DEFAULT_TTL_MINUTES;
     const result = await pool.query(
       `UPDATE users SET shared_latitude = NULL, shared_longitude = NULL, shared_location_at = NULL
-       WHERE shared_location_at IS NOT NULL AND shared_location_at <= NOW() - ($1 || ' minutes')::interval`,
+       WHERE shared_location_at IS NOT NULL AND shared_location_at <= NOW() - INTERVAL ? MINUTE`,
       [ttlMinutes]
     );
-    if (result.rowCount) {
-      console.log(`Location retention: cleared ${result.rowCount} shared location(s) older than ${ttlMinutes} minutes`);
+    if (result.rows.affectedRows) {
+      console.log(`Location retention: cleared ${result.rows.affectedRows} shared location(s) older than ${ttlMinutes} minutes`);
     }
   } catch (err) {
     console.error('Location retention cleanup failed:', err.message);

@@ -18,11 +18,12 @@ const create = asyncHandler(async (req, res) => {
   if (!title || !event_date) {
     return res.status(400).json({ message: 'title and event_date are required' });
   }
-  const { rows } = await pool.query(
-    'INSERT INTO calendar_events (title, description, event_date, created_by) VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at',
+  const result = await pool.query(
+    'INSERT INTO calendar_events (title, description, event_date, created_by) VALUES (?, ?, ?, ?)',
     [title, description || null, event_date, req.user.id]
   );
-  const insertId = rows[0].id;
+  const insertId = result.rows.insertId;
+  const { rows } = await pool.query('SELECT created_at, updated_at FROM calendar_events WHERE id = ?', [insertId]);
   await logAudit(req.user.id, 'CREATE', 'calendar_event', insertId, { title, event_date });
   res.status(201).json({
     id: insertId,
@@ -43,18 +44,18 @@ const update = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'title and event_date are required' });
   }
   const result = await pool.query(
-    'UPDATE calendar_events SET title = $1, description = $2, event_date = $3 WHERE id = $4',
+    'UPDATE calendar_events SET title = ?, description = ?, event_date = ? WHERE id = ?',
     [title, description || null, event_date, id]
   );
-  if (!result.rowCount) return res.status(404).json({ message: 'Not found' });
+  if (!result.rows.affectedRows) return res.status(404).json({ message: 'Not found' });
   await logAudit(req.user.id, 'UPDATE', 'calendar_event', id, { title, event_date });
   res.json({ id: Number(id), title, description: description || null, event_date });
 });
 
 const remove = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const result = await pool.query('DELETE FROM calendar_events WHERE id = $1', [id]);
-  if (!result.rowCount) return res.status(404).json({ message: 'Not found' });
+  const result = await pool.query('DELETE FROM calendar_events WHERE id = ?', [id]);
+  if (!result.rows.affectedRows) return res.status(404).json({ message: 'Not found' });
   await logAudit(req.user.id, 'DELETE', 'calendar_event', id, null);
   res.status(204).send();
 });

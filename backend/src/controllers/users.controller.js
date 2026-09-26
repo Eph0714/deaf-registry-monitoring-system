@@ -6,7 +6,7 @@ const { usernameError, passwordError } = require('../utils/validation');
 
 // Guards against a plain admin editing/deactivating/deleting a Super Admin's account.
 async function isTargetSuperAdmin(id) {
-  const { rows } = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
+  const { rows } = await pool.query('SELECT role FROM users WHERE id = ?', [id]);
   return rows.length > 0 && rows[0].role === 'super_admin';
 }
 
@@ -33,10 +33,10 @@ const create = asyncHandler(async (req, res) => {
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const { rows } = await pool.query(
-    'INSERT INTO users (name, email, username, password_hash, role, teacher_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+    'INSERT INTO users (name, email, username, password_hash, role, teacher_id) VALUES (?, ?, ?, ?, ?, ?)',
     [name, email, username, passwordHash, role || 'conductor', teacher_id || null]
   );
-  const insertId = rows[0].id;
+  const insertId = rows.insertId;
   await logAudit(req.user.id, 'CREATE', 'user', insertId, { name, email, username, role });
   res.status(201).json({ id: insertId, name, email, username, role: role || 'conductor', teacher_id: teacher_id || null });
 });
@@ -56,7 +56,7 @@ const update = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Only a Super Administrator can modify a Super Admin account' });
   }
   await pool.query(
-    'UPDATE users SET name = $1, username = $2, role = $3, teacher_id = $4, is_active = $5 WHERE id = $6',
+    'UPDATE users SET name = ?, username = ?, role = ?, teacher_id = ?, is_active = ? WHERE id = ?',
     [name, username, role, teacher_id || null, is_active === undefined ? true : !!is_active, id]
   );
   await logAudit(req.user.id, 'UPDATE', 'user', id, { name, username, role, teacher_id, is_active });
@@ -71,7 +71,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Only a Super Administrator can reset a Super Admin account\'s password' });
   }
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
+  await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, id]);
   await logAudit(req.user.id, 'RESET_PASSWORD', 'user', id, null);
   res.json({ message: 'Password reset' });
 });
@@ -81,7 +81,7 @@ const remove = asyncHandler(async (req, res) => {
   if (req.user.role !== 'super_admin' && (await isTargetSuperAdmin(id))) {
     return res.status(403).json({ message: 'Only a Super Administrator can deactivate a Super Admin account' });
   }
-  await pool.query('UPDATE users SET is_active = false WHERE id = $1', [id]);
+  await pool.query('UPDATE users SET is_active = false WHERE id = ?', [id]);
   await logAudit(req.user.id, 'DEACTIVATE', 'user', id, null);
   res.status(204).send();
 });
@@ -91,7 +91,7 @@ const remove = asyncHandler(async (req, res) => {
 // users.id are ON DELETE SET NULL (or CASCADE for user_devices), so this is safe to run.
 const permanentlyDelete = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { rows } = await pool.query('SELECT name, email, role FROM users WHERE id = $1 AND is_active = false', [id]);
+  const { rows } = await pool.query('SELECT name, email, role FROM users WHERE id = ? AND is_active = false', [id]);
   if (!rows.length) {
     return res.status(404).json({ message: 'No deactivated account with this id was found' });
   }
@@ -99,7 +99,7 @@ const permanentlyDelete = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Only a Super Administrator can delete a Super Admin account' });
   }
   const { name, email } = rows[0];
-  await pool.query('DELETE FROM users WHERE id = $1', [id]);
+  await pool.query('DELETE FROM users WHERE id = ?', [id]);
   await logAudit(req.user.id, 'PERMANENTLY_DELETED', 'user', id, { name, email });
   res.status(204).send();
 });
@@ -111,14 +111,14 @@ const permanentlyDelete = asyncHandler(async (req, res) => {
 // reappears in the window between retention-job runs.
 const listLocations = asyncHandler(async (req, res) => {
   const { rows: ttlRows } = await pool.query(
-    `SELECT "value" FROM settings WHERE "key" = 'location_share_ttl_minutes'`
+    "SELECT `value` FROM settings WHERE `key` = 'location_share_ttl_minutes'"
   );
   const ttlMinutes = ttlRows.length ? Number(ttlRows[0].value) : 60;
   const { rows } = await pool.query(
     `SELECT id, name, role, shared_latitude, shared_longitude, shared_location_at
      FROM users
      WHERE is_active = true AND shared_location_at IS NOT NULL
-       AND shared_location_at > NOW() - ($1 || ' minutes')::interval
+       AND shared_location_at > NOW() - INTERVAL ? MINUTE
      ORDER BY shared_location_at DESC`,
     [ttlMinutes]
   );
@@ -133,7 +133,7 @@ const listLocations = asyncHandler(async (req, res) => {
 const listOnlineUsers = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, name, role FROM users
-     WHERE is_active = true AND last_seen_at > NOW() - INTERVAL '5 minutes'
+     WHERE is_active = true AND last_seen_at > NOW() - INTERVAL 5 MINUTE
      ORDER BY name`
   );
   res.json(rows);
@@ -145,7 +145,7 @@ const listOnlineUsers = asyncHandler(async (req, res) => {
 const stopSharingLocationFor = asyncHandler(async (req, res) => {
   const { id } = req.params;
   await pool.query(
-    `UPDATE users SET shared_latitude = NULL, shared_longitude = NULL, shared_location_at = NULL WHERE id = $1`,
+    `UPDATE users SET shared_latitude = NULL, shared_longitude = NULL, shared_location_at = NULL WHERE id = ?`,
     [id]
   );
   res.status(204).send();
@@ -162,10 +162,10 @@ const listPendingSignups = asyncHandler(async (req, res) => {
 const approveSignup = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const result = await pool.query(
-    `UPDATE users SET approval_status = 'approved' WHERE id = $1 AND approval_status = 'pending'`,
+    `UPDATE users SET approval_status = 'approved' WHERE id = ? AND approval_status = 'pending'`,
     [id]
   );
-  if (!result.rowCount) return res.status(404).json({ message: 'Not found' });
+  if (!result.rows.affectedRows) return res.status(404).json({ message: 'Not found' });
   await logAudit(req.user.id, 'SIGNUP_APPROVED', 'user', id, null);
   res.json({ id: Number(id), approval_status: 'approved' });
 });
@@ -176,12 +176,12 @@ const approveSignup = asyncHandler(async (req, res) => {
 const rejectSignup = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { rows } = await pool.query(
-    `SELECT name, email FROM users WHERE id = $1 AND approval_status = 'pending'`,
+    `SELECT name, email FROM users WHERE id = ? AND approval_status = 'pending'`,
     [id]
   );
   if (!rows.length) return res.status(404).json({ message: 'Not found' });
   const { name, email } = rows[0];
-  await pool.query('DELETE FROM users WHERE id = $1', [id]);
+  await pool.query('DELETE FROM users WHERE id = ?', [id]);
   await logAudit(req.user.id, 'SIGNUP_DECLINED', 'user', id, { name, email });
   res.json({ id: Number(id), deleted: true });
 });
@@ -203,14 +203,14 @@ const resolvePasswordResetRequest = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { new_password } = req.body;
   const { rows: requestRows } = await pool.query(
-    `SELECT id, username FROM password_reset_requests WHERE id = $1 AND status = 'pending'`,
+    `SELECT id, username FROM password_reset_requests WHERE id = ? AND status = 'pending'`,
     [id]
   );
   if (!requestRows.length) return res.status(404).json({ message: 'Request not found' });
   const { username } = requestRows[0];
 
   if (new_password) {
-    const { rows: userRows } = await pool.query('SELECT id, role FROM users WHERE username = $1', [username]);
+    const { rows: userRows } = await pool.query('SELECT id, role FROM users WHERE username = ?', [username]);
     if (!userRows.length) {
       return res.status(404).json({ message: `No account found with username "${username}"` });
     }
@@ -219,12 +219,12 @@ const resolvePasswordResetRequest = asyncHandler(async (req, res) => {
       return res.status(403).json({ message: 'Only a Super Administrator can reset a Super Admin account\'s password' });
     }
     const passwordHash = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, targetUser.id]);
+    await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, targetUser.id]);
     await logAudit(req.user.id, 'RESET_PASSWORD', 'user', targetUser.id, { via: 'forgot_password_request' });
   }
 
   await pool.query(
-    `UPDATE password_reset_requests SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, resolved_by = $1 WHERE id = $2`,
+    `UPDATE password_reset_requests SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, resolved_by = ? WHERE id = ?`,
     [req.user.id, id]
   );
   res.json({ id: Number(id), status: 'resolved' });

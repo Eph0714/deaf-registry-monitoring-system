@@ -7,12 +7,11 @@ const { logAudit } = require('../utils/audit');
 const BACKUP_DIR = path.join(__dirname, '..', '..', 'backups');
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
-// The old mysqldump-based backup doesn't carry over to Supabase/Postgres (no
-// pg_dump shell-out has been wired up here yet). Stub it rather than silently
-// producing an empty/broken backup file. Existing backups already on disk from
-// before the migration remain listable/downloadable below.
+// The old mysqldump-based backup hasn't been re-wired up for this MySQL database yet. Stub it
+// rather than silently producing an empty/broken backup file. Existing backups already on disk
+// remain listable/downloadable below.
 const backup = asyncHandler(async (req, res) => {
-  res.status(501).json({ message: 'Server-side backup is not yet available for the Supabase database. Use Supabase\'s own backup/restore tools in the meantime.' });
+  res.status(501).json({ message: 'Server-side backup is not yet available. Use hPanel\'s own database backup/export tools in the meantime.' });
 });
 
 const listBackups = asyncHandler(async (req, res) => {
@@ -36,7 +35,7 @@ const auditLogs = asyncHandler(async (req, res) => {
      FROM audit_logs al
      LEFT JOIN users u ON u.id = al.user_id
      ORDER BY al.created_at DESC
-     LIMIT $1`,
+     LIMIT ?`,
     [limit]
   );
   res.json(rows);
@@ -61,7 +60,7 @@ const resetAllData = asyncHandler(async (req, res) => {
     await client.query('DELETE FROM deaf_individuals');
     await client.query('DELETE FROM user_devices');
     await client.query('DELETE FROM audit_logs');
-    await client.query('DELETE FROM users WHERE id != $1', [req.user.id]);
+    await client.query('DELETE FROM users WHERE id != ?', [req.user.id]);
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');

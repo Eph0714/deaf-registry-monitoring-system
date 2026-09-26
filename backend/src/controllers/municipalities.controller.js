@@ -5,7 +5,7 @@ const { logAudit } = require('../utils/audit');
 const list = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`
     SELECT m.id, m.name, m.updated_at,
-           COUNT(d.id)::int AS deaf_count
+           COUNT(d.id) AS deaf_count
     FROM municipalities m
     LEFT JOIN deaf_individuals d ON d.municipality_id = m.id AND d.is_deleted = false
     GROUP BY m.id, m.name, m.updated_at
@@ -17,8 +17,8 @@ const list = asyncHandler(async (req, res) => {
 const create = asyncHandler(async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ message: 'name is required' });
-  const { rows } = await pool.query('INSERT INTO municipalities (name) VALUES ($1) RETURNING id', [name]);
-  const insertId = rows[0].id;
+  const { rows } = await pool.query('INSERT INTO municipalities (name) VALUES (?)', [name]);
+  const insertId = rows.insertId;
   await logAudit(req.user.id, 'CREATE', 'municipality', insertId, { name });
   res.status(201).json({ id: insertId, name });
 });
@@ -26,14 +26,14 @@ const create = asyncHandler(async (req, res) => {
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
-  await pool.query('UPDATE municipalities SET name = $1 WHERE id = $2', [name, id]);
+  await pool.query('UPDATE municipalities SET name = ? WHERE id = ?', [name, id]);
   await logAudit(req.user.id, 'UPDATE', 'municipality', id, { name });
   res.json({ id: Number(id), name });
 });
 
 const remove = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  await pool.query('DELETE FROM municipalities WHERE id = $1', [id]);
+  await pool.query('DELETE FROM municipalities WHERE id = ?', [id]);
   await logAudit(req.user.id, 'DELETE', 'municipality', id, null);
   res.status(204).send();
 });

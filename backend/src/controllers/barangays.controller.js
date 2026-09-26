@@ -8,7 +8,7 @@ const list = asyncHandler(async (req, res) => {
   const params = [];
   if (municipality_id) {
     params.push(municipality_id);
-    conditions.push(`b.municipality_id = $${params.length}`);
+    conditions.push('b.municipality_id = ?');
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const { rows } = await pool.query(
@@ -24,8 +24,8 @@ const list = asyncHandler(async (req, res) => {
 const create = asyncHandler(async (req, res) => {
   const { name, municipality_id } = req.body;
   if (!name || !municipality_id) return res.status(400).json({ message: 'name and municipality_id are required' });
-  const { rows } = await pool.query('INSERT INTO barangays (name, municipality_id) VALUES ($1, $2) RETURNING id', [name, municipality_id]);
-  const insertId = rows[0].id;
+  const { rows } = await pool.query('INSERT INTO barangays (name, municipality_id) VALUES (?, ?)', [name, municipality_id]);
+  const insertId = rows.insertId;
   await logAudit(req.user.id, 'CREATE', 'barangay', insertId, { name, municipality_id });
   res.status(201).json({ id: insertId, name, municipality_id });
 });
@@ -33,14 +33,14 @@ const create = asyncHandler(async (req, res) => {
 const update = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, municipality_id } = req.body;
-  await pool.query('UPDATE barangays SET name = $1, municipality_id = $2 WHERE id = $3', [name, municipality_id, id]);
+  await pool.query('UPDATE barangays SET name = ?, municipality_id = ? WHERE id = ?', [name, municipality_id, id]);
   await logAudit(req.user.id, 'UPDATE', 'barangay', id, { name, municipality_id });
   res.json({ id: Number(id), name, municipality_id });
 });
 
 const remove = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  await pool.query('DELETE FROM barangays WHERE id = $1', [id]);
+  await pool.query('DELETE FROM barangays WHERE id = ?', [id]);
   await logAudit(req.user.id, 'DELETE', 'barangay', id, null);
   res.status(204).send();
 });
@@ -52,7 +52,7 @@ const publicList = asyncHandler(async (req, res) => {
   const { municipality_id } = req.query;
   if (!municipality_id) return res.status(400).json({ message: 'municipality_id is required' });
   const { rows } = await pool.query(
-    'SELECT id, name FROM barangays WHERE municipality_id = $1 ORDER BY name ASC',
+    'SELECT id, name FROM barangays WHERE municipality_id = ? ORDER BY name ASC',
     [municipality_id]
   );
   res.json(rows);

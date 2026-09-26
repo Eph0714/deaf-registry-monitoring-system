@@ -95,29 +95,29 @@ async function main() {
   try {
     const municipalityIds = {};
     for (const name of MUNICIPALITIES) {
-      const { rows: existing } = await client.query('SELECT id FROM municipalities WHERE name = $1', [name]);
+      const { rows: existing } = await client.query('SELECT id FROM municipalities WHERE name = ?', [name]);
       if (existing.length) {
         municipalityIds[name] = existing[0].id;
       } else {
-        const { rows } = await client.query('INSERT INTO municipalities (name) VALUES ($1) RETURNING id', [name]);
-        municipalityIds[name] = rows[0].id;
+        const result = await client.query('INSERT INTO municipalities (name) VALUES (?)', [name]);
+        municipalityIds[name] = result.rows.insertId;
       }
     }
 
     for (const [municipality, barangays] of Object.entries(BARANGAYS)) {
       for (const barangayName of barangays) {
         await client.query(
-          'INSERT INTO barangays (municipality_id, name) VALUES ($1, $2) ON CONFLICT (municipality_id, name) DO NOTHING',
+          'INSERT IGNORE INTO barangays (municipality_id, name) VALUES (?, ?)',
           [municipalityIds[municipality], barangayName]
         );
       }
     }
 
-    const { rows: existingAdmin } = await client.query('SELECT id FROM users WHERE email = $1', ['admin@deafregistry.local']);
+    const { rows: existingAdmin } = await client.query('SELECT id FROM users WHERE email = ?', ['admin@deafregistry.local']);
     if (!existingAdmin.length) {
       const passwordHash = await bcrypt.hash('Admin@12345', 10);
       await client.query(
-        'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
         ['System Administrator', 'admin@deafregistry.local', passwordHash, 'admin']
       );
       console.log('Seeded admin user: admin@deafregistry.local / Admin@12345');

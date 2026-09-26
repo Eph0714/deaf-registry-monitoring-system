@@ -5,7 +5,7 @@ const { logAudit } = require('../utils/audit');
 
 const listForVisit = asyncHandler(async (req, res) => {
   const { visitId } = req.params;
-  const { rows } = await pool.query('SELECT * FROM remarks WHERE visit_id = $1 ORDER BY created_at DESC', [visitId]);
+  const { rows } = await pool.query('SELECT * FROM remarks WHERE visit_id = ? ORDER BY created_at DESC', [visitId]);
   res.json(rows);
 });
 
@@ -29,10 +29,10 @@ const create = asyncHandler(async (req, res) => {
   if (!remark_text) return res.status(400).json({ message: 'remark_text is required' });
   const uuid = clientUuid || uuidv4();
   const { rows } = await pool.query(
-    'INSERT INTO remarks (uuid, visit_id, user_id, user_name, remark_text) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+    'INSERT INTO remarks (uuid, visit_id, user_id, user_name, remark_text) VALUES (?, ?, ?, ?, ?)',
     [uuid, visitId, req.user.id, req.user.name, remark_text]
   );
-  const insertId = rows[0].id;
+  const insertId = rows.insertId;
   await logAudit(req.user.id, 'CREATE', 'remark', insertId, { visitId });
   res.status(201).json({ id: insertId, uuid });
 });
@@ -47,20 +47,20 @@ const update = asyncHandler(async (req, res) => {
   // any authenticated user, same as editing the visit's date/publisher, so this stayed enforcing a
   // restriction the client no longer honors, silently failing (403) any remark edit by someone
   // other than its original author.
-  const { rows } = await pool.query('SELECT * FROM remarks WHERE id = $1 AND visit_id = $2', [id, visitId]);
+  const { rows } = await pool.query('SELECT * FROM remarks WHERE id = ? AND visit_id = ?', [id, visitId]);
   if (!rows.length) return res.status(404).json({ message: 'Not found' });
 
-  await pool.query('UPDATE remarks SET remark_text = $1 WHERE id = $2', [remark_text, id]);
+  await pool.query('UPDATE remarks SET remark_text = ? WHERE id = ?', [remark_text, id]);
   await logAudit(req.user.id, 'UPDATE', 'remark', id, { visitId });
   res.json({ id: Number(id) });
 });
 
 const remove = asyncHandler(async (req, res) => {
   const { visitId, id } = req.params;
-  const { rows } = await pool.query('SELECT * FROM remarks WHERE id = $1 AND visit_id = $2', [id, visitId]);
+  const { rows } = await pool.query('SELECT * FROM remarks WHERE id = ? AND visit_id = ?', [id, visitId]);
   if (!rows.length) return res.status(404).json({ message: 'Not found' });
 
-  await pool.query('DELETE FROM remarks WHERE id = $1', [id]);
+  await pool.query('DELETE FROM remarks WHERE id = ?', [id]);
   await logAudit(req.user.id, 'DELETE', 'remark', id, { visitId });
   res.status(204).send();
 });
