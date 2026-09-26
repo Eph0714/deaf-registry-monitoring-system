@@ -1,4 +1,3 @@
-const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
@@ -21,14 +20,8 @@ const app = express();
 // Render terminates TLS at a proxy in front of this process.
 app.set('trust proxy', true);
 
-// See photoStorage.js for why this can't be a path relative to __dirname on
-// Hostinger's managed Node.js hosting (each build runs from its own isolated,
-// versioned directory - UPLOADS_DIR points at the persistent public_html tree).
-const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads');
-
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(uploadsDir));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

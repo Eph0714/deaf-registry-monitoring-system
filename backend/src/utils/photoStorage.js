@@ -1,32 +1,30 @@
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const path = require('path');
 
-// Hostinger's managed Node.js hosting runs each build from its own isolated,
-// versioned directory (hbuilds/versions/<uuid>/nodejs/) - a path relative to
-// this file (__dirname) gets wiped on every redeploy. UPLOADS_DIR must point
-// at a location outside that build system - the persistent public_html tree -
-// so photos survive across deploys. Falls back to a path relative to this
-// project for local dev, where that isolated-build concern doesn't apply.
-const UPLOAD_DIR = process.env.UPLOADS_DIR
-  ? path.join(process.env.UPLOADS_DIR, 'photos')
-  : path.join(__dirname, '..', '..', 'uploads', 'photos');
+const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'photos';
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 /**
- * Saves a multer memory-storage file buffer to local disk (UPLOAD_DIR) and
- * returns its public URL, served by the express.static mount in app.js.
- * Replaces the old Supabase Storage upload now that the DB and storage both
- * live on the same Hostinger host as the app itself.
+ * Uploads a multer memory-storage file buffer to Supabase Storage and returns
+ * its public URL. Kept on Supabase even after the relational database moved
+ * to Hostinger's MySQL - Hostinger's managed Node.js hosting runs each build
+ * from a fresh, isolated directory, so local disk storage doesn't survive a
+ * redeploy the way Supabase Storage (or the old Render host) does.
  */
 async function uploadPhoto(file) {
   const ext = path.extname(file.originalname) || '.jpg';
   const objectName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
 
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  fs.writeFileSync(path.join(UPLOAD_DIR, objectName), file.buffer);
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(objectName, file.buffer, { contentType: file.mimetype, upsert: false });
 
-  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
-  return `${base}/uploads/photos/${objectName}`;
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(objectName);
+  return data.publicUrl;
 }
 
 module.exports = { uploadPhoto };
