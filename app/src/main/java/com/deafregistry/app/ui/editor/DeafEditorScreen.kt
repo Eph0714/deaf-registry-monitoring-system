@@ -121,13 +121,24 @@ fun DeafEditorScreen(
     }
 
     Scaffold(
+        // imePadding() on the Scaffold itself, not on the content Column and bottomBar
+        // separately - applying it in both places double-counts the keyboard height (each one
+        // reserves the full IME height independently), squeezing the actual form fields into a
+        // sliver and leaving a large blank gap. One imePadding() here lets Scaffold correctly
+        // split the remaining height between its content and bottomBar slots as a single unit.
+        // (enableEdgeToEdge() in MainActivity means the window never resizes for the keyboard on
+        // its own, so this is still required - just once, at this level.)
+        modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             AppTopBar(title = if (uuid == null) "Add Individual" else "Edit Individual", onBack = onBack)
         },
         bottomBar = {
             if (!form.isLoading) {
-                Surface(shadowElevation = 8.dp, color = MaterialTheme.colorScheme.background) {
+                Surface(
+                    shadowElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     Column(Modifier.padding(16.dp)) {
                         form.error?.let {
                             Text(it, color = MaterialTheme.colorScheme.error)
@@ -153,13 +164,6 @@ fun DeafEditorScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                // imePadding() must come before verticalScroll() - it needs to shrink the
-                // available height first so the scroll viewport itself accounts for the
-                // keyboard. Applied after verticalScroll() (the previous order), it only adds
-                // padding at the tail of the scrollable content instead, so a field near the
-                // bottom - like Remarks/Notes - doesn't reliably get scrolled into view above
-                // the keyboard when focused.
-                .imePadding()
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {

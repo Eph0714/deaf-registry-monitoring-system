@@ -92,6 +92,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -871,19 +872,20 @@ private fun DashboardQuickActionsRow(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardQuickActionTile("Search", Icons.Default.Search, Color(0xFF3949AB), onOpenSearch, Modifier.weight(1f))
+                DashboardQuickActionTile("Search", Icons.Default.Search, Color(0xFFC5CAE9), Color(0xFF283593), onOpenSearch, Modifier.weight(1f))
                 // Conductors can view reports now too, just not export/print them (see ReportsScreen).
-                DashboardQuickActionTile("Reports", Icons.Default.BarChart, Color(0xFF00897B), onOpenReports, Modifier.weight(1f))
+                DashboardQuickActionTile("Reports", Icons.Default.BarChart, Color(0xFFB2DFDB), Color(0xFF00695C), onOpenReports, Modifier.weight(1f))
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, Color(0xFF2E7D32), onOpenMunicipality, Modifier.weight(1f))
+                DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, Color(0xFFC8E6C9), Color(0xFF2E7D32), onOpenMunicipality, Modifier.weight(1f))
                 DashboardQuickActionTile(
                     "Calendar",
                     Icons.Default.CalendarMonth,
-                    Color(0xFFEF6C00),
+                    Color(0xFFFFE0B2),
+                    Color(0xFFE65100),
                     onOpenCalendar,
                     Modifier.weight(1f),
                     showBell = hasEventToday
@@ -896,7 +898,8 @@ private fun DashboardQuickActionsRow(
                 DashboardQuickActionTile(
                     "Location Sharing",
                     Icons.Default.LocationOn,
-                    Color(0xFFD81B60),
+                    Color(0xFFF8BBD0),
+                    Color(0xFFAD1457),
                     onOpenLocationSharing,
                     Modifier.weight(1f),
                     badgeCount = teamLocationCount
@@ -904,7 +907,8 @@ private fun DashboardQuickActionsRow(
                 DashboardQuickActionTile(
                     "Chat",
                     Icons.AutoMirrored.Filled.Chat,
-                    Color(0xFF00ACC1),
+                    Color(0xFFB2EBF2),
+                    Color(0xFF00838F),
                     onOpenChat,
                     Modifier.weight(1f),
                     badgeCount = unreadChatCount
@@ -914,7 +918,7 @@ private fun DashboardQuickActionsRow(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardQuickActionTile("Statistics", Icons.Default.BarChart, Color(0xFF5E35B1), onOpenMunicipalityStatistics, Modifier.weight(1f))
+                DashboardQuickActionTile("Statistics", Icons.Default.BarChart, Color(0xFFD1C4E9), Color(0xFF4527A0), onOpenMunicipalityStatistics, Modifier.weight(1f))
             }
         }
     }
@@ -924,7 +928,8 @@ private fun DashboardQuickActionsRow(
 private fun DashboardQuickActionTile(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accentColor: Color,
+    backgroundColor: Color,
+    contentColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showBell: Boolean = false,
@@ -945,7 +950,7 @@ private fun DashboardQuickActionTile(
             .scale(scale)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = accentColor),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -958,7 +963,7 @@ private fun DashboardQuickActionTile(
                         Icon(Icons.Default.Notifications, contentDescription = "Event today", modifier = Modifier.size(13.dp))
                     }
                 }) {
-                    Icon(icon, contentDescription = label, tint = Color.White)
+                    Icon(icon, contentDescription = label, tint = contentColor)
                 }
             } else if (badgeCount != null && badgeCount > 0) {
                 BadgedBox(badge = {
@@ -966,15 +971,15 @@ private fun DashboardQuickActionTile(
                         Text(badgeCount.toString(), style = MaterialTheme.typography.labelMedium)
                     }
                 }) {
-                    Icon(icon, contentDescription = label, tint = Color.White)
+                    Icon(icon, contentDescription = label, tint = contentColor)
                 }
             } else {
-                Icon(icon, contentDescription = label, tint = Color.White)
+                Icon(icon, contentDescription = label, tint = contentColor)
             }
             Text(
                 label,
                 style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
+                color = contentColor,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -1021,7 +1026,13 @@ private fun DashboardMetricCard(
                 Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.labelLarge, color = accentColor)
+            Text(
+                title,
+                style = MaterialTheme.typography.labelMedium,
+                color = accentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

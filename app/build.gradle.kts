@@ -25,8 +25,8 @@ android {
         applicationId = "com.deafregistry.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 75
-        versionName = "1.74"
+        versionCode = 76
+        versionName = "1.75"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
