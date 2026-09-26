@@ -11,10 +11,19 @@ const mysql = require('mysql2/promise');
 //     email_verified/is_muted/is_removed expecting real JS booleans, which is
 //     what the Postgres driver gave natively; mysql2 returns TINYINT(1) as a
 //     0/1 number by default, so it's cast explicitly here instead.
+//   * days_of_week -> array - the only JSON column in the schema (see
+//     schema.mysql.sql), holding an array of day-of-week ints. On MariaDB,
+//     JSON is really just LONGTEXT with a validity check, not a distinct
+//     column type, so mysql2 has no way to auto-parse it like it would a true
+//     MySQL JSON column - the app needs it back as an array either way.
 function typeCast(field, next) {
   if (field.type === 'TINY' && field.length === 1) {
     const value = field.string();
     return value === null ? null : value === '1';
+  }
+  if (field.name === 'days_of_week') {
+    const value = field.string();
+    return value === null ? null : JSON.parse(value);
   }
   return next();
 }

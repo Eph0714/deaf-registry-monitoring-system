@@ -134,23 +134,26 @@ async function main() {
   });
   const pgClient = await pgPool.connect();
 
-  const mysqlConn = await mysql.createConnection({
+  // A pool, not a single long-lived connection - the per-row photo re-hosting downloads between
+  // table batches can take a while, and an idle connection gets dropped by the server in that gap.
+  const mysqlPool = mysql.createPool({
     host: process.env.MYSQL_DB_HOST,
     port: Number(process.env.MYSQL_DB_PORT || 3306),
     user: process.env.MYSQL_DB_USER,
     password: process.env.MYSQL_DB_PASSWORD,
-    database: process.env.MYSQL_DB_NAME
+    database: process.env.MYSQL_DB_NAME,
+    connectionLimit: 3
   });
 
   try {
     for (const table of TABLES) {
-      await migrateTable(pgClient, mysqlConn, table);
+      await migrateTable(pgClient, mysqlPool, table);
     }
     console.log('Data migration complete.');
   } finally {
     pgClient.release();
     await pgPool.end();
-    await mysqlConn.end();
+    await mysqlPool.end();
   }
 }
 

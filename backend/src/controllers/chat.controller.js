@@ -319,7 +319,7 @@ async function computeNextSchedule() {
       `SELECT rs.session_name, rs.start_time, rs.end_time, ${dateExpr} AS d
        FROM chat_recurring_schedules rs
        WHERE rs.is_active = true
-         AND JSON_CONTAINS(rs.days_of_week, CAST((DAYOFWEEK(${dateExpr}) - 1) AS JSON))
+         AND JSON_CONTAINS(rs.days_of_week, CONCAT(DAYOFWEEK(${dateExpr}) - 1))
          AND ${stillUpcoming('rs')}
          AND NOT EXISTS (SELECT 1 FROM chat_single_schedules ss WHERE ss.schedule_date = ${dateExpr} AND ss.is_active = true)
        LIMIT 1`

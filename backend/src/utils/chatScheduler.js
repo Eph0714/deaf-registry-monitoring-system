@@ -87,7 +87,7 @@ async function generateRecurringSessions() {
     `SELECT rs.id, rs.session_name, rs.description, rs.start_time, rs.end_time, rs.retention_policy, rs.created_by
      FROM chat_recurring_schedules rs
      WHERE rs.is_active = true
-       AND JSON_CONTAINS(rs.days_of_week, CAST((DAYOFWEEK(${LOCAL_NOW}) - 1) AS JSON))
+       AND JSON_CONTAINS(rs.days_of_week, CONCAT(DAYOFWEEK(${LOCAL_NOW}) - 1))
        AND ${overnightEnd('rs')} > ${LOCAL_NOW}
        AND NOT EXISTS (
          SELECT 1 FROM chat_sessions cs
