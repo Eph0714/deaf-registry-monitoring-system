@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -38,6 +40,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
@@ -83,6 +86,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -389,6 +393,8 @@ fun DashboardScreen(
                                 title = "Deaf Records",
                                 value = totalDeafRecords.toString(),
                                 subtitle = "Registry overview",
+                                accentColor = Color(0xFF1E88E5),
+                                icon = Icons.Default.Groups,
                                 onClick = { onOpenAllIndividuals("All Deaf Records", "all") },
                                 modifier = Modifier.weight(1f)
                             )
@@ -396,6 +402,8 @@ fun DashboardScreen(
                                 title = "Municipalities",
                                 value = state.municipalities.size.toString(),
                                 subtitle = "Local directory",
+                                accentColor = Color(0xFF2E7D32),
+                                icon = Icons.Default.LocationCity,
                                 onClick = onOpenDeafRecords,
                                 modifier = Modifier.weight(1f)
                             )
@@ -404,6 +412,8 @@ fun DashboardScreen(
                                     title = "Users",
                                     value = state.totalUsers.toString(),
                                     subtitle = "Account management",
+                                    accentColor = Color(0xFF8E24AA),
+                                    icon = Icons.Default.AdminPanelSettings,
                                     onClick = onOpenUserAccounts,
                                     modifier = Modifier.weight(1f)
                                 )
@@ -861,18 +871,19 @@ private fun DashboardQuickActionsRow(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardQuickActionTile("Search", Icons.Default.Search, onOpenSearch, Modifier.weight(1f))
+                DashboardQuickActionTile("Search", Icons.Default.Search, Color(0xFF3949AB), onOpenSearch, Modifier.weight(1f))
                 // Conductors can view reports now too, just not export/print them (see ReportsScreen).
-                DashboardQuickActionTile("Reports", Icons.Default.BarChart, onOpenReports, Modifier.weight(1f))
+                DashboardQuickActionTile("Reports", Icons.Default.BarChart, Color(0xFF00897B), onOpenReports, Modifier.weight(1f))
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, onOpenMunicipality, Modifier.weight(1f))
+                DashboardQuickActionTile("Municipalities", Icons.Default.LocationCity, Color(0xFF2E7D32), onOpenMunicipality, Modifier.weight(1f))
                 DashboardQuickActionTile(
                     "Calendar",
                     Icons.Default.CalendarMonth,
+                    Color(0xFFEF6C00),
                     onOpenCalendar,
                     Modifier.weight(1f),
                     showBell = hasEventToday
@@ -885,6 +896,7 @@ private fun DashboardQuickActionsRow(
                 DashboardQuickActionTile(
                     "Location Sharing",
                     Icons.Default.LocationOn,
+                    Color(0xFFD81B60),
                     onOpenLocationSharing,
                     Modifier.weight(1f),
                     badgeCount = teamLocationCount
@@ -892,6 +904,7 @@ private fun DashboardQuickActionsRow(
                 DashboardQuickActionTile(
                     "Chat",
                     Icons.AutoMirrored.Filled.Chat,
+                    Color(0xFF00ACC1),
                     onOpenChat,
                     Modifier.weight(1f),
                     badgeCount = unreadChatCount
@@ -901,7 +914,7 @@ private fun DashboardQuickActionsRow(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DashboardQuickActionTile("Statistics", Icons.Default.BarChart, onOpenMunicipalityStatistics, Modifier.weight(1f))
+                DashboardQuickActionTile("Statistics", Icons.Default.BarChart, Color(0xFF5E35B1), onOpenMunicipalityStatistics, Modifier.weight(1f))
             }
         }
     }
@@ -911,15 +924,28 @@ private fun DashboardQuickActionsRow(
 private fun DashboardQuickActionTile(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accentColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showBell: Boolean = false,
     badgeCount: Int? = null
 ) {
+    // Same tactile press-scale as DashboardMetricCard, for a consistent, professional feel
+    // across every clickable tile on the dashboard.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = tween(120),
+        label = "quickActionScale"
+    )
+
     Card(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier
+            .scale(scale)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = accentColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -932,7 +958,7 @@ private fun DashboardQuickActionTile(
                         Icon(Icons.Default.Notifications, contentDescription = "Event today", modifier = Modifier.size(13.dp))
                     }
                 }) {
-                    Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+                    Icon(icon, contentDescription = label, tint = Color.White)
                 }
             } else if (badgeCount != null && badgeCount > 0) {
                 BadgedBox(badge = {
@@ -940,15 +966,15 @@ private fun DashboardQuickActionTile(
                         Text(badgeCount.toString(), style = MaterialTheme.typography.labelMedium)
                     }
                 }) {
-                    Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+                    Icon(icon, contentDescription = label, tint = Color.White)
                 }
             } else {
-                Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+                Icon(icon, contentDescription = label, tint = Color.White)
             }
             Text(
                 label,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color.White,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -961,17 +987,41 @@ private fun DashboardMetricCard(
     title: String,
     value: String,
     subtitle: String,
+    accentColor: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Scales down slightly on press for a tactile, professional feel instead of relying only on
+    // the default ripple - released/cancelled presses animate back up the same way.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = tween(120),
+        label = "metricCardScale"
+    )
+
     Card(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier
+            .scale(scale)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(title, style = MaterialTheme.typography.labelLarge, color = accentColor)
             Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

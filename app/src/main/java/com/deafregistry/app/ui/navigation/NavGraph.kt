@@ -1,5 +1,10 @@
 package com.deafregistry.app.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -80,7 +85,18 @@ fun AppNavGraph(sessionManager: SessionManager) {
         wasLoggedIn = nowLoggedIn
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    // Slide+fade in both directions, applied once here so every composable(...) destination below
+    // gets a smooth, professional transition without needing its own enter/exit animation spec.
+    val transitionSpec = tween<androidx.compose.ui.unit.IntOffset>(280)
+    val fadeSpec = tween<Float>(280)
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        enterTransition = { slideInHorizontally(transitionSpec) { it / 4 } + fadeIn(fadeSpec) },
+        exitTransition = { slideOutHorizontally(transitionSpec) { -it / 4 } + fadeOut(fadeSpec) },
+        popEnterTransition = { slideInHorizontally(transitionSpec) { -it / 4 } + fadeIn(fadeSpec) },
+        popExitTransition = { slideOutHorizontally(transitionSpec) { it / 4 } + fadeOut(fadeSpec) }
+    ) {
 
         composable(Routes.LOGIN) {
             LoginScreen(

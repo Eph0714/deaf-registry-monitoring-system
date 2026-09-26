@@ -1,5 +1,6 @@
 package com.deafregistry.app.ui.admin
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,7 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -199,7 +202,9 @@ fun ManageUsersScreen(onBack: () -> Unit) {
             onDismissRequest = { showAddDialog = false },
             title = { Text("Add User") },
             text = {
-                Column {
+                // Scrollable + animateContentSize so every field stays reachable and the resize is
+                // smooth when the keyboard opens - AlertDialog doesn't reliably pan/resize for the IME.
+                Column(Modifier.verticalScroll(rememberScrollState()).animateContentSize()) {
                     OutlinedTextField(value = newName, onValueChange = { newName = it.uppercase() }, label = { Text("Name") })
                     OutlinedTextField(value = newEmail, onValueChange = { newEmail = it }, label = { Text("Email") })
                     OutlinedTextField(value = newUsername, onValueChange = { newUsername = it }, label = { Text("Username") })
@@ -255,7 +260,7 @@ fun ManageUsersScreen(onBack: () -> Unit) {
             onDismissRequest = { editingUser = null },
             title = { Text("Edit User") },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState()).animateContentSize()) {
                     OutlinedTextField(value = editName, onValueChange = { editName = it.uppercase() }, label = { Text("Name") })
                     OutlinedTextField(value = editUsername, onValueChange = { editUsername = it }, label = { Text("Username") })
                     Text(user.email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

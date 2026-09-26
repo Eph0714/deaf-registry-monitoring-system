@@ -1,5 +1,6 @@
 package com.deafregistry.app.ui.admin
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LockReset
@@ -111,7 +114,7 @@ fun PasswordResetRequestsScreen(onBack: () -> Unit) {
             onDismissRequest = { resolvingRequest = null },
             title = { Text("Reset Password") },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState()).animateContentSize()) {
                     Text(
                         "Set a new password for \"${request.username}\".",
                         style = MaterialTheme.typography.bodyMedium,

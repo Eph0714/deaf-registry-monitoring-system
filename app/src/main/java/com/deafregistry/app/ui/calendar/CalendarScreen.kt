@@ -1,6 +1,7 @@
 package com.deafregistry.app.ui.calendar
 
 import android.widget.Toast
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -301,7 +302,14 @@ fun CalendarScreen(onBack: () -> Unit) {
             onDismissRequest = { showEditor = false },
             title = { Text(if (editingEvent == null) "Add Event" else "Edit Event") },
             text = {
-                Column {
+                // Scrollable + animateContentSize so the Description field (multi-line, grows the
+                // dialog most) stays reachable and the resize is smooth rather than an abrupt jump
+                // - AlertDialog's window doesn't reliably pan/resize for the IME on its own.
+                Column(
+                    Modifier
+                        .verticalScroll(rememberScrollState())
+                        .animateContentSize()
+                ) {
                     Text(editDate.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(

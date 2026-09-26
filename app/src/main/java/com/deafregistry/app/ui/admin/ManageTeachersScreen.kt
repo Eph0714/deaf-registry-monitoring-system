@@ -1,5 +1,6 @@
 package com.deafregistry.app.ui.admin
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -113,7 +116,9 @@ fun ManageTeachersScreen(onBack: () -> Unit) {
             onDismissRequest = { showAddDialog = false },
             title = { Text("Add BS Conductor") },
             text = {
-                Column {
+                // Scrollable + animateContentSize so fields stay reachable and the resize is smooth
+                // when the keyboard opens - AlertDialog doesn't reliably pan/resize for the IME.
+                Column(Modifier.verticalScroll(rememberScrollState()).animateContentSize()) {
                     OutlinedTextField(value = newName, onValueChange = { newName = it }, label = { Text("Name") })
                     OutlinedTextField(value = newContact, onValueChange = { newContact = it }, label = { Text("Contact Number (optional)") })
                 }
@@ -136,7 +141,7 @@ fun ManageTeachersScreen(onBack: () -> Unit) {
             onDismissRequest = { editingTeacher = null },
             title = { Text("Edit BS Conductor") },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState()).animateContentSize()) {
                     OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Name") })
                     OutlinedTextField(value = editContact, onValueChange = { editContact = it }, label = { Text("Contact Number (optional)") })
                 }
@@ -189,7 +194,7 @@ private fun BulkReassignDialog(
         onDismissRequest = onDismiss,
         title = { Text("Bulk Reassign Teacher") },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState()).animateContentSize()) {
                 ExposedDropdownMenuBox(expanded = fromExpanded, onExpandedChange = { fromExpanded = it }) {
                     OutlinedTextField(
                         value = teachers.firstOrNull { it.first == fromId }?.second ?: "From teacher",

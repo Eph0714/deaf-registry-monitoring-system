@@ -1,5 +1,6 @@
 package com.deafregistry.app.ui.chat
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -228,7 +231,9 @@ private fun SingleScheduleEditorDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "New Single-Time Schedule" else "Edit Single-Time Schedule") },
         text = {
-            Column {
+            // Scrollable + animateContentSize so every field stays reachable and the resize is
+            // smooth when the keyboard opens - AlertDialog doesn't reliably pan/resize for the IME.
+            Column(Modifier.verticalScroll(rememberScrollState()).animateContentSize()) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Chat Room Name") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(

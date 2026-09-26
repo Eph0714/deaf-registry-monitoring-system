@@ -1,5 +1,6 @@
 package com.deafregistry.app.ui.admin
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -140,7 +143,7 @@ fun ManageBarangaysScreen(onBack: () -> Unit) {
             onDismissRequest = { editingBarangay = null },
             title = { Text("Edit Barangay") },
             text = {
-                androidx.compose.foundation.layout.Column {
+                androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState()).animateContentSize()) {
                     OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Name") })
                     androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
                     ExposedDropdownMenuBox(expanded = editMunicipalityMenuExpanded, onExpandedChange = { editMunicipalityMenuExpanded = it }) {
