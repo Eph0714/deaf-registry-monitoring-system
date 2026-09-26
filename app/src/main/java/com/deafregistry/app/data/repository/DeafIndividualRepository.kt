@@ -354,10 +354,23 @@ class DeafIndividualRepository(
                         val part = MultipartBody.Part.createFormData("photo", file.name, body)
                         val response = api.uploadPhoto(serverId, part)
                         dao.upsert(current.copy(photoUrl = response.photoUrl, photoDirty = false))
+                    } else {
+                        // The local file (saved under the OS-managed cache dir - see
+                        // DeafEditorScreen's camera/gallery pickers) can vanish any time the
+                        // system reclaims cache space, before this ever gets a chance to upload
+                        // it. Without this branch, a missing file left photoDirty=true forever:
+                        // getDirty() keeps returning this record every sync, this whole block
+                        // keeps skipping it (file.exists() is always false), and nothing ever
+                        // clears the flag - the record (and this "pending changes" counter) gets
+                        // stuck permanently with no visible error. The photo change itself is
+                        // unrecoverable at this point, so give up on it rather than retry forever.
+                        android.util.Log.w("DeafIndividualRepository", "pushDirty: local photo file missing for ${item.uuid} (${current.localPhotoPath}), giving up on this photo upload")
+                        dao.upsert(current.copy(photoDirty = false))
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.w("DeafIndividualRepository", "pushDirty failed for ${item.uuid}, will retry next sync", e)
+                val serverMessage = (e as? retrofit2.HttpException)?.response()?.errorBody()?.string()
+                android.util.Log.w("DeafIndividualRepository", "pushDirty failed for ${item.uuid}, will retry next sync. Server said: $serverMessage", e)
             }
         }
     }

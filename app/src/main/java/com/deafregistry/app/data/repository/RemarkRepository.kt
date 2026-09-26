@@ -93,8 +93,19 @@ class RemarkRepository(
     suspend fun pushDirty() {
         for (item in remarkDao.getDirty()) {
             try {
-                val visit = visitDao.getByUuid(item.visitUuid) ?: continue
-                val visitServerId = visit.serverId ?: continue // parent visit must be synced first
+                val visit = visitDao.getByUuid(item.visitUuid)
+                if (visit == null) {
+                    android.util.Log.w("RemarkRepository", "pushDirty skipped ${item.uuid}: parent visit ${item.visitUuid} not found locally")
+                    continue
+                }
+                val visitServerId = visit.serverId
+                if (visitServerId == null) {
+                    // Parent visit must be synced first - see VisitRepository.pushDirty()'s
+                    // matching comment for why this is normal mid-sync but can also indicate the
+                    // parent visit (or its own parent deaf individual) is permanently stuck.
+                    android.util.Log.w("RemarkRepository", "pushDirty skipped ${item.uuid}: parent visit ${item.visitUuid} has no serverId yet")
+                    continue
+                }
                 if (item.isDeleted) {
                     item.serverId?.let {
                         // Response<Unit> doesn't throw on a non-2xx by itself - without this check,
@@ -114,7 +125,8 @@ class RemarkRepository(
                     remarkDao.upsert(item.copy(isDirty = false))
                 }
             } catch (e: Exception) {
-                // retry next sync
+                val serverMessage = (e as? retrofit2.HttpException)?.response()?.errorBody()?.string()
+                android.util.Log.w("RemarkRepository", "pushDirty failed for ${item.uuid}, will retry next sync. Server said: $serverMessage", e)
             }
         }
     }

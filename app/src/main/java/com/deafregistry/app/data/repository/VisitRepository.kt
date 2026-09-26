@@ -126,8 +126,22 @@ class VisitRepository(
                     visitDao.hardDelete(item.uuid)
                     continue
                 }
-                val deaf = deafDao.getById(item.deafIndividualUuid) ?: continue
-                val deafServerId = deaf.serverId ?: continue // parent must be synced first
+                val deaf = deafDao.getById(item.deafIndividualUuid)
+                if (deaf == null) {
+                    android.util.Log.w("VisitRepository", "pushDirty skipped ${item.uuid}: parent deaf individual ${item.deafIndividualUuid} not found locally")
+                    continue
+                }
+                val deafServerId = deaf.serverId
+                if (deafServerId == null) {
+                    // Parent must be synced first - this resolves itself once
+                    // DeafIndividualRepository.pushDirty() (which runs before this in
+                    // SyncManager.sync()) successfully assigns the parent a serverId, so this
+                    // is normal mid-sync, not a bug on its own - but if the parent is itself
+                    // permanently failing (see DeafIndividualRepository's own log), this visit
+                    // will keep getting skipped here indefinitely too.
+                    android.util.Log.w("VisitRepository", "pushDirty skipped ${item.uuid}: parent deaf individual ${item.deafIndividualUuid} has no serverId yet")
+                    continue
+                }
                 val request = VisitRequest(
                     uuid = item.uuid,
                     latitude = item.latitude,
@@ -144,7 +158,8 @@ class VisitRepository(
                     visitDao.upsert(item.copy(visitDateTime = response.visitDateTime, isDirty = false))
                 }
             } catch (e: Exception) {
-                // retry next sync
+                val serverMessage = (e as? retrofit2.HttpException)?.response()?.errorBody()?.string()
+                android.util.Log.w("VisitRepository", "pushDirty failed for ${item.uuid}, will retry next sync. Server said: $serverMessage", e)
             }
         }
     }
