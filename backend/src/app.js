@@ -27,6 +27,21 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// TEMP diagnostic - remove after confirming static file serving path on Hostinger.
+app.get('/_debug_uploads', (req, res) => {
+  const fs = require('fs');
+  const uploadsRoot = path.join(__dirname, '..', 'uploads');
+  const photosDir = path.join(uploadsRoot, 'photos');
+  let listing = null;
+  let error = null;
+  try {
+    listing = fs.readdirSync(photosDir);
+  } catch (err) {
+    error = err.message;
+  }
+  res.json({ cwd: process.cwd(), dirname: __dirname, uploadsRoot, photosDir, listing, error });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/municipalities', municipalitiesRoutes);
 app.use('/api/barangays', barangaysRoutes);
