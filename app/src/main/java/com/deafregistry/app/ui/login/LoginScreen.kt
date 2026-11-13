@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -75,7 +76,11 @@ fun LoginScreen(onLoggedIn: () -> Unit, onSignUp: () -> Unit) {
     // launch and, more importantly, right after an explicit Logout, so the next person at the
     // device lands straight on the Username field instead of the previous user's leftover state.
     LaunchedEffect(Unit) {
-        usernameFocusRequester.requestFocus()
+        // Wait for the first frame so Modifier.focusRequester() is attached to the Username field;
+        // requesting focus earlier throws "FocusRequester is not initialized" and crashed the app
+        // right after Logout (and sometimes on launch). runCatching: focus is a nicety, never fatal.
+        withFrameNanos { }
+        runCatching { usernameFocusRequester.requestFocus() }
     }
 
     Scaffold { padding: PaddingValues ->
