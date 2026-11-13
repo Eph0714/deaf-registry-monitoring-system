@@ -6,11 +6,17 @@ const { logAudit } = require('../utils/audit');
 const { uploadPhoto: uploadPhotoToStorage } = require('../utils/photoStorage');
 const { usernameError, passwordError } = require('../utils/validation');
 
+// The Android app has no refresh/re-login step, so when a token expired every sync failed with
+// "Your session has expired" until the user logged out and back in. Field workers stay logged in
+// for weeks, so the lifetime is long. A NEW variable name is used on purpose: the host still has
+// the old JWT_EXPIRES_IN=7d set, which would silently override a changed default.
+const TOKEN_LIFETIME = process.env.TOKEN_LIFETIME || '90d';
+
 function signToken(user) {
   return jwt.sign(
     { id: user.id, email: user.email, username: user.username, name: user.name, role: user.role, teacher_id: user.teacher_id },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: TOKEN_LIFETIME }
   );
 }
 
