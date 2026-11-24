@@ -423,3 +423,21 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 INSERT IGNORE INTO settings (`key`, `value`) VALUES ('artwork_max_batch_size', '20');
 INSERT IGNORE INTO settings (`key`, `value`) VALUES ('artwork_max_file_size_mb', '8');
+
+-- Uploaded file bytes (profile photos, artwork originals/optimized/thumbnails) live here, not on
+-- disk: Hostinger's managed Node.js hosting replaces the app's own directory on every deploy, so
+-- anything written to local disk is lost at the next deploy. The database is the one thing on
+-- this host that's actually persistent, so files are stored as rows instead. Served back by a
+-- public, unguessable `token` (not `path`, which is an internal identifier only) - this needs no
+-- login because the app's image loaders can't send an auth header.
+CREATE TABLE IF NOT EXISTS file_blobs (
+  path VARCHAR(500) NOT NULL PRIMARY KEY,
+  token VARCHAR(64) NOT NULL,
+  owner INT NULL,
+  mime VARCHAR(100) NOT NULL,
+  size_bytes INT NOT NULL,
+  data LONGBLOB NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_file_blobs_owner FOREIGN KEY (owner) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE KEY idx_file_blobs_token (token)
+) ENGINE=InnoDB;

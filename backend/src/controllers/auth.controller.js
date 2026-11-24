@@ -154,7 +154,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
 const uploadPhoto = asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'photo file is required' });
-  const photoUrl = await uploadPhotoToStorage(req.file);
+  const photoUrl = await uploadPhotoToStorage(req.file, req.user.id);
   await pool.query('UPDATE users SET photo_url = ? WHERE id = ?', [photoUrl, req.user.id]);
   await logAudit(req.user.id, 'UPDATE_PHOTO', 'user', req.user.id, { photoUrl });
   res.json({ photo_url: photoUrl });

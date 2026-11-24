@@ -1,30 +1,11 @@
-const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const { putFile, deleteFile, publicUrlFor } = require('./blobStorage');
 
-const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'photos';
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-
-// Reuses the same bucket as photoStorage.js (no new env var to provision) - artworks are
-// namespaced under an "artworks/<folderId>/" path prefix instead of a dedicated bucket. See
-// photoStorage.js for why this can't be local disk on Hostinger's managed Node.js hosting.
-async function uploadObject(objectName, buffer, contentType) {
-  const { error } = await supabase.storage.from(BUCKET).upload(objectName, buffer, { contentType, upsert: false });
-  if (error) throw error;
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(objectName);
-  return data.publicUrl;
-}
-
-async function removeObjects(objectNames) {
-  if (!objectNames.length) return;
-  const { error } = await supabase.storage.from(BUCKET).remove(objectNames);
-  if (error) throw error;
-}
-
-// Uploads the original, optimized and thumbnail buffers for one artwork image. The original
-// is retained alongside the optimized copy so an admin can later download the untouched file -
-// that's only possible if its bytes still physically exist in storage.
-async function uploadArtworkSet(folderId, format, originalBuffer, optimizedBuffer, thumbnailBuffer, mime) {
+// Artworks are namespaced under an "artworks/<folderId>/" path prefix instead of a dedicated
+// bucket/table. See blobStorage.js / schema.mysql.sql for why these are database BLOBs.
+// storage_object_* columns store the `path` (used only to delete the row later); public_url_*
+// columns store the token-based download URL.
+async function uploadArtworkSet(folderId, format, originalBuffer, optimizedBuffer, thumbnailBuffer, mime, ownerId) {
   const suffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
   const prefix = `artworks/${folderId}/${suffix}`;
 
@@ -32,20 +13,26 @@ async function uploadArtworkSet(folderId, format, originalBuffer, optimizedBuffe
   const storageObjectOptimized = `${prefix}-optimized.${format}`;
   const storageObjectThumbnail = `${prefix}-thumbnail.jpg`;
 
-  const [publicUrlOriginal, publicUrlOptimized, publicUrlThumbnail] = await Promise.all([
-    uploadObject(storageObjectOriginal, originalBuffer, mime),
-    uploadObject(storageObjectOptimized, optimizedBuffer, mime),
-    uploadObject(storageObjectThumbnail, thumbnailBuffer, 'image/jpeg')
+  const [tokenOriginal, tokenOptimized, tokenThumbnail] = await Promise.all([
+    putFile(storageObjectOriginal, originalBuffer, mime, ownerId),
+    putFile(storageObjectOptimized, optimizedBuffer, mime, ownerId),
+    putFile(storageObjectThumbnail, thumbnailBuffer, 'image/jpeg', ownerId)
   ]);
 
   return {
     storageObjectOriginal,
     storageObjectOptimized,
     storageObjectThumbnail,
-    publicUrlOriginal,
-    publicUrlOptimized,
-    publicUrlThumbnail
+    publicUrlOriginal: publicUrlFor(tokenOriginal),
+    publicUrlOptimized: publicUrlFor(tokenOptimized),
+    publicUrlThumbnail: publicUrlFor(tokenThumbnail)
   };
+}
+
+async function removeObjects(objectNames) {
+  for (const objectName of objectNames) {
+    await deleteFile(objectName);
+  }
 }
 
 module.exports = { uploadArtworkSet, removeObjects };

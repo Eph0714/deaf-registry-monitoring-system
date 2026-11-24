@@ -156,7 +156,7 @@ const remove = asyncHandler(async (req, res) => {
 const uploadPhoto = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!req.file) return res.status(400).json({ message: 'photo file is required' });
-  const photoUrl = await uploadPhotoToStorage(req.file);
+  const photoUrl = await uploadPhotoToStorage(req.file, req.user.id);
   await pool.query('UPDATE deaf_individuals SET photo_url = ? WHERE id = ?', [photoUrl, id]);
   await logAudit(req.user.id, 'UPDATE_PHOTO', 'deaf_individual', id, { photoUrl });
   res.json({ photo_url: photoUrl });

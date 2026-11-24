@@ -26,10 +26,10 @@ async function maxBatchSize() {
   return rows.length ? Number(rows[0].value) : 20;
 }
 
-// Validates, sniffs real content and optimizes every file in req.files, uploading each to
-// Supabase Storage. Throws (via validateImageFile's err.status) on the first invalid file -
-// nothing is inserted into the DB for a batch that fails validation.
-async function processUploadedFiles(folderId, files) {
+// Validates, sniffs real content and optimizes every file in req.files, storing each as a
+// database blob (see artworkStorage.js). Throws (via validateImageFile's err.status) on the
+// first invalid file - nothing is inserted into the DB for a batch that fails validation.
+async function processUploadedFiles(folderId, files, ownerId) {
   const results = [];
   for (const file of files) {
     const { format, mime } = await validateImageFile(file.buffer);
@@ -40,7 +40,8 @@ async function processUploadedFiles(folderId, files) {
       optimized.originalBuffer,
       optimized.optimizedBuffer,
       optimized.thumbnailBuffer,
-      MIME_BY_FORMAT[format]
+      MIME_BY_FORMAT[format],
+      ownerId
     );
     results.push({
       fileName: file.originalname,
@@ -112,7 +113,7 @@ const uploadDirect = asyncHandler(async (req, res) => {
   const { rows: folderRows } = await pool.query('SELECT id FROM artwork_folders WHERE id = ? AND is_deleted = false', [folderId]);
   if (!folderRows.length) return res.status(404).json({ message: 'Folder not found' });
 
-  const processed = await processUploadedFiles(folderId, req.files);
+  const processed = await processUploadedFiles(folderId, req.files, req.user.id);
   const ids = await insertArtworkRows(folderId, req.user.id, 'published', processed);
   await logAudit(req.user.id, 'ARTWORK_UPLOAD_PUBLISHED', 'artwork', null, { folderId: Number(folderId), artworkIds: ids });
   res.status(201).json({ artworkIds: ids });
@@ -133,7 +134,7 @@ const uploadRequest = asyncHandler(async (req, res) => {
   const { rows: folderRows } = await pool.query('SELECT id FROM artwork_folders WHERE id = ? AND is_deleted = false', [folderId]);
   if (!folderRows.length) return res.status(404).json({ message: 'Folder not found' });
 
-  const processed = await processUploadedFiles(folderId, req.files);
+  const processed = await processUploadedFiles(folderId, req.files, req.user.id);
   const artworkIds = await insertArtworkRows(folderId, req.user.id, 'pending', processed);
 
   const { rows: reqRows } = await pool.query(

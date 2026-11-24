@@ -17,6 +17,7 @@ const artworkFoldersRoutes = require('./routes/artworkFolders.routes');
 const artworksRoutes = require('./routes/artworks.routes');
 const artworkRequestsRoutes = require('./routes/artworkRequests.routes');
 const notificationsRoutes = require('./routes/notifications.routes');
+const filesRoutes = require('./routes/files.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/artwork-folders', artworkFoldersRoutes);
 app.use('/api/artworks', artworksRoutes);
 app.use('/api/artwork-requests', artworkRequestsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/files', filesRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 app.use(errorHandler);
