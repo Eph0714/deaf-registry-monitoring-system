@@ -2,4 +2,6 @@ node_modules/
 .env
 uploads/photos/*
 !uploads/photos/.gitkeep
+uploads/artworks/**
+!uploads/artworks/.gitkeep
 *.log

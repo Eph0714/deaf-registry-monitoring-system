@@ -29,15 +29,23 @@ const downloadBackup = asyncHandler(async (req, res) => {
 
 const auditLogs = asyncHandler(async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
-  const { rows } = await pool.query(
-    `SELECT al.id, al.action, al.entity_type, al.entity_id, al.details, al.created_at,
+  const { entityType, userId, action, dateFrom, dateTo } = req.query;
+
+  const params = [];
+  let sql = `SELECT al.id, al.action, al.entity_type, al.entity_id, al.details, al.created_at,
             u.name AS user_name, u.email AS user_email, u.username AS user_username
      FROM audit_logs al
      LEFT JOIN users u ON u.id = al.user_id
-     ORDER BY al.created_at DESC
-     LIMIT ?`,
-    [limit]
-  );
+     WHERE 1=1`;
+  if (entityType) { sql += ' AND al.entity_type = ?'; params.push(entityType); }
+  if (userId) { sql += ' AND al.user_id = ?'; params.push(userId); }
+  if (action) { sql += ' AND al.action = ?'; params.push(action); }
+  if (dateFrom) { sql += ' AND al.created_at >= ?'; params.push(dateFrom); }
+  if (dateTo) { sql += ' AND al.created_at <= ?'; params.push(dateTo); }
+  sql += ' ORDER BY al.created_at DESC LIMIT ?';
+  params.push(limit);
+
+  const { rows } = await pool.query(sql, params);
   res.json(rows);
 });
 

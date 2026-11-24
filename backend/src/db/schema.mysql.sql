@@ -333,3 +333,93 @@ CREATE TABLE IF NOT EXISTS chat_notifications (
   CONSTRAINT fk_cn_session FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
   INDEX idx_chat_notifications_user (user_id, status)
 ) ENGINE=InnoDB;
+
+-- Artworks module: folder-based digital artwork gallery with admin approval ----------
+
+-- publish_status and deleted_status are independent on purpose: an artwork pending
+-- deletion must stay visible in the gallery while an artwork pending upload approval
+-- must stay hidden, so one "WHERE publish_status='published' AND deleted_status != 'deleted'"
+-- clause can serve every gallery query without per-screen ad-hoc flags.
+CREATE TABLE IF NOT EXISTS artwork_folders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  created_by INT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  is_deleted BOOLEAN NOT NULL DEFAULT false,
+  CONSTRAINT fk_artwork_folders_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_artwork_folders_name (name)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS artworks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  folder_id INT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  storage_object_original VARCHAR(255) NOT NULL,
+  storage_object_optimized VARCHAR(255) NOT NULL,
+  storage_object_thumbnail VARCHAR(255) NOT NULL,
+  public_url_original VARCHAR(500) NOT NULL,
+  public_url_optimized VARCHAR(500) NOT NULL,
+  public_url_thumbnail VARCHAR(500) NOT NULL,
+  format VARCHAR(10) NOT NULL,
+  width_px INT NOT NULL,
+  height_px INT NOT NULL,
+  original_size_bytes INT NOT NULL,
+  optimized_size_bytes INT NOT NULL,
+  publish_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (publish_status IN ('pending','published','rejected')),
+  deleted_status VARCHAR(20) NOT NULL DEFAULT 'none' CHECK (deleted_status IN ('none','pending_delete','deleted')),
+  uploaded_by INT NULL,
+  uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  published_at DATETIME NULL,
+  deleted_at DATETIME NULL,
+  CONSTRAINT fk_artworks_folder FOREIGN KEY (folder_id) REFERENCES artwork_folders(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_artworks_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_artworks_folder_status (folder_id, publish_status, deleted_status),
+  INDEX idx_artworks_uploaded_by (uploaded_by)
+) ENGINE=InnoDB;
+
+-- One row per submitted batch (upload or delete); artwork_request_items links it to the
+-- N artworks in that batch so the Approval Center reviews/approves/rejects them as one unit.
+CREATE TABLE IF NOT EXISTS artwork_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  request_type VARCHAR(10) NOT NULL CHECK (request_type IN ('upload','delete')),
+  folder_id INT NOT NULL,
+  requested_by INT NULL,
+  reason TEXT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','cancelled')),
+  rejection_reason TEXT NULL,
+  decided_by INT NULL,
+  decided_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_artwork_requests_folder FOREIGN KEY (folder_id) REFERENCES artwork_folders(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_artwork_requests_requested_by FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_artwork_requests_decided_by FOREIGN KEY (decided_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_artwork_requests_status (status, request_type)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS artwork_request_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  request_id INT NOT NULL,
+  artwork_id INT NOT NULL,
+  CONSTRAINT fk_ari_request FOREIGN KEY (request_id) REFERENCES artwork_requests(id) ON DELETE CASCADE,
+  CONSTRAINT fk_ari_artwork FOREIGN KEY (artwork_id) REFERENCES artworks(id) ON DELETE CASCADE,
+  INDEX idx_ari_artwork (artwork_id)
+) ENGINE=InnoDB;
+
+-- Generic per-user notification feed (separate from chat_notifications, which is hard-wired
+-- to chat_sessions via an ON DELETE CASCADE FK and isn't a fit for non-chat events).
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  entity_type VARCHAR(50) NOT NULL,
+  entity_id INT NULL,
+  message VARCHAR(500) NOT NULL,
+  status VARCHAR(10) NOT NULL DEFAULT 'unread' CHECK (status IN ('unread','read')),
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_notifications_user_status (user_id, status)
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO settings (`key`, `value`) VALUES ('artwork_max_batch_size', '20');
+INSERT IGNORE INTO settings (`key`, `value`) VALUES ('artwork_max_file_size_mb', '8');
