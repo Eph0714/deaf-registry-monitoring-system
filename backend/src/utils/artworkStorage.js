@@ -1,39 +1,30 @@
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
-// Same persistent-path approach as photoStorage.js (see its comment) - artworks are namespaced
-// under uploads/artworks/<folderId>/ instead of a dedicated bucket/prefix. Object names are
-// paths relative to UPLOAD_ROOT (e.g. "artworks/3/167-original.jpg"), stored as-is in
-// storage_object_* columns and resolved back to a real path by removeObjects.
-const UPLOAD_ROOT = process.env.UPLOAD_ROOT || path.join(__dirname, '..', '..', 'uploads');
+const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'photos';
 
-function publicUrlFor(objectName) {
-  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
-  return `${base}/uploads/${objectName}`;
-}
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-function writeObject(objectName, buffer) {
-  const fullPath = path.join(UPLOAD_ROOT, objectName);
-  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-  fs.writeFileSync(fullPath, buffer);
-  return publicUrlFor(objectName);
+// Reuses the same bucket as photoStorage.js (no new env var to provision) - artworks are
+// namespaced under an "artworks/<folderId>/" path prefix instead of a dedicated bucket. See
+// photoStorage.js for why this can't be local disk on Hostinger's managed Node.js hosting.
+async function uploadObject(objectName, buffer, contentType) {
+  const { error } = await supabase.storage.from(BUCKET).upload(objectName, buffer, { contentType, upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(objectName);
+  return data.publicUrl;
 }
 
 async function removeObjects(objectNames) {
-  for (const objectName of objectNames) {
-    try {
-      fs.unlinkSync(path.join(UPLOAD_ROOT, objectName));
-    } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
-    }
-  }
+  if (!objectNames.length) return;
+  const { error } = await supabase.storage.from(BUCKET).remove(objectNames);
+  if (error) throw error;
 }
 
-// Writes the original, optimized and thumbnail buffers for one artwork image. The original
+// Uploads the original, optimized and thumbnail buffers for one artwork image. The original
 // is retained alongside the optimized copy so an admin can later download the untouched file -
 // that's only possible if its bytes still physically exist in storage.
-async function uploadArtworkSet(folderId, format, originalBuffer, optimizedBuffer, thumbnailBuffer) {
+async function uploadArtworkSet(folderId, format, originalBuffer, optimizedBuffer, thumbnailBuffer, mime) {
   const suffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
   const prefix = `artworks/${folderId}/${suffix}`;
 
@@ -41,9 +32,11 @@ async function uploadArtworkSet(folderId, format, originalBuffer, optimizedBuffe
   const storageObjectOptimized = `${prefix}-optimized.${format}`;
   const storageObjectThumbnail = `${prefix}-thumbnail.jpg`;
 
-  const publicUrlOriginal = writeObject(storageObjectOriginal, originalBuffer);
-  const publicUrlOptimized = writeObject(storageObjectOptimized, optimizedBuffer);
-  const publicUrlThumbnail = writeObject(storageObjectThumbnail, thumbnailBuffer);
+  const [publicUrlOriginal, publicUrlOptimized, publicUrlThumbnail] = await Promise.all([
+    uploadObject(storageObjectOriginal, originalBuffer, mime),
+    uploadObject(storageObjectOptimized, optimizedBuffer, mime),
+    uploadObject(storageObjectThumbnail, thumbnailBuffer, 'image/jpeg')
+  ]);
 
   return {
     storageObjectOriginal,

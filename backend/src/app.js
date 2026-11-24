@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 
 const authRoutes = require('./routes/auth.routes');
 const municipalitiesRoutes = require('./routes/municipalities.routes');
@@ -27,12 +26,6 @@ app.set('trust proxy', true);
 
 app.use(cors());
 app.use(express.json());
-
-// Uploaded photos/artworks live on disk at UPLOAD_ROOT (see photoStorage.js / artworkStorage.js
-// for why this must be outside the app's own ephemeral build directory on Hostinger) rather
-// than a remote object storage service.
-const UPLOAD_ROOT = process.env.UPLOAD_ROOT || path.join(__dirname, '..', 'uploads');
-app.use('/uploads', express.static(UPLOAD_ROOT));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

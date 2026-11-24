@@ -1,28 +1,30 @@
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const path = require('path');
 
-// Hostinger's managed Node.js App hosting runs every deploy from a fresh, isolated directory
-// (hbuilds/versions/<id>/) - anything written relative to this app's own code would vanish on
-// the next deploy. UPLOAD_ROOT instead points outside that ephemeral tree, at the hosting
-// account's persistent public_html directory (set in Hostinger's Environment variables panel -
-// see app.js for the matching static-serve path). Falls back to a local folder for dev.
-const UPLOAD_ROOT = process.env.UPLOAD_ROOT || path.join(__dirname, '..', '..', 'uploads');
-const UPLOAD_DIR = path.join(UPLOAD_ROOT, 'photos');
+const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'photos';
 
-function publicUrlFor(objectName) {
-  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
-  return `${base}/uploads/photos/${objectName}`;
-}
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+/**
+ * Uploads a multer memory-storage file buffer to Supabase Storage and returns
+ * its public URL. Kept on Supabase even after the relational database moved
+ * to Hostinger's MySQL - Hostinger's managed Node.js hosting runs each build
+ * from a fresh, isolated directory, so local disk storage doesn't survive a
+ * redeploy the way Supabase Storage (or the old Render host) does.
+ */
 async function uploadPhoto(file) {
   const ext = path.extname(file.originalname) || '.jpg';
   const objectName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
 
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  fs.writeFileSync(path.join(UPLOAD_DIR, objectName), file.buffer);
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(objectName, file.buffer, { contentType: file.mimetype, upsert: false });
 
-  return publicUrlFor(objectName);
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(objectName);
+  return data.publicUrl;
 }
 
 module.exports = { uploadPhoto };
