@@ -42,6 +42,7 @@ fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val isAdmin = ServiceLocator.sessionManager.isAdmin()
     var pendingApprovalCount by remember { mutableStateOf(0) }
     var passwordResetRequestCount by remember { mutableStateOf(0) }
+    var pendingArtworkRequestCount by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         if (isAdmin) {
@@ -49,6 +50,8 @@ fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 .onSuccess { pendingApprovalCount = it.size }
             runCatching { ServiceLocator.userRepository.passwordResetRequests() }
                 .onSuccess { passwordResetRequestCount = it.size }
+            runCatching { ServiceLocator.artworksRepository.listRequests(status = "pending") }
+                .onSuccess { pendingArtworkRequestCount = it.size }
         }
     }
 
@@ -67,12 +70,15 @@ fun ControlPanelScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             add(AdminMenuItem("Password Reset Requests", "Review and resolve forgot-password requests", "admin_password_reset_requests", badgeCount = passwordResetRequestCount))
             add(AdminMenuItem("Chat Sessions", "Create, schedule, and moderate the group chat", "admin_chat_sessions"))
             add(AdminMenuItem("User Log Report", "See who did what across the app", "admin_audit_log"))
+            add(AdminMenuItem("Artwork Approval Center", "Review upload and deletion requests", "admin_artwork_approvals", badgeCount = pendingArtworkRequestCount))
+            add(AdminMenuItem("Artwork Recycle Bin", "Restore or permanently delete removed artworks", "artwork_recycle_bin"))
             if (ServiceLocator.sessionManager.isSuperAdmin()) {
                 add(AdminMenuItem("Reset All Data", "Super Admin only - wipe all registry data on the server", "admin_reset_data"))
             }
         } else {
             add(AdminMenuItem("Theme Color", "Choose the app theme for your own device", "admin_theme"))
             add(AdminMenuItem("Biometric Login", "Register your fingerprint, face, or PIN for faster login", "biometric_settings"))
+            add(AdminMenuItem("My Artwork Requests", "Track your submitted upload and deletion requests", "artwork_my_requests"))
         }
     }
 

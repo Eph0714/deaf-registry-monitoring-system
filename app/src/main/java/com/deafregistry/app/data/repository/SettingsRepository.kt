@@ -121,6 +121,27 @@ class SettingsRepository(
         }
     }
 
+    /** Purely local, per-device, same rationale as chatNotificationsEnabled - gates the Artworks
+     * push notifications (new upload/deletion requests for admins, approval decisions for the
+     * requester) fired by ArtworkNotificationWorker. */
+    fun artworkNotificationsEnabled(): Boolean = prefs.getBoolean(KEY_ARTWORK_NOTIFICATIONS_ENABLED, true)
+
+    fun setArtworkNotificationsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_ARTWORK_NOTIFICATIONS_ENABLED, enabled).apply()
+    }
+
+    /** The highest `notifications.id` this device has already fired a system notification for -
+     * the server only ever returns unread rows, so without this cursor the same unread
+     * notification would re-fire a push on every ~15-minute worker run until the user opens the
+     * app and it gets marked read. */
+    fun lastNotifiedArtworkNotificationId(): Int = prefs.getInt(KEY_LAST_NOTIFIED_ARTWORK_NOTIFICATION_ID, 0)
+
+    fun setLastNotifiedArtworkNotificationId(id: Int) {
+        if (id > lastNotifiedArtworkNotificationId()) {
+            prefs.edit().putInt(KEY_LAST_NOTIFIED_ARTWORK_NOTIFICATION_ID, id).apply()
+        }
+    }
+
     companion object {
         private const val DEFAULT_OVERDUE_DAYS = 30
         private const val KEY_OVERDUE_DAYS = "overdue_days"
@@ -133,5 +154,7 @@ class SettingsRepository(
         private const val KEY_LAST_NOTIFIED_CHAT_STATUS = "last_notified_chat_status"
         private const val KEY_LAST_SEEN_CHAT_MESSAGE_ID = "last_seen_chat_message_id"
         private const val KEY_LAST_NOTIFIED_CHAT_MESSAGE_ID = "last_notified_chat_message_id"
+        private const val KEY_ARTWORK_NOTIFICATIONS_ENABLED = "artwork_notifications_enabled"
+        private const val KEY_LAST_NOTIFIED_ARTWORK_NOTIFICATION_ID = "last_notified_artwork_notification_id"
     }
 }

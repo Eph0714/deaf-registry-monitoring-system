@@ -15,6 +15,8 @@ object NotificationHelper {
     private const val CHANNEL_NAME = "Visit Monitoring"
     const val CHAT_CHANNEL_ID = "chat"
     private const val CHAT_CHANNEL_NAME = "Chat"
+    const val ARTWORK_CHANNEL_ID = "artworks"
+    private const val ARTWORK_CHANNEL_NAME = "Artworks"
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -27,6 +29,11 @@ object NotificationHelper {
             manager.createNotificationChannel(
                 NotificationChannel(CHAT_CHANNEL_ID, CHAT_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT).apply {
                     description = "New chat sessions, messages, and session status changes"
+                }
+            )
+            manager.createNotificationChannel(
+                NotificationChannel(ARTWORK_CHANNEL_ID, ARTWORK_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = "New artwork upload/deletion requests and approval decisions"
                 }
             )
         }

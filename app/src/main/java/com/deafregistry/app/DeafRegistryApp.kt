@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.deafregistry.app.data.sync.ArtworkNotificationWorker
 import com.deafregistry.app.data.sync.AutoSyncWorker
 import com.deafregistry.app.data.sync.ChatBackgroundWorker
 import com.deafregistry.app.data.sync.VisitDueWorker
@@ -77,6 +78,12 @@ class DeafRegistryApp : Application() {
 
         WorkManager.getInstance(this)
             .enqueueUniquePeriodicWork("chat_background_work", ExistingPeriodicWorkPolicy.KEEP, chatRequest)
+
+        val artworkNotificationRequest = PeriodicWorkRequestBuilder<ArtworkNotificationWorker>(15, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(this)
+            .enqueueUniquePeriodicWork("artwork_notification_work", ExistingPeriodicWorkPolicy.KEEP, artworkNotificationRequest)
 
         // Fallback net for the immediate connectivity-triggered sync above: catches the case
         // where connectivity returned while the process wasn't alive to observe the transition

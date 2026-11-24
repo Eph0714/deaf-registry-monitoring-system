@@ -34,6 +34,14 @@ object Routes {
     const val ADMIN_AUDIT_LOG = "admin_audit_log"
     const val ADMIN_RESET_DATA = "admin_reset_data"
     const val ACCOUNT_MANAGEMENT = "account_management"
+    const val ARTWORK_FOLDERS = "artwork_folders"
+    const val ARTWORK_GALLERY = "artwork_gallery/{folderId}"
+    const val ARTWORK_UPLOAD = "artwork_upload/{folderId}"
+    const val ARTWORK_DETAIL = "artwork_detail/{artworkId}"
+    const val ADMIN_ARTWORK_APPROVALS = "admin_artwork_approvals"
+    const val ARTWORK_RECYCLE_BIN = "artwork_recycle_bin"
+    const val ARTWORK_MY_REQUESTS = "artwork_my_requests"
+    const val SHARE_APP = "share_app"
 
     fun allIndividuals(title: String, category: String = "all") =
         "all_individuals/${java.net.URLEncoder.encode(title, "UTF-8")}?sort=$category"
@@ -45,4 +53,8 @@ object Routes {
     fun deafProfile(uuid: String) = "deaf/$uuid"
     fun deafEditorNew(municipalityId: Int) = "deaf_editor?uuid=&municipalityId=$municipalityId"
     fun deafEditorEdit(uuid: String) = "deaf_editor?uuid=$uuid&municipalityId=-1"
+
+    fun artworkGallery(folderId: Int) = "artwork_gallery/$folderId"
+    fun artworkUpload(folderId: Int) = "artwork_upload/$folderId"
+    fun artworkDetail(artworkId: Int) = "artwork_detail/$artworkId"
 }

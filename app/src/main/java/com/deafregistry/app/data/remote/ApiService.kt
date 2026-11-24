@@ -371,4 +371,89 @@ interface ApiService {
 
     @POST("chat/notifications/read")
     suspend fun markChatNotificationsRead(@Body request: MarkChatNotificationsReadRequest): Response<Unit>
+
+    // --- Artworks ---
+
+    @GET("artwork-folders")
+    suspend fun getArtworkFolders(
+        @Query("search") search: String? = null,
+        @Query("parentId") parentId: Int? = null
+    ): List<ArtworkFolderDto>
+
+    @GET("artwork-folders/{id}")
+    suspend fun getArtworkFolder(@Path("id") id: Int): ArtworkFolderDto
+
+    @POST("artwork-folders")
+    suspend fun createArtworkFolder(@Body request: CreateFolderRequest): ArtworkFolderDto
+
+    @PUT("artwork-folders/{id}")
+    suspend fun renameArtworkFolder(@Path("id") id: Int, @Body request: RenameFolderRequest): ArtworkFolderDto
+
+    @DELETE("artwork-folders/{id}")
+    suspend fun deleteArtworkFolder(@Path("id") id: Int): Response<Unit>
+
+    @GET("artworks")
+    suspend fun getArtworks(@Query("folderId") folderId: Int, @Query("includeAll") includeAll: Boolean? = null): List<ArtworkDto>
+
+    @GET("artworks/{id}")
+    suspend fun getArtwork(@Path("id") id: Int): ArtworkDto
+
+    @GET("artworks/recycle-bin")
+    suspend fun getArtworkRecycleBin(): List<ArtworkDto>
+
+    @Multipart
+    @POST("artworks/{folderId}/upload-direct")
+    suspend fun uploadArtworksDirect(@Path("folderId") folderId: Int, @Part images: List<MultipartBody.Part>): ArtworkUploadResultDto
+
+    @Multipart
+    @POST("artworks/{folderId}/upload-request")
+    suspend fun uploadArtworksRequest(
+        @Path("folderId") folderId: Int,
+        @Part images: List<MultipartBody.Part>,
+        @Part("note") note: okhttp3.RequestBody? = null
+    ): ArtworkUploadRequestResultDto
+
+    @PUT("artworks/{id}/rename")
+    suspend fun renameArtwork(@Path("id") id: Int, @Body request: RenameArtworkRequest): Response<Unit>
+
+    @PUT("artworks/{id}/move")
+    suspend fun moveArtwork(@Path("id") id: Int, @Body request: MoveArtworkRequest): Response<Unit>
+
+    // Admin-only direct delete (bypasses approval) - moves straight to the Recycle Bin.
+    @DELETE("artworks/{id}")
+    suspend fun deleteArtwork(@Path("id") id: Int): Response<Unit>
+
+    @POST("artworks/{id}/restore")
+    suspend fun restoreArtwork(@Path("id") id: Int): Response<Unit>
+
+    @DELETE("artworks/{id}/permanent")
+    suspend fun permanentlyDeleteArtwork(@Path("id") id: Int): Response<Unit>
+
+    @POST("artwork-requests/delete")
+    suspend fun submitArtworkDeleteRequest(@Body request: SubmitDeleteRequestBody): Response<Unit>
+
+    @GET("artwork-requests")
+    suspend fun getArtworkRequests(@Query("status") status: String? = null, @Query("type") type: String? = null): List<ArtworkRequestDto>
+
+    @GET("artwork-requests/mine")
+    suspend fun getMyArtworkRequests(@Query("status") status: String? = null): List<ArtworkRequestDto>
+
+    @GET("artwork-requests/{id}")
+    suspend fun getArtworkRequest(@Path("id") id: Int): ArtworkRequestDto
+
+    @POST("artwork-requests/{id}/approve")
+    suspend fun approveArtworkRequest(@Path("id") id: Int): Response<Unit>
+
+    @POST("artwork-requests/{id}/reject")
+    suspend fun rejectArtworkRequest(@Path("id") id: Int, @Body request: RejectRequestBody): Response<Unit>
+
+    @POST("artwork-requests/{id}/cancel")
+    suspend fun cancelArtworkRequest(@Path("id") id: Int): Response<Unit>
+
+    // Generic notification feed (artworks + any future non-chat events)
+    @GET("notifications")
+    suspend fun getNotifications(): List<ArtworkNotificationDto>
+
+    @POST("notifications/read")
+    suspend fun markNotificationsRead(@Body request: MarkNotificationsReadRequest): Response<Unit>
 }

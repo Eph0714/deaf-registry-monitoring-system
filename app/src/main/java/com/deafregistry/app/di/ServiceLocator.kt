@@ -5,6 +5,7 @@ import com.deafregistry.app.data.local.AppDatabase
 import com.deafregistry.app.data.remote.ApiService
 import com.deafregistry.app.data.remote.NetworkModule
 import com.deafregistry.app.data.repository.AdminRepository
+import com.deafregistry.app.data.repository.ArtworksRepository
 import com.deafregistry.app.data.repository.AuthRepository
 import com.deafregistry.app.data.repository.CalendarEventRepository
 import com.deafregistry.app.data.repository.ChatRepository
@@ -57,6 +58,7 @@ object ServiceLocator {
     val adminRepository: AdminRepository by lazy { AdminRepository(api) }
     val calendarEventRepository: CalendarEventRepository by lazy { CalendarEventRepository(api) }
     val chatRepository: ChatRepository by lazy { ChatRepository(api) }
+    val artworksRepository: ArtworksRepository by lazy { ArtworksRepository(api) }
 
     val settingsRepository: SettingsRepository by lazy {
         SettingsRepository(api, requireContext().getSharedPreferences("app_settings", Context.MODE_PRIVATE))

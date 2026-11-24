@@ -30,7 +30,12 @@ object ExportUtils {
      * (copied directly) - the same photo picker/camera flow used elsewhere in the app hands either
      * kind of string to `AsyncImage`, so this needs to handle both the same way.
      */
-    suspend fun writeImageToUri(context: Context, destination: Uri, source: String): Unit = withContext(Dispatchers.IO) {
+    suspend fun writeImageToUri(
+        context: Context,
+        destination: Uri,
+        source: String,
+        onProgress: (bytesWritten: Long, contentLength: Long) -> Unit = { _, _ -> }
+    ): Unit = withContext(Dispatchers.IO) {
         val output = context.contentResolver.openOutputStream(destination)
             ?: throw IllegalStateException("Could not open the chosen location for writing")
         output.use { out ->
@@ -40,7 +45,25 @@ object ExportUtils {
                 connection.readTimeout = 15000
                 try {
                     connection.connect()
-                    connection.inputStream.use { input -> input.copyTo(out) }
+                    // HttpURLConnection throws FileNotFoundException (an IOException) from
+                    // .inputStream on a non-2xx response, which friendlyMessage() would then
+                    // show as a misleading "check your internet connection" - a 404 here means
+                    // the image itself is gone (e.g. deleted/never uploaded), not a network
+                    // problem, so it's surfaced as its own clear error instead.
+                    if (connection.responseCode !in 200..299) {
+                        throw IllegalStateException("This image is no longer available (HTTP ${connection.responseCode}).")
+                    }
+                    val total = connection.contentLengthLong
+                    connection.inputStream.use { input ->
+                        val buffer = ByteArray(8192)
+                        var bytesWritten = 0L
+                        var read: Int
+                        while (input.read(buffer).also { read = it } != -1) {
+                            out.write(buffer, 0, read)
+                            bytesWritten += read
+                            onProgress(bytesWritten, total)
+                        }
+                    }
                 } finally {
                     connection.disconnect()
                 }
@@ -50,6 +73,102 @@ object ExportUtils {
                 sourceFile.inputStream().use { input -> input.copyTo(out) }
             }
         }
+    }
+
+    /**
+     * Downloads a remote image into this app's cache dir (exposed read-only to other apps via
+     * the "cache_root" FileProvider path - see res/xml/file_paths.xml) and returns a content://
+     * Uri for it, suitable for Intent.ACTION_SEND. Sharing needs a real local file app-to-app
+     * (most apps, Messenger included, can't fetch an arbitrary https:// URL themselves), unlike
+     * [writeImageToUri] which streams straight to a destination the user already picked.
+     */
+    suspend fun prepareImageForShare(
+        context: Context,
+        source: String,
+        fileName: String,
+        onProgress: (bytesWritten: Long, contentLength: Long) -> Unit = { _, _ -> }
+    ): Uri = withContext(Dispatchers.IO) {
+        val file = File(context.cacheDir, fileName)
+        if (source.startsWith("http://") || source.startsWith("https://")) {
+            val connection = URL(source).openConnection() as HttpURLConnection
+            connection.connectTimeout = 15000
+            connection.readTimeout = 15000
+            try {
+                connection.connect()
+                if (connection.responseCode !in 200..299) {
+                    throw IllegalStateException("This image is no longer available (HTTP ${connection.responseCode}).")
+                }
+                val total = connection.contentLengthLong
+                file.outputStream().use { out ->
+                    connection.inputStream.use { input ->
+                        val buffer = ByteArray(8192)
+                        var bytesWritten = 0L
+                        var read: Int
+                        while (input.read(buffer).also { read = it } != -1) {
+                            out.write(buffer, 0, read)
+                            bytesWritten += read
+                            onProgress(bytesWritten, total)
+                        }
+                    }
+                }
+            } finally {
+                connection.disconnect()
+            }
+        } else {
+            File(source).copyTo(file, overwrite = true)
+        }
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
+
+    /** True if [fileName] already exists in this app's private storage (see [downloadImageToAppStorage]) - used to hide/skip the Download action for an image that's already been saved. */
+    fun isAlreadyDownloaded(context: Context, fileName: String): Boolean {
+        val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: context.filesDir
+        return File(dir, fileName).exists()
+    }
+
+    /**
+     * Downloads a remote image into this app's own private storage (getExternalFilesDir -
+     * no permission needed, not visible in the system Gallery/Downloads/Files apps, removed if
+     * the app is uninstalled) rather than a shared public location - "downloaded" images are
+     * meant to stay inside the app/the device's app-local storage, not be handed off to a
+     * user-picked external directory. Used for both single-image and multi-select/bulk download,
+     * so neither path prompts a destination.
+     */
+    suspend fun downloadImageToAppStorage(
+        context: Context,
+        fileName: String,
+        source: String,
+        onProgress: (bytesWritten: Long, contentLength: Long) -> Unit = { _, _ -> }
+    ): String = withContext(Dispatchers.IO) {
+        val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            ?: context.filesDir
+        if (!dir.exists()) dir.mkdirs()
+        val file = File(dir, fileName)
+        val connection = URL(source).openConnection() as HttpURLConnection
+        connection.connectTimeout = 15000
+        connection.readTimeout = 15000
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("This image is no longer available (HTTP ${connection.responseCode}).")
+            }
+            val total = connection.contentLengthLong
+            file.outputStream().use { out ->
+                connection.inputStream.use { input ->
+                    val buffer = ByteArray(8192)
+                    var bytesWritten = 0L
+                    var read: Int
+                    while (input.read(buffer).also { read = it } != -1) {
+                        out.write(buffer, 0, read)
+                        bytesWritten += read
+                        onProgress(bytesWritten, total)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        file.absolutePath
     }
 
     /** Writes rows of a report to a CSV file in the device's Downloads folder and opens it. */

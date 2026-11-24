@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.TrendingUp
@@ -129,6 +131,8 @@ fun DashboardScreen(
     onOpenPendingUsers: () -> Unit,
     onOpenMunicipalityStatistics: () -> Unit,
     onOpenTerritoryMap: () -> Unit,
+    onOpenArtworks: () -> Unit,
+    onOpenShareApp: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onOpenAccountManagement: () -> Unit,
     onLogout: () -> Unit
@@ -199,6 +203,17 @@ fun DashboardScreen(
         }
     }
     LaunchedEffect(Unit) { loadTeamLocations() }
+
+    // Unread Artworks notifications - new requests awaiting an admin, or a decision on a
+    // conductor's own request. Same badge-count pattern as unreadChatCount below.
+    var unreadArtworkNotificationCount by remember { mutableStateOf(0) }
+    fun loadUnreadArtworkNotifications() {
+        scope.launch {
+            runCatching { ServiceLocator.artworksRepository.getNotifications() }
+                .onSuccess { unreadArtworkNotificationCount = it.size }
+        }
+    }
+    LaunchedEffect(Unit) { loadUnreadArtworkNotifications() }
 
     var onlineUsers by remember { mutableStateOf<List<com.deafregistry.app.data.remote.dto.OnlineUserDto>>(emptyList()) }
     var showOnlineUsersDialog by remember { mutableStateOf(false) }
@@ -436,7 +451,10 @@ fun DashboardScreen(
                             onOpenChat = onOpenChat,
                             unreadChatCount = state.unreadChatCount,
                             onOpenMunicipalityStatistics = onOpenMunicipalityStatistics,
-                            onOpenTerritoryMap = onOpenTerritoryMap
+                            onOpenTerritoryMap = onOpenTerritoryMap,
+                            onOpenArtworks = onOpenArtworks,
+                            unreadArtworkNotificationCount = unreadArtworkNotificationCount,
+                            onOpenShareApp = onOpenShareApp
                         )
                     }
 
@@ -857,7 +875,10 @@ private fun DashboardQuickActionsRow(
     onOpenChat: () -> Unit,
     unreadChatCount: Int,
     onOpenMunicipalityStatistics: () -> Unit,
-    onOpenTerritoryMap: () -> Unit
+    onOpenTerritoryMap: () -> Unit,
+    onOpenArtworks: () -> Unit,
+    unreadArtworkNotificationCount: Int,
+    onOpenShareApp: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
@@ -924,6 +945,30 @@ private fun DashboardQuickActionsRow(
             ) {
                 DashboardQuickActionTile("Statistics", Icons.Default.BarChart, Color(0xFFD1C4E9), Color(0xFF4527A0), onOpenMunicipalityStatistics, Modifier.weight(1f))
                 DashboardQuickActionTile("Territory Map", Icons.Default.Map, Color(0xFFFFECB3), Color(0xFFFF6F00), onOpenTerritoryMap, Modifier.weight(1f))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Browsing is a conductor capability too (not admin-only) - see spec's regular
+                // user permissions - so this tile is visible to every role, same as Search/Reports.
+                DashboardQuickActionTile(
+                    "Artworks",
+                    Icons.Default.Image,
+                    Color(0xFFE1BEE7),
+                    Color(0xFF6A1B9A),
+                    onOpenArtworks,
+                    Modifier.weight(1f),
+                    badgeCount = unreadArtworkNotificationCount
+                )
+                DashboardQuickActionTile(
+                    "Share this app",
+                    Icons.Default.Share,
+                    Color(0xFFDCEDC8),
+                    Color(0xFF33691E),
+                    onOpenShareApp,
+                    Modifier.weight(1f)
+                )
             }
         }
     }

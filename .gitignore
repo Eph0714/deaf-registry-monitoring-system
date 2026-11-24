@@ -23,5 +23,7 @@ backend/node_modules/
 backend/.env
 backend/uploads/photos/*
 !backend/uploads/photos/.gitkeep
+backend/uploads/artworks/**
+!backend/uploads/artworks/.gitkeep
 backend/backups/
 *.log

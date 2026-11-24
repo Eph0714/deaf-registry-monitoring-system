@@ -36,6 +36,13 @@ import com.deafregistry.app.ui.admin.ThemeSettingsScreen
 import com.deafregistry.app.ui.admin.BiometricLoginSettingsScreen
 import com.deafregistry.app.ui.admin.NotificationSettingsScreen
 import com.deafregistry.app.ui.admin.LocationSharingSettingsScreen
+import com.deafregistry.app.ui.artworks.AdminArtworkApprovalCenterScreen
+import com.deafregistry.app.ui.artworks.ArtworkFoldersScreen
+import com.deafregistry.app.ui.artworks.ArtworkGalleryScreen
+import com.deafregistry.app.ui.artworks.ArtworkMyRequestsScreen
+import com.deafregistry.app.ui.artworks.ArtworkRecycleBinScreen
+import com.deafregistry.app.ui.artworks.ArtworkUploadScreen
+import com.deafregistry.app.ui.share.ShareAppScreen
 import com.deafregistry.app.ui.calendar.CalendarScreen
 import com.deafregistry.app.ui.chat.ChatRoomScreen
 import com.deafregistry.app.ui.chat.ChatSessionManageScreen
@@ -128,6 +135,8 @@ fun AppNavGraph(sessionManager: SessionManager) {
                 onOpenPendingUsers = { navController.navigate(Routes.ADMIN_PENDING_USERS) },
                 onOpenMunicipalityStatistics = { navController.navigate(Routes.MUNICIPALITY_STATISTICS) },
                 onOpenTerritoryMap = { navController.navigate(Routes.TERRITORY_MAP) },
+                onOpenArtworks = { navController.navigate(Routes.ARTWORK_FOLDERS) },
+                onOpenShareApp = { navController.navigate(Routes.SHARE_APP) },
                 onOpenProfile = { uuid -> navController.navigate(Routes.deafProfile(uuid)) },
                 onOpenAccountManagement = { navController.navigate(Routes.ACCOUNT_MANAGEMENT) },
                 onLogout = {
@@ -154,6 +163,40 @@ fun AppNavGraph(sessionManager: SessionManager) {
             MunicipalityStatisticsScreen(
                 onBack = { navController.popBackStack() },
                 onOpenMunicipality = { name -> navController.navigate(Routes.reportCategoryDetail("municipality", name)) }
+            )
+        }
+
+        composable(Routes.ARTWORK_FOLDERS) {
+            ArtworkFoldersScreen(
+                onBack = { navController.popBackStack() },
+                onOpenFolder = { folderId -> navController.navigate(Routes.artworkGallery(folderId)) }
+            )
+        }
+
+        composable(Routes.SHARE_APP) {
+            ShareAppScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            Routes.ARTWORK_GALLERY,
+            arguments = listOf(navArgument("folderId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val folderId = backStackEntry.arguments?.getInt("folderId") ?: return@composable
+            ArtworkGalleryScreen(
+                folderId = folderId,
+                onBack = { navController.popBackStack() },
+                onUpload = { id -> navController.navigate(Routes.artworkUpload(id)) },
+                onOpenSubfolder = { subfolderId -> navController.navigate(Routes.artworkGallery(subfolderId)) }
+            )
+        }
+        composable(
+            Routes.ARTWORK_UPLOAD,
+            arguments = listOf(navArgument("folderId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val folderId = backStackEntry.arguments?.getInt("folderId") ?: return@composable
+            ArtworkUploadScreen(
+                folderId = folderId,
+                onBack = { navController.popBackStack() },
+                onUploaded = { navController.popBackStack() }
             )
         }
 
@@ -308,6 +351,15 @@ fun AppNavGraph(sessionManager: SessionManager) {
         }
         composable(Routes.ADMIN_PENDING_USERS) {
             AdminPendingUsersScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.ADMIN_ARTWORK_APPROVALS) {
+            AdminArtworkApprovalCenterScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.ARTWORK_RECYCLE_BIN) {
+            ArtworkRecycleBinScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.ARTWORK_MY_REQUESTS) {
+            ArtworkMyRequestsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.ADMIN_PASSWORD_RESET_REQUESTS) {
             PasswordResetRequestsScreen(onBack = { navController.popBackStack() })
