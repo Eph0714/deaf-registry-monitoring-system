@@ -342,13 +342,16 @@ CREATE TABLE IF NOT EXISTS chat_notifications (
 -- clause can serve every gallery query without per-screen ad-hoc flags.
 CREATE TABLE IF NOT EXISTS artwork_folders (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  parent_id INT NULL,
   name VARCHAR(150) NOT NULL,
   created_by INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   is_deleted BOOLEAN NOT NULL DEFAULT false,
   CONSTRAINT fk_artwork_folders_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-  INDEX idx_artwork_folders_name (name)
+  CONSTRAINT fk_artwork_folders_parent FOREIGN KEY (parent_id) REFERENCES artwork_folders(id) ON DELETE RESTRICT,
+  INDEX idx_artwork_folders_name (name),
+  INDEX idx_artwork_folders_parent (parent_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS artworks (

@@ -87,7 +87,7 @@ const listArtworks = asyncHandler(async (req, res) => {
   } else {
     sql += " AND a.publish_status = 'published' AND a.deleted_status != 'deleted'";
   }
-  sql += ' ORDER BY a.uploaded_at DESC';
+  sql += ' ORDER BY a.file_name ASC';
 
   const { rows } = await pool.query(sql, params);
   res.json(rows);
