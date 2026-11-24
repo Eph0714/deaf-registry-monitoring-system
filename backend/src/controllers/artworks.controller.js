@@ -110,6 +110,11 @@ const uploadDirect = asyncHandler(async (req, res) => {
   const { folderId } = req.params;
   if (!req.files || !req.files.length) return res.status(400).json({ message: 'At least one image file is required' });
 
+  const limit = await maxBatchSize();
+  if (req.files.length > limit) {
+    return res.status(400).json({ message: `You can upload at most ${limit} images at once` });
+  }
+
   const { rows: folderRows } = await pool.query('SELECT id FROM artwork_folders WHERE id = ? AND is_deleted = false', [folderId]);
   if (!folderRows.length) return res.status(404).json({ message: 'Folder not found' });
 

@@ -424,7 +424,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   INDEX idx_notifications_user_status (user_id, status)
 ) ENGINE=InnoDB;
 
-INSERT IGNORE INTO settings (`key`, `value`) VALUES ('artwork_max_batch_size', '20');
+INSERT IGNORE INTO settings (`key`, `value`) VALUES ('artwork_max_batch_size', '10');
 INSERT IGNORE INTO settings (`key`, `value`) VALUES ('artwork_max_file_size_mb', '8');
 
 -- Uploaded file bytes (profile photos, artwork originals/optimized/thumbnails) live here, not on
